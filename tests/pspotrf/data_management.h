@@ -71,11 +71,11 @@ typedef struct tile_coordinate{
 int dplasma_desc_init(const PLASMA_desc * Pdesc, DPLASMA_desc * Ddesc);
 
 /* allocate the inner storage */
-int dplasma_desc_workspace_allocate( DPLASMA_desc * Ddesc );
+int dplasma_desc_workspace_allocate( DPLASMA_desc * Ddesc, int use_gpu );
 
 
 /* initialize and bcast Ddesc from Pdesc */
-int dplasma_desc_bcast(const PLASMA_desc * Pdesc, DPLASMA_desc *Ddesc);
+int dplasma_desc_bcast(const PLASMA_desc * Pdesc, DPLASMA_desc *Ddesc, int use_gpu);
 
 /* computing the mpi process rank that should handle tile A(m,n) */
 
@@ -141,6 +141,7 @@ int untiling(PLASMA_enum * uplo, int N, float *A, int LDA, PLASMA_desc * descA);
 /* set values of the DPLASMA_desc structure and allocate memory for matrix data
  */
 int dplasma_description_init(DPLASMA_desc * Ddesc, int LDA, int LDB, int NRHS, PLASMA_enum uplo);
+void* dplasma_allocate_matrix( int matrix_size, int use_gpu);
 
 /* affecting the complete local view of a distributed matrix with random values */
 int rand_dist_matrix(DPLASMA_desc * Ddesc);

@@ -10,16 +10,23 @@ extern int uplo;
 int PLASMA_INFO;
 
 #include "dplasma.h"
+#include "gpu_data.h"
+
+/* CUDA */
+extern int use_gpu;
+
 #include "remote_dep.h"
+
+extern int use_gpu;
+extern int *gpu_counter;
 
 #include "data_management.h"
 extern DPLASMA_desc ddescA;
-#define descA ddescA
 
 #ifdef DISTRIBUTED
 #   define A(m,n) dplasma_get_local_tile_s(&ddescA, m, n)
 #else
-#   define A(m,n) &(((float*)descA.mat)[descA.bsiz*(m)+descA.bsiz*descA.lmt*(n)])
+#   define A(m,n) &(((float*)ddescA.mat)[ddescA.bsiz*(m)+ddescA.bsiz*ddescA.lmt*(n)])
 #endif
 
 #ifdef DPLASMA_CALL_TRACE
@@ -35,6 +42,8 @@ extern DPLASMA_desc ddescA;
 #else
 #   define CORE(FN, ARGS) CORE_##FN ARGS
 #endif
+
+extern int gpu_sgemm( int uplo, void* A, void* B, void* C, int k, int n, int m );
 %}
 
 /* Globals
@@ -70,6 +79,7 @@ OUT   F -> F GEMM(k, k+1..SIZE-1, 0)
 ; 10 * (SIZE - k) * (SIZE - k) * (SIZE - k)
 
 BODY
+    dplasma_mark_data_usage( &ddescA, DPLASMA_READ | DPLASMA_WRITE, k, k );
     CORE(
         spotrf, (
             uplo,
@@ -108,9 +118,11 @@ INOUT C <- (k == 0) ? A(m, k) : C GEMM(k, m, k-1)
         -> (m == k+1) ? F SYRK(m, 0) : A(m,k)
         -> A(m, k)
 
-; 10 * (SIZE - k) * (SIZE - k) * (SIZE - k) + 1
+; 10 * (SIZE - m) * (SIZE - m) * (SIZE - m) + 2
 
 BODY
+    dplasma_mark_data_usage( &ddescA, DPLASMA_READ, k, k );
+    dplasma_mark_data_usage( &ddescA, DPLASMA_READ | DPLASMA_WRITE, m, k );
     if( uplo == PlasmaLower ) {
         CORE(
             strsm, (
@@ -168,9 +180,11 @@ IN    F <- (n == 0) ? C TRSM(k-1, k) : A(k,k)
 INOUT T <- (n == 0) ? A(k, k) : T SYRK(k, n-1)
         -> (n == k-1) ? T POTRF(k) : T SYRK(k, n+1)
 
-; 10 * (SIZE - k) * (SIZE - k) * (SIZE - k) + 2
+; 10 * (SIZE - n) * (SIZE - n) * (SIZE - n) + 1
 
 BODY
+    dplasma_mark_data_usage( &ddescA, DPLASMA_READ, k, n );
+    dplasma_mark_data_usage( &ddescA, DPLASMA_READ | DPLASMA_WRITE, k, k );
     if( uplo == PlasmaLower ) {
         CORE(
             ssyrk, (
@@ -231,9 +245,17 @@ IN    F <- (n == 0) ? F POTRF(k) : A(m, k)
 INOUT C <- (n == 0) ? A(m, k) : C GEMM(k, m, n-1)
         -> (n == k-1) ? C TRSM(k, m) : C GEMM(k, m, n+1)
 
-; 10 * (SIZE - k) * (SIZE - k) * (SIZE - k) + 3
+; 10 * (SIZE - m) * (SIZE - m) * (SIZE - m) + 3
 
 BODY
+    dplasma_mark_data_usage( &ddescA, DPLASMA_READ, k, n );
+    dplasma_mark_data_usage( &ddescA, DPLASMA_READ, k, m );
+    if( use_gpu == 1 ){
+        if( 0 == gpu_sgemm( uplo, A, B, C, k, n, m ) )
+            goto FIN;
+    }
+    dplasma_mark_data_usage( &ddescA, DPLASMA_READ | DPLASMA_WRITE, m, k );
+
     if( uplo == PlasmaLower ) {
         CORE( 
             sgemm, (
@@ -277,4 +299,5 @@ BODY
                  1.0, k, m, NB /*A.nb*/ )
             );
     }
+FIN:
 END

@@ -113,7 +113,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif(NOT CMAKE_BUILD_TYPE)
 string( TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE)
 if( ${CMAKE_BUILD_TYPE} STREQUAL "debug" )
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 endif( ${CMAKE_BUILD_TYPE} STREQUAL "debug" )
 
 # Check for available functions
@@ -258,6 +258,7 @@ check_function_exists(asprintf HAVE_ASPRINTF)
 check_function_exists(vasprintf HAVE_VASPRINTF)
 check_include_files(getopt.h HAVE_GETOPT_H)
 check_function_exists(getopt_long HAVE_GETOPT_LONG)
+check_function_exists(getrusage HAVE_GETRUSAGE)
 check_include_files(errno.h HAVE_ERRNO_H)
 
 
@@ -275,7 +276,7 @@ add_library(dplasma STATIC dplasma.c symbol.c assignment.c expr.c params.c dep.c
   data_dist/matrix/two_dim_rectangle_cyclic/two_dim_rectangle_cyclic.c
   data_dist/matrix/sym_two_dim_rectangle_cyclic/sym_two_dim_rectangle_cyclic.c)
 set_target_properties(dplasma PROPERTIES COMPILE_FLAGS "-DYYERROR_VERBOSE")
-#target_link_libraries(dplasma ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUDA_LIBRARY})
+#target_link_libraries(dplasma ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUDA_LIBRARY} ${CUDA_CUDART_LIBRARY})
 
 if (DPLASMA_MPI AND MPI_FOUND)
   add_library(dplasma-mpi STATIC dplasma.c symbol.c assignment.c expr.c params.c dep.c
@@ -285,7 +286,7 @@ if (DPLASMA_MPI AND MPI_FOUND)
   data_dist/matrix/two_dim_rectangle_cyclic/two_dim_rectangle_cyclic.c
   data_dist/matrix/sym_two_dim_rectangle_cyclic/sym_two_dim_rectangle_cyclic.c)
   set_target_properties(dplasma-mpi PROPERTIES COMPILE_FLAGS "${MPI_COMPILE_FLAGS} -DUSE_MPI")
-#  target_link_libraries(dplasma-mpi ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUDA_LIBRARY})
+#  target_link_libraries(dplasma-mpi ${CUDA_CUBLAS_LIBRARIES} ${CUDA_CUDA_LIBRARY} ${CUDA_CUDART_LIBRARY})
 endif (DPLASMA_MPI AND MPI_FOUND)
 
 #
