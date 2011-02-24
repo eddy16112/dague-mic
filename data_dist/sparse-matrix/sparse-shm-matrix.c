@@ -365,8 +365,8 @@ static void data_release(struct dague_ddesc *desc, ...)
     dague_atomic_unlock( &tptr->lock );
 }
 
-int dague_tssm_mesh_create_tile(dague_tssm_desc_t *mesh, unsigned int n, unsigned int m, 
-                                unsigned int tile_n, unsigned int tile_m, 
+int dague_tssm_mesh_create_tile(dague_tssm_desc_t *mesh, unsigned int m, unsigned int n, 
+                                unsigned int tile_m, unsigned int tile_n, 
                                 void *packed_ptr)
 {
     dague_tssm_tile_entry_t *e;
@@ -391,5 +391,5 @@ int dague_tssm_mesh_create_tile(dague_tssm_desc_t *mesh, unsigned int n, unsigne
     }
     mesh->mesh[ n + m * mesh->nb ] = e;
 
-    return 1;
+    return 0;
 }

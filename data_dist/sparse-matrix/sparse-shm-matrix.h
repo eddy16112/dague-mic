@@ -69,8 +69,8 @@ typedef struct dague_tssm_desc {
  * @return 0 if success
  * @return non zero otherwise
  */
-int dague_tssm_mesh_create_tile(dague_tssm_desc_t *mesh, unsigned int n, unsigned int m, 
-                                unsigned int tile_n, unsigned int tile_m,
+int dague_tssm_mesh_create_tile(dague_tssm_desc_t *mesh, unsigned int m, unsigned int n, 
+                                unsigned int tile_m, unsigned int tile_n,
                                 void *packed_ptr);
 void dague_tssm_init(int nbthreads);
 void dague_tssm_thread_init(int threadid, int nbtilesperthread, size_t tile_size);
