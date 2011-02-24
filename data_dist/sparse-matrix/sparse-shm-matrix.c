@@ -2,12 +2,16 @@
 
 #include <stdarg.h>
 #include <assert.h>
+#include <stdio.h>
+#include <signal.h>
 
 #include "lifo.h"
 #include "linked_list.h"
 
 #include "data_dist/sparse-matrix/sparse-shm-matrix.h"
-#include "data_dist/sparse-matrix/ssm-cpulru.h"
+#include "data_dist/sparse-matrix/anthony.h"
+
+#define MAX(a, b) (((a) < (b))?(b):(a))
 
 static dague_linked_list_t  used_tiles;
 static dague_linked_list_t *dirty_tiles;
@@ -24,12 +28,12 @@ void dague_tssm_init(int nbthreads)
     dague_linked_list_construct( &used_tiles );
     dirty_tiles = (dague_linked_list_t*)malloc( nbthreads * sizeof(dague_linked_list_t) );
     clean_tiles = (dague_linked_list_t*)malloc( nbthreads * sizeof(dague_linked_list_t) );
-    free_tiles = (dague_linked_list_t*)malloc( nbthreads * sizeof(dague_linked_list_t) );
+    free_tiles = (dague_atomic_lifo_t*)malloc( nbthreads * sizeof(dague_atomic_lifo_t) );
     for(i = 0; i < nbthreads; i++) {
         dague_linked_list_construct( &dirty_tiles[i] );
         dague_linked_list_construct( &clean_tiles[i] );
         dague_atomic_lifo_construct( &free_tiles[i] );
-    }    
+    }
 }
 
 void dague_tssm_thread_init(int threadid, int nbtilesperthread, size_t tile_size)
@@ -112,13 +116,15 @@ static int dague_tssm_reclaim_clean_tile(int this_thread, int find_in_other_thre
             }
         }
     }
+
+    return 0;
 }
 
 static int dague_tssm_cleanup_some_tile(int thid)
 {
     dague_tssm_tile_entry_t *victim;
     do {
-        victim = (dague_tssm_tile_entry_t *)dague_linked_list_remove_head( &dirty_tiles[this_thread] );
+        victim = (dague_tssm_tile_entry_t *)dague_linked_list_remove_head( &dirty_tiles[thid] );
         if( NULL != victim ) {
             dague_atomic_lock(&victim->lock);
             if( (victim->nbreaders > 0) || (victim->writer != -1) ) {
@@ -235,11 +241,10 @@ static void *data_of(struct dague_ddesc *desc, ...)
 {
     unsigned int m, n;
     va_list ap;
-    tiled_sparse_shm_matrix_desc_t *mat = (tiled_sparse_shm_matrix_desc_t *)desc;
-    void *tptr;
-    uint32_t status;
+    dague_tssm_desc_t *mat = (dague_tssm_desc_t *)desc;
+    dague_tssm_tile_entry_t *tptr;
     int write_access;
-    int this_tread;
+    int this_thread;
 
     va_start(ap, desc);
     m = va_arg(ap, unsigned int);
@@ -249,9 +254,9 @@ static void *data_of(struct dague_ddesc *desc, ...)
     va_end(ap);
 
     assert( NULL != mat->mesh );
-    assert( (m < mat->mb) && (n < mat->nb) );
+    assert( (m < mat->mt) && (n < mat->nt) );
 
-    tptr = mat->mesh[ n + m * mat->nb ];
+    tptr = (dague_tssm_tile_entry_t *)mat->mesh[ n + m * mat->nt ];
     if( NULL == tptr ) {
         return NULL;
     }
@@ -327,9 +332,8 @@ static void data_release(struct dague_ddesc *desc, ...)
 {
     unsigned int m, n;
     va_list ap;
-    tiled_sparse_shm_matrix_desc_t *mat = (tiled_sparse_shm_matrix_desc_t *)desc;
-    void *tptr;
-    uint32_t status;
+    dague_tssm_desc_t *mat = (dague_tssm_desc_t *)desc;
+    dague_tssm_tile_entry_t *tptr;
     int write_access;
     int this_thread;
 
@@ -341,8 +345,8 @@ static void data_release(struct dague_ddesc *desc, ...)
     va_end(ap);
 
     assert( NULL != mat->mesh );
-    assert( (m < mat->mb) && (n < mat->nb) );
-    tptr = mat->mesh[ n + m * mat->nb ];
+    assert( (m < mat->mt) && (n < mat->nt) );
+    tptr = (dague_tssm_tile_entry_t *)mat->mesh[ n + m * mat->nt ];
     if( NULL == tptr ) {
         return;
     }
@@ -350,7 +354,7 @@ static void data_release(struct dague_ddesc *desc, ...)
     dague_atomic_lock( &tptr->lock );
     if( write_access ) {
         assert( tptr->writer == this_thread );
-        assert( tptr->nbreader == 0 );
+        assert( tptr->nbreaders == 0 );
         tptr->writer = -1;
     } else {
         tptr->nbreaders--;
@@ -389,7 +393,35 @@ int dague_tssm_mesh_create_tile(dague_tssm_desc_t *mesh, unsigned int m, unsigne
     } else {
         e = NULL;
     }
-    mesh->mesh[ n + m * mesh->nb ] = e;
+    mesh->mesh[ n + m * mesh->nt ] = e;
 
     return 0;
+}
+
+dague_ddesc_t *dague_tssm_create_matrix(unsigned int mt, unsigned int nt, unsigned int tile_m, unsigned int tile_n,
+                                        size_t data_size, uint32_t cores)
+{
+    dague_ddesc_t *res;
+    dague_tssm_desc_t *mat;
+
+    res = (dague_ddesc_t*)calloc(1, sizeof(dague_tssm_desc_t));
+    mat = (dague_tssm_desc_t *)res;
+
+    mat->nt = nt;
+    mat->mt = mt;
+    mat->tile_n = tile_n;
+    mat->tile_m = tile_m;
+    mat->data_size = data_size;
+    
+    res->myrank = 0;
+    res->cores = cores;
+    res->nodes = 1;
+    res->rank_of = rank_of;
+    res->data_of = data_of;
+    res->data_release = data_release;
+
+    mat->mesh = (dague_tssm_tile_entry_t **)calloc( nt * mt, sizeof(dague_tssm_tile_entry_t*));
+    /* Init mat->mesh using Anthony load function around here */
+
+    return res;
 }

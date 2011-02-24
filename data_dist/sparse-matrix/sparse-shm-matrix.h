@@ -13,7 +13,6 @@
 
 #include <stdarg.h>
 #include "dague_config.h"
-#include "precision.h"
 #include "data_distribution.h"
 
 #define TILE_STATUS_UNPACKING  (1<<0)
@@ -74,6 +73,9 @@ int dague_tssm_mesh_create_tile(dague_tssm_desc_t *mesh, unsigned int m, unsigne
                                 void *packed_ptr);
 void dague_tssm_init(int nbthreads);
 void dague_tssm_thread_init(int threadid, int nbtilesperthread, size_t tile_size);
+
+dague_ddesc_t *dague_tssm_create_matrix(unsigned int mt, unsigned int nt, unsigned int tile_m, unsigned int tile_n,
+                                        size_t data_size, uint32_t cores);
 
 #endif /* _SPARSE_SHM_MATRIX_H_ */
 
