@@ -1,5 +1,17 @@
-#include "pastix-to-tiles.h"
+#include "dague_config.h"
+
 #include <assert.h>
+
+#include "data_dist/sparse-matrix/si-to-tssm.h"
+#include "data_dist/sparse-matrix/sparse-shm-matrix.h"
+
+/** TODO: include Mathieu's definition file here */
+extern int zlacpy(const char *name, int h, int w, void *ptrA, int ldA, void *ptrB, int ldB);
+
+#undef MIN
+#define MIN(_X , _Y ) (( (_X) < (_Y) ) ? (_X) : (_Y))
+#undef MAX
+#define MAX(_X , _Y ) (( (_X) > (_Y) ) ? (_X) : (_Y))
 
 /*
  * unpack() copies data from the block based compresed representation of the
@@ -7,18 +19,22 @@
  * The caller is responsible for allocating/deallocating the memory pointed
  * to by this pointer.
  */
-int dague_sparse_tile_unpack(void *tile_ptr, int mb, dataMap_t *map){
-    int i=0;
+int dague_tssm_sparse_tile_unpack(void *tile_ptr, uint64_t m, uint64_t n, uint64_t mb, uint64_t nb, dague_tssm_data_map_t *map)
+{
+    uint64_t i=0;
+
+    (void)m;
+    (void)n;
+    (void)nb;
+
     assert( map );
-    do{
-        dataMap_t *m = &map[i++];
-        zlacpy("A", m->h, m->w, m->ptr, m->ldA, tile_ptr+m->offset*ELEM_SIZE, mb);
-    }while( NULL != map[i].ptr );
+    do {
+        dague_tssm_data_map_t *mp = &map[i++];
+        zlacpy("A", mp->h, mp->w, mp->ptr, mp->ldA, (void*)(((uintptr_t)tile_ptr)+mp->offset*ELEM_SIZE), mb);
+    } while( NULL != map[i].ptr );
 
     return i;
 }
-
-
 
 /*
  * pack() copies data from the memory pointed to by the first argument
@@ -26,13 +42,19 @@ int dague_sparse_tile_unpack(void *tile_ptr, int mb, dataMap_t *map){
  * sparse matrix. The caller is responsible for allocating/deallocating
  * the memory pointed to by "tile_ptr".
  */
-void dague_sparse_tile_pack(void *tile_ptr, int mb, dataMap_t *map){
-    int i=0;
+void dague_tsmm_sparse_tile_pack(void *tile_ptr, uint64_t m, uint64_t n, uint64_t mb, uint64_t nb, dague_tssm_data_map_t *map)
+{
+    uint64_t i=0;
+
+    (void)m;
+    (void)n;
+    (void)nb;
+
     assert( map );
-    do{
-        dataMap_t *m = &map[i++];
-        zlacpy("A", m->h, m->w, tile_ptr+m->offset*ELEM_SIZE, mb, m->ptr, m->ldA);
-    }while( NULL != map[i].ptr );
+    do {
+        dague_tssm_data_map_t *mp = &map[i++];
+        zlacpy("A", mp->h, mp->w, (void*)(((uintptr_t)tile_ptr)+mp->offset*ELEM_SIZE), mb, mp->ptr, mp->ldA);
+    } while( NULL != map[i].ptr );
 
     return;
 }
@@ -42,15 +64,17 @@ void dague_sparse_tile_pack(void *tile_ptr, int mb, dataMap_t *map){
  * a mapping from the blocked columns to tiles so that the pack() and unpack() functions
  * can read/write the data that corresponds to a single tile from/to the pastix data.
  */
-void dague_pastix_to_tiles_load(dague_tssm_desc_t *mesh, unsigned int M, unsigned int N, unsigned int mb, unsigned int nb, SymbolMatrix *sm){
-    int baseval = sm->baseval; /* C/Fortran style, i.e. array numbering starts from zero/one */
-    int cblknbr = sm->cblknbr; /* Number of column blocks */
-    int bloknbr = sm->bloknbr; /* Number of blocks */
-    SymbolCblk * restrict cblktab = sm->cblktab; /* Array of column blocks [+1, based] */
-    SymbolBlok * restrict bloktab = sm->bloktab; /* Array of blocks [based] */
-    int fbc=1; /* we start from one, since cblktab is "+1 based" */
-    int lbc=0;
-    int i, j, bc, b;
+void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, uint64_t mt, uint64_t nt, uint32_t mb, uint32_t nb, 
+                                      dague_sparse_input_symbol_matrix_t *sm)
+{
+    uint64_t baseval = sm->baseval; /* C/Fortran style, i.e. array numbering starts from zero/one */
+    uint64_t cblknbr = sm->cblknbr; /* Number of column blocks */
+    uint64_t bloknbr = sm->bloknbr; /* Number of blocks */
+    dague_sparse_input_symbol_cblk_t * restrict cblktab = sm->cblktab; /* Array of column blocks [+1, based] */
+    dague_sparse_input_symbol_blok_t * restrict bloktab = sm->bloktab; /* Array of blocks [based] */
+    uint64_t fbc=1; /* we start from one, since cblktab is "+1 based" */
+    uint64_t lbc=0;
+    uint64_t i, j, bc, b;
  
     /* "tmp_map_buf" is guaranteed to fit the maximum number of meta-data
      * entries, since at maximum we can only have an entry per element of the
@@ -58,13 +82,9 @@ void dague_pastix_to_tiles_load(dague_tssm_desc_t *mesh, unsigned int M, unsigne
      * with a tile we will allocate the minimum necessary buffer and copy the
      * entries there.
      */
-    dataMap_t *tmp_map_buf = (dataMap_t *)calloc(nb*mb, sizeof(dataMap_t));
+    dague_tssm_data_map_t *tmp_map_buf = (dague_tssm_data_map_t *)calloc(nb*mb, sizeof(dague_tssm_data_map_t));
 
-    assert( ((N%nb) == 0) && ((M%mb) == 0) );
-
-    int ub_X = N/nb;
-    int ub_Y = M/mb;
-    for(i=0; i<ub_X; i++){
+    for(i=0; i<nt; i++){
        /* We are filling up the meta-data structures of the tiles that are in
         * the i-th column. So, we need to find the first block column that is
         * not after the begining of the i-th tile and the last block column
@@ -80,11 +100,11 @@ void dague_pastix_to_tiles_load(dague_tssm_desc_t *mesh, unsigned int M, unsigne
          * by looking at every block column from fbc to lbc (inclusive) to see if
          * it has data that belongs to the j-the tile 
          */
-        for(j=0; j<ub_Y; j++){
-            int blocksInTile = 0;
+        for(j=0; j<mt; j++){
+            uint64_t blocksInTile = 0;
             for(bc=fbc; bc<=lbc; bc++){
-                int endCol, strCol;
-                int dx, dy, off_x, off_y, ldA;
+                uint64_t endCol, strCol;
+                uint64_t dx, dy, off_x, off_y, ldA;
 
                 /* Find the edges of the intersection of the i-th column of
                  * tiles and the "bc"-th block column.
@@ -100,12 +120,12 @@ void dague_pastix_to_tiles_load(dague_tssm_desc_t *mesh, unsigned int M, unsigne
                 /* For each block column iterate over all the blocks it contains
                  * and see if they have rows that map to the j-the tile.
                  */
-                int fb=cblktab[bc].bloknum;
+                uint64_t fb=cblktab[bc].bloknum;
                 /* The first block in the next column is just one past my last block */
-                int lb=cblktab[bc+1].bloknum;
+                uint64_t lb=cblktab[bc+1].bloknum;
 
                 for(b=fb; b<lb; b++){
-                    int endRow, strRow;
+                    uint64_t endRow, strRow, ptr_offset;
                     /* check if the b-th block has a first row that is not bigger than
                      * my last row and a last row that is not smaller than my first row
                      */
@@ -122,8 +142,8 @@ void dague_pastix_to_tiles_load(dague_tssm_desc_t *mesh, unsigned int M, unsigne
                     dy = strRow - bloktab[b].frownum;
                     off_y = strRow - j*mb;
 
-                    int ptr_offset = dx*ldA + bloktab[b].coefind + dy;
-                    tmp_map_buf[blocksInTile].ptr = cblktab[bc].cblkptr + ptr_offset*ELEM_SIZE;
+                    ptr_offset = dx*ldA + bloktab[b].coefind + dy;
+                    tmp_map_buf[blocksInTile].ptr = (void*)( ((uintptr_t)cblktab[bc].cblkptr) + ptr_offset*ELEM_SIZE);
                     tmp_map_buf[blocksInTile].ldA = ldA;
                     tmp_map_buf[blocksInTile].h = endRow - strRow + 1;
                     tmp_map_buf[blocksInTile].w = endCol - strCol + 1;
@@ -133,8 +153,8 @@ void dague_pastix_to_tiles_load(dague_tssm_desc_t *mesh, unsigned int M, unsigne
                 }
             }
             /* Put the meta-data in a buffer with just one extra element */
-            dataMap_t *mapEntry = (dataMap_t *)calloc(1+blocksInTile, sizeof(dataMap_t));
-            memcpy(mapEntry, tmp_map_buf, blocksInTile*sizeof(dataMap_t));
+            dague_tssm_data_map_t *mapEntry = (dague_tssm_data_map_t *)calloc(1+blocksInTile, sizeof(dague_tssm_data_map_t));
+            memcpy(mapEntry, tmp_map_buf, blocksInTile*sizeof(dague_tssm_data_map_t));
             mapEntry[blocksInTile].ptr = NULL; /* Just being ridiculous */
 
             /* Pass the meta-data to the LRU handling code */

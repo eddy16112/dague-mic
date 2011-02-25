@@ -1,0 +1,1 @@
+#define ELEM_IS_DOUBLE
