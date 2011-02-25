@@ -4,48 +4,85 @@
 #include <assert.h>
 #include <stdio.h>
 #include <signal.h>
+#include <pthread.h>
 
 #include "lifo.h"
 #include "linked_list.h"
+#include "bindthread.h"
 
 #include "data_dist/sparse-matrix/sparse-shm-matrix.h"
 #include "data_dist/sparse-matrix/si-to-tssm.h"
 
+#undef MAX
 #define MAX(a, b) (((a) < (b))?(b):(a))
 
 static dague_linked_list_t  used_tiles;
-static dague_linked_list_t *dirty_tiles;
-static dague_linked_list_t *clean_tiles;
-static dague_atomic_lifo_t *free_tiles;
-static int dague_tssm_nbthread;
+static dague_linked_list_t *dirty_tiles = NULL;
+static dague_linked_list_t *clean_tiles = NULL;
+static dague_atomic_lifo_t *free_tiles = NULL;
+static int dague_tssm_nbthreads = 0;
 
-void dague_tssm_init(int nbthreads)
+static void *dague_tssm_thread_init(void *_p)
 {
-    int i;
-
-    dague_tssm_nbthread = nbthreads;
-
-    dague_linked_list_construct( &used_tiles );
-    dirty_tiles = (dague_linked_list_t*)malloc( nbthreads * sizeof(dague_linked_list_t) );
-    clean_tiles = (dague_linked_list_t*)malloc( nbthreads * sizeof(dague_linked_list_t) );
-    free_tiles = (dague_atomic_lifo_t*)malloc( nbthreads * sizeof(dague_atomic_lifo_t) );
-    for(i = 0; i < nbthreads; i++) {
-        dague_linked_list_construct( &dirty_tiles[i] );
-        dague_linked_list_construct( &clean_tiles[i] );
-        dague_atomic_lifo_construct( &free_tiles[i] );
-    }
-}
-
-void dague_tssm_thread_init(int threadid, int nbtilesperthread, size_t tile_size)
-{
+    uint64_t *p = (uint64_t*)_p;
     int i;
     dague_list_item_t *tile;
+    uint64_t threadid = p[0];
+    uint64_t nbtilesperthread = p[1];
+    uint64_t tile_size = p[2];
 
+    dague_bindthread(threadid);
+
+    dague_linked_list_construct( &dirty_tiles[threadid] );
+    dague_linked_list_construct( &clean_tiles[threadid] );
+    dague_atomic_lifo_construct( &free_tiles[threadid] );
     for(i = 0; i < nbtilesperthread; i++) {
         DAGUE_LIFO_ELT_ALLOC(tile, MAX(sizeof(dague_list_item_t), tile_size));
         DAGUE_LIST_ITEM_SINGLETON(tile);
         dague_atomic_lifo_push(&free_tiles[threadid], tile);
     }
+
+    return NULL;
+}
+
+void dague_tssm_init(uint32_t nbthreads, size_t tile_size, uint32_t nbtilesperthread)
+{
+    int i;
+    pthread_t *tid;
+    uint64_t **tp;
+
+    assert( 0 == dague_tssm_nbthreads );
+    assert( NULL == dirty_tiles );
+    assert( NULL == clean_tiles );
+    assert( NULL == free_tiles );
+
+    dague_tssm_nbthreads = nbthreads;
+
+    dague_linked_list_construct( &used_tiles );
+    dirty_tiles = (dague_linked_list_t*)malloc( nbthreads * sizeof(dague_linked_list_t) );
+    clean_tiles = (dague_linked_list_t*)malloc( nbthreads * sizeof(dague_linked_list_t) );
+    free_tiles = (dague_atomic_lifo_t*)malloc( nbthreads * sizeof(dague_atomic_lifo_t) );
+
+    tp = (uint64_t**)malloc( nbthreads * 3 * sizeof(uint64_t) );
+    for(i = 0; i < nbthreads; i++) {
+        tp[i] = (uint64_t*)malloc(3 * sizeof(uint64_t));
+        tp[i][0] = i;
+        tp[i][1] = nbtilesperthread;
+        tp[i][2] = (uint64_t)tile_size;
+    }
+
+    for(i = 1; i < nbthreads; i++) {
+        pthread_create(&tid[i], NULL, dague_tssm_thread_init, tp[i]);
+    }
+    (void)dague_tssm_thread_init(tp[0]);
+    free(tp[0]);
+    for(i = 1; i < nbthreads; i++) {
+        pthread_join(tid[i], NULL);
+        free(tp[i]);
+    }
+
+    free(tid);
+    free(tp);
 }
 
 static void dague_tssm_move_tiles_locked(dague_linked_list_t *dst, dague_tssm_tile_entry_t *tptr)
@@ -70,9 +107,9 @@ static int dague_tssm_reclaim_free_tile(int this_thread, int find_in_other_threa
     }
 
     if( find_in_other_threads ) {
-        for(thid = ((this_thread + 1) % dague_tssm_nbthread);
+        for(thid = ((this_thread + 1) % dague_tssm_nbthreads);
             thid != this_thread;
-            thid = ((thid + 1) % dague_tssm_nbthread) ) {
+            thid = ((thid + 1) % dague_tssm_nbthreads) ) {
             if( dague_tssm_reclaim_free_tile(thid, 0, tptr) )
                 return 1;
         }
@@ -108,9 +145,9 @@ static int dague_tssm_reclaim_clean_tile(int this_thread, int find_in_other_thre
     } while( NULL != victim );
 
     if( find_in_other_threads ) {
-        for(thid = ((this_thread + 1) % dague_tssm_nbthread);
+        for(thid = ((this_thread + 1) % dague_tssm_nbthreads);
             thid != this_thread;
-            thid = ((thid + 1) % dague_tssm_nbthread) ) {
+            thid = ((thid + 1) % dague_tssm_nbthreads) ) {
             if( dague_tssm_reclaim_clean_tile(thid, 0, tptr) ) {
                 return 1;
             }
@@ -203,9 +240,9 @@ static void dague_tssm_reclaim_tile(int this_thread, int find_in_other_threads, 
         }
 
         if( find_in_other_threads ) {
-            for(thid = ((this_thread + 1) % dague_tssm_nbthread);
+            for(thid = ((this_thread + 1) % dague_tssm_nbthreads);
                 thid != this_thread;
-                thid = ((thid + 1) % dague_tssm_nbthread) ) {
+                thid = ((thid + 1) % dague_tssm_nbthreads) ) {
                 if( dague_tssm_cleanup_some_tile(thid) ) {
                     cleaned = 1;
                     break; 
@@ -256,7 +293,7 @@ static void *data_of(struct dague_ddesc *desc, ...)
     assert( NULL != mat->mesh );
     assert( (m < mat->mt) && (n < mat->nt) );
 
-    tptr = (dague_tssm_tile_entry_t *)mat->mesh[ n + m * mat->nt ];
+    tptr = (dague_tssm_tile_entry_t *)mat->mesh[ m * mat->nt + n ];
     if( NULL == tptr ) {
         return NULL;
     }
@@ -347,7 +384,7 @@ static void data_release(struct dague_ddesc *desc, ...)
 
     assert( NULL != mat->mesh );
     assert( (m < mat->mt) && (n < mat->nt) );
-    tptr = (dague_tssm_tile_entry_t *)mat->mesh[ n + m * mat->nt ];
+    tptr = (dague_tssm_tile_entry_t *)mat->mesh[ m * mat->nt + n ];
     if( NULL == tptr ) {
         return;
     }
@@ -370,9 +407,10 @@ static void data_release(struct dague_ddesc *desc, ...)
     dague_atomic_unlock( &tptr->lock );
 }
 
-int dague_tssm_mesh_create_tile(dague_tssm_desc_t *mesh, uint64_t m, uint64_t n, 
-                                uint32_t mb, uint32_t nb, 
-                                dague_tssm_data_map_t *packed_ptr)
+void dague_tssm_mesh_create_tile(dague_tssm_desc_t *mesh, 
+                                 uint64_t m, uint64_t n, 
+                                 uint32_t mb, uint32_t nb, 
+                                 dague_tssm_data_map_t *packed_ptr)
 {
     dague_tssm_tile_entry_t *e;
     assert( (m < mesh->mt) && (n < mesh->nt) );
@@ -395,16 +433,16 @@ int dague_tssm_mesh_create_tile(dague_tssm_desc_t *mesh, uint64_t m, uint64_t n,
     } else {
         e = NULL;
     }
-    mesh->mesh[ n + m * mesh->nt ] = e;
-
-    return 0;
+    mesh->mesh[ m * mesh->nt + n ] = e;
 }
 
 dague_ddesc_t *dague_tssm_create_matrix(uint64_t mt, uint64_t nt, uint32_t mb, uint32_t nb,
-                                        size_t data_size, uint32_t cores, dague_sparse_input_symbol_matrix_t *sm)
+                                        dague_sparse_input_symbol_matrix_t *sm)
 {
     dague_ddesc_t *res;
     dague_tssm_desc_t *mat;
+
+    assert( dague_tssm_nbthreads != 0 );
 
     res = (dague_ddesc_t*)calloc(1, sizeof(dague_tssm_desc_t));
     mat = (dague_tssm_desc_t *)res;
@@ -413,10 +451,10 @@ dague_ddesc_t *dague_tssm_create_matrix(uint64_t mt, uint64_t nt, uint32_t mb, u
     mat->mt = mt;
     mat->nb = nb;
     mat->mb = mb;
-    mat->data_size = data_size;
+    mat->data_size = ELEM_SIZE;
     
     res->myrank = 0;
-    res->cores = cores;
+    res->cores = dague_tssm_nbthreads;
     res->nodes = 1;
     res->rank_of = rank_of;
     res->data_of = data_of;

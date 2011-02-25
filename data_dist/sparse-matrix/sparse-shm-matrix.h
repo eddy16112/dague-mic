@@ -64,21 +64,40 @@ typedef struct dague_tssm_desc {
     dague_tssm_tile_entry_t **mesh; /* nt x mt LAPACK style storage */
 } dague_tssm_desc_t;
 
+
+/**
+ * Initialization function. Must be called once only, and always before any other dague_tssm
+ * function.
+ *
+ * @param [IN] nbcores: the number of cores used (assuming that cores 0 to nbcores-1
+ *                      are going to be used.
+ * @param [IN] tile_size: number of bytes of the tile size. Large enough to store
+ *                        any tile explicitely. Watch out to give enough space even
+ *                        if multiple matrices of different mt, nt, mb, nb, data types
+ *                        are created.
+ * @param [IN] tilespercore: number of tiles to allocate per core.
+ */
+void dague_tssm_init( uint32_t nbcores, size_t tile_size, uint32_t nbtilespercore );
+
+
+/**
+ * main entry point: create an internal representation of the matrix sm
+ * on a tiled representation of size mt x nt, each tile being of size mb x nb
+ * Thus, the (virtual) matrix size is (mb x mt) x (nb x nt)
+ */
+dague_ddesc_t *dague_tssm_create_matrix(uint64_t mt, uint64_t nt, uint32_t mb, uint32_t nb,
+                                        dague_sparse_input_symbol_matrix_t *sm);
+
 /**
  * create a tile at coordinated n, m in mesh, of size 
  * tile_n x tile_m elements of size data_size
  * with a packed representation defined by packed_ptr
- * @return 0 if success
- * @return non zero otherwise
+ *
+ * Used by the load function itself called by the create_matrix function.
  */
-int dague_tssm_mesh_create_tile(dague_tssm_desc_t *mesh, uint64_t m, uint64_t n, 
-                                uint32_t mb, uint32_t nb, 
-                                dague_tssm_data_map_t *packed_ptr);
-void dague_tssm_init(int nbthreads);
-void dague_tssm_thread_init(int threadid, int nbtilesperthread, size_t tile_size);
-
-dague_ddesc_t *dague_tssm_create_matrix(uint64_t mt, uint64_t nt, uint32_t mb, uint32_t nb,
-                                        size_t data_size, uint32_t cores, dague_sparse_input_symbol_matrix_t *sm);
+void dague_tssm_mesh_create_tile(dague_tssm_desc_t *mesh, uint64_t m, uint64_t n, 
+                                 uint32_t mb, uint32_t nb, 
+                                 dague_tssm_data_map_t *packed_ptr);
 
 #endif /* _SPARSE_SHM_MATRIX_H_ */
 
