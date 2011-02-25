@@ -138,10 +138,9 @@ void dague_pastix_to_tiles_load(dague_tssm_desc_t *mesh, unsigned int M, unsigne
             mapEntry[blocksInTile].ptr = NULL; /* Just being ridiculous */
 
             /* Pass the meta-data to the LRU handling code */
-            int tile_m = j;
-            int tile_n = i;
-            dague_tssm_mesh_create_tile(mesh, M, N, tile_m, tile_n, mapEntry);
+            dague_tssm_mesh_create_tile(mesh, j, i, mb, nb, mapEntry);
         }
     }
+    return;
 }
 
