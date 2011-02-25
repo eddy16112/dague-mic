@@ -67,11 +67,12 @@ void dague_tssm_sparse_tile_pack(void *tile_ptr, uint64_t m, uint64_t n, uint64_
 void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, uint64_t mt, uint64_t nt, uint32_t mb, uint32_t nb, 
                                       dague_sparse_input_symbol_matrix_t *sm)
 {
-    uint64_t baseval = sm->baseval; /* C/Fortran style, i.e. array numbering starts from zero/one */
+    /* Mathieu said "don't use the baseval */
+    /* uint64_t baseval = sm->baseval; */ /* C/Fortran style, i.e. array numbering starts from zero/one */
     uint64_t cblknbr = sm->cblknbr; /* Number of column blocks */ 
     dague_sparse_input_symbol_cblk_t * restrict cblktab = sm->cblktab; /* Array of column blocks [+1, based] */
     dague_sparse_input_symbol_blok_t * restrict bloktab = sm->bloktab; /* Array of blocks [based] */
-    uint64_t fbc=1; /* we start from one, since cblktab is "+1 based" */
+    uint64_t fbc=0; /* we start from zero, alhthough cblktab's comment says it is "+1 based", because Mathieu said so */
     uint64_t lbc=0;
     uint64_t i, j, bc, b;
  
