@@ -68,7 +68,7 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, uint64_t mt, uint
                                       dague_sparse_input_symbol_matrix_t *sm)
 {
     uint64_t baseval = sm->baseval; /* C/Fortran style, i.e. array numbering starts from zero/one */
-    uint64_t cblknbr = sm->cblknbr; /* Number of column blocks */
+/*    uint64_t cblknbr = sm->cblknbr; */ /* Number of column blocks */ 
     uint64_t bloknbr = sm->bloknbr; /* Number of blocks */
     dague_sparse_input_symbol_cblk_t * restrict cblktab = sm->cblktab; /* Array of column blocks [+1, based] */
     dague_sparse_input_symbol_blok_t * restrict bloktab = sm->bloktab; /* Array of blocks [based] */
@@ -91,9 +91,9 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, uint64_t mt, uint
         * that is not before the end of the i-th tile.
         */
         fbc = lbc; /* start from where we left before */
-        for(; cblktab[fbc].fcolnum < i*nb; fbc++)
+        for(; (fbc < cblknbr) && (cblktab[fbc].fcolnum < i*nb); fbc++)
             ;
-        for(lbc=fbc; cblktab[lbc].fcolnum < (i+1)*nb; lbc++)
+        for(lbc=fbc; (lbc < cblknbr) && (cblktab[lbc].fcolnum < (i+1)*nb); lbc++)
             ;
 
         /* Now for each tile "j" of this column, populare the map data structure,
