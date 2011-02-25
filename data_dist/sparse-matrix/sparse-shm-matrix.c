@@ -69,10 +69,8 @@ void dague_tssm_init(uint32_t nbthreads, size_t tile_size, uint32_t nbtilesperth
         tp[i][0] = i;
         tp[i][1] = nbtilesperthread;
         tp[i][2] = (uint64_t)tile_size;
-    }
-
-    for(i = 1; i < nbthreads; i++) {
-        pthread_create(&tid[i], NULL, dague_tssm_thread_init, tp[i]);
+        if( i != 0 )
+            pthread_create(&tid[i], NULL, dague_tssm_thread_init, tp[i]);
     }
     (void)dague_tssm_thread_init(tp[0]);
     free(tp[0]);
@@ -467,6 +465,7 @@ dague_ddesc_t *dague_tssm_create_matrix(uint64_t mt, uint64_t nt, uint32_t mb, u
     return res;
 }
 
+#if defined(DAGUE_DEBUG)
 int dague_tssm_flush_matrix(dague_ddesc_t *_mat)
 {
     dague_tssm_desc_t *mat = (dague_tssm_desc_t*)_mat;
@@ -537,3 +536,85 @@ int dague_tssm_flush_matrix(dague_ddesc_t *_mat)
     }
     return errors;
 }
+#else
+/* This version assumes that there is absolutely no error in tracking,
+ * and nobody else is working on the matrix
+ * But as a consequence, it's *so much* faster than the other...*/
+static void *dague_tssm_flush_matrix_thread(void *_param)
+{
+    uintptr_t *param = (uintptr_t*)_param;
+    dague_tssm_desc_t *mat = (dague_tssm_desc_t *)param[0];
+    uintptr_t thid = param[1];
+    dague_linked_list_t todo, tonotdo;
+    dague_tssm_tile_entry_t *tptr;
+
+    dague_linked_list_construct( &todo );
+    dague_linked_list_construct( &tonotdo );
+
+    while( (tptr = (dague_tssm_tile_entry_t *)dague_linked_list_remove_head( &clean_tiles[thid] )) ) {
+        if( tptr->desc == mat )
+            dague_linked_list_add_tail( &todo, (dague_list_item_t*)tptr );
+        else 
+            dague_linked_list_add_tail( &tonotdo, (dague_list_item_t*)tptr );
+    }
+    while( (tptr = (dague_tssm_tile_entry_t *)dague_linked_list_remove_head( &tonotdo )) ) {
+        dague_linked_list_add_tail( &clean_tiles[thid], (dague_list_item_t*)tptr );
+    }
+    while( (tptr = (dague_tssm_tile_entry_t *)dague_linked_list_remove_head( &todo )) ) {
+        tptr->current_list = NULL;
+        dague_atomic_lifo_push( &free_tiles[ tptr->tile_owner ], (dague_list_item_t*)tptr->tile );
+        tptr->tile = NULL;
+        tptr->tile_owner = -1;
+    }
+    
+    while( (tptr = (dague_tssm_tile_entry_t *)dague_linked_list_remove_head( &dirty_tiles[thid] )) ) {
+        if( tptr->desc == mat )
+            dague_linked_list_add_tail( &todo, (dague_list_item_t*)tptr );
+        else 
+            dague_linked_list_add_tail( &tonotdo, (dague_list_item_t*)tptr );
+    }
+    while( (tptr = (dague_tssm_tile_entry_t *)dague_linked_list_remove_head( &tonotdo )) ) {
+        dague_linked_list_add_tail( &dirty_tiles[thid], (dague_list_item_t*)tptr );
+    }
+    while( (tptr = (dague_tssm_tile_entry_t *)dague_linked_list_remove_head( &todo )) ) {
+        tptr->current_list = NULL;
+        
+        dague_tssm_sparse_tile_pack(tptr->tile, tptr->m, tptr->n, 
+                                    mat->mb, mat->nb, 
+                                    tptr->packed_ptr);
+
+        dague_atomic_lifo_push( &free_tiles[ tptr->tile_owner ], (dague_list_item_t*)tptr->tile );
+        tptr->tile = NULL;
+        tptr->tile_owner = -1;
+    }
+
+    return NULL;
+}
+
+int dague_tssm_flush_matrix(dague_ddesc_t *_mat)
+{
+    dague_tssm_desc_t *mat = (dague_tssm_desc_t*)_mat;
+    uint32_t thid;
+    uintptr_t **tp;
+    pthread_t *tids;
+    
+    tp = (uintptr_t**)malloc(sizeof(uintptr_t) * dague_tssm_nbthreads);
+    tids = (pthread_t *)malloc(sizeof(pthread_t) * dague_tssm_nbthreads);
+    for(thid = 0; thid < dague_tssm_nbthreads; thid++) {
+        tp[thid] = (uintptr_t*)malloc(2 * sizeof(uintptr_t));
+        tp[thid][0] = (uintptr_t)mat;
+        tp[thid][1] = thid;
+        if( thid != 0 )
+            pthread_create(&tids[thid], NULL, dague_tssm_flush_matrix_thread, tp[thid]);
+    }
+    dague_tssm_flush_matrix_thread( tp[0] );
+    free( tp[0] );
+    for(thid = 1; thid < dague_tssm_nbthreads; thid++) {
+        pthread_join(tids[thid], NULL);
+        free(tp[thid]);
+    }
+    free(tp);
+    free(tids);
+    return 0;
+}
+#endif /* defined(DAGUE_DEBUG) */
