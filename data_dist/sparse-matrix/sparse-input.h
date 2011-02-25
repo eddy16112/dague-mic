@@ -24,8 +24,8 @@ typedef struct dague_sparse_input_symbol_matrix {
     uint64_t cblknbr;                 /**< Number of column blocks           */
     uint64_t bloknbr;                 /**< Number of blocks                  */
     uint64_t nodenbr;                 /**< Number of nodes in matrix         */
-    dague_sparse_input_symbol_cblk_t * restrict cblktab; /**< Array of column blocks [+1,based] */
-    dague_sparse_input_symbol_blok_t * restrict bloktab; /**< Array of blocks [based]           */
+    dague_sparse_input_symbol_cblk_t * restrict cblktab; /**< Array of column blocks (size:cblknbr+1,based to 0) */
+    dague_sparse_input_symbol_blok_t * restrict bloktab; /**< Array of blocks (size:bloknbr,based to 0)          */
 } dague_sparse_input_symbol_matrix_t;
 
 #endif /* _SPARSE_INPUT_H_ */
