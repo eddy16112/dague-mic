@@ -68,8 +68,7 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, uint64_t mt, uint
                                       dague_sparse_input_symbol_matrix_t *sm)
 {
     uint64_t baseval = sm->baseval; /* C/Fortran style, i.e. array numbering starts from zero/one */
-/*    uint64_t cblknbr = sm->cblknbr; */ /* Number of column blocks */ 
-    uint64_t bloknbr = sm->bloknbr; /* Number of blocks */
+    uint64_t cblknbr = sm->cblknbr; /* Number of column blocks */ 
     dague_sparse_input_symbol_cblk_t * restrict cblktab = sm->cblktab; /* Array of column blocks [+1, based] */
     dague_sparse_input_symbol_blok_t * restrict bloktab = sm->bloktab; /* Array of blocks [based] */
     uint64_t fbc=1; /* we start from one, since cblktab is "+1 based" */
