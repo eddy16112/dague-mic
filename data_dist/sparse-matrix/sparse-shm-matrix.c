@@ -239,7 +239,7 @@ static uint32_t rank_of(struct dague_ddesc *desc, ...)
 
 static void *data_of(struct dague_ddesc *desc, ...)
 {
-    unsigned int m, n;
+    uint64_t m, n;
     va_list ap;
     dague_tssm_desc_t *mat = (dague_tssm_desc_t *)desc;
     dague_tssm_tile_entry_t *tptr;
@@ -247,8 +247,8 @@ static void *data_of(struct dague_ddesc *desc, ...)
     int this_thread;
 
     va_start(ap, desc);
-    m = va_arg(ap, unsigned int);
-    n = va_arg(ap, unsigned int);
+    m = va_arg(ap, uint64_t);
+    n = va_arg(ap, uint64_t);
     write_access = va_arg(ap, int);
     this_thread = va_arg(ap, int);
     va_end(ap);
@@ -331,7 +331,7 @@ static void *data_of(struct dague_ddesc *desc, ...)
 
 static void data_release(struct dague_ddesc *desc, ...)
 {
-    unsigned int m, n;
+    uint64_t m, n;
     va_list ap;
     dague_tssm_desc_t *mat = (dague_tssm_desc_t *)desc;
     dague_tssm_tile_entry_t *tptr;
@@ -339,8 +339,8 @@ static void data_release(struct dague_ddesc *desc, ...)
     int this_thread;
 
     va_start(ap, desc);
-    m = va_arg(ap, unsigned int);
-    n = va_arg(ap, unsigned int);
+    m = va_arg(ap, uint64_t);
+    n = va_arg(ap, uint64_t);
     write_access = va_arg(ap, int);
     this_thread = va_arg(ap, int);
     va_end(ap);
