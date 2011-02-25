@@ -30,8 +30,8 @@ typedef struct dague_tssm_tile_entry {
 
     /* Those are values written only by create_tile: */
     struct dague_tssm_data_map *packed_ptr;
-    unsigned int m;
-    unsigned int n;
+    uint64_t m;
+    uint64_t n;
 
     /* This lock to be used only for very short times:
      *   never lock to pack / unpack the tile
@@ -55,10 +55,10 @@ typedef struct dague_tssm_desc {
     dague_ddesc_t super;
 
     /* Write once values */
-    unsigned int mt;
-    unsigned int nt;
-    unsigned int mb;
-    unsigned int nb;
+    uint64_t mt;
+    uint64_t nt;
+    uint32_t mb;
+    uint32_t nb;
     size_t data_size;
 
     dague_tssm_tile_entry_t **mesh; /* nt x mt LAPACK style storage */
