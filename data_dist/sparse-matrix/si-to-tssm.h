@@ -58,7 +58,7 @@ typedef struct dague_tssm_data_map {
 struct dague_tssm_desc;
 
 int  dague_tssm_sparse_tile_unpack(void *tile_ptr, uint64_t m, uint64_t n, uint64_t mb, uint64_t nb, dague_tssm_data_map_t *map);
-void dague_tsmm_sparse_tile_pack(void *tile_ptr, uint64_t m, uint64_t n, uint64_t mb, uint64_t nb, dague_tssm_data_map_t *map);
+void dague_tssm_sparse_tile_pack(void *tile_ptr, uint64_t m, uint64_t n, uint64_t mb, uint64_t nb, dague_tssm_data_map_t *map);
 void dague_sparse_input_to_tiles_load(struct dague_tssm_desc *mesh, uint64_t mt, uint64_t nt, uint32_t mb, uint32_t nb, 
                                       dague_sparse_input_symbol_matrix_t *sm);
 

@@ -42,7 +42,7 @@ int dague_tssm_sparse_tile_unpack(void *tile_ptr, uint64_t m, uint64_t n, uint64
  * sparse matrix. The caller is responsible for allocating/deallocating
  * the memory pointed to by "tile_ptr".
  */
-void dague_tsmm_sparse_tile_pack(void *tile_ptr, uint64_t m, uint64_t n, uint64_t mb, uint64_t nb, dague_tssm_data_map_t *map)
+void dague_tssm_sparse_tile_pack(void *tile_ptr, uint64_t m, uint64_t n, uint64_t mb, uint64_t nb, dague_tssm_data_map_t *map)
 {
     uint64_t i=0;
 
