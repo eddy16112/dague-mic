@@ -79,7 +79,6 @@ typedef struct dague_tssm_desc {
  */
 void dague_tssm_init( uint32_t nbcores, size_t tile_size, uint32_t nbtilespercore );
 
-
 /**
  * main entry point: create an internal representation of the matrix sm
  * on a tiled representation of size mt x nt, each tile being of size mb x nb
@@ -87,6 +86,15 @@ void dague_tssm_init( uint32_t nbcores, size_t tile_size, uint32_t nbtilespercor
  */
 dague_ddesc_t *dague_tssm_create_matrix(uint64_t mt, uint64_t nt, uint32_t mb, uint32_t nb,
                                         dague_sparse_input_symbol_matrix_t *sm);
+
+/**
+ * Flushes all caches of a matrix representation inside its own packed representation.
+ * This updates the values of the sparse_input_symbol_matrix passed as argument to
+ * create_matrix.
+ *
+ * @return the number of errors (should be zero).
+ */
+int dague_tssm_flush_matrix(dague_ddesc_t *m);
 
 /**
  * create a tile at coordinated n, m in mesh, of size 

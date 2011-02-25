@@ -466,3 +466,74 @@ dague_ddesc_t *dague_tssm_create_matrix(uint64_t mt, uint64_t nt, uint32_t mb, u
 
     return res;
 }
+
+int dague_tssm_flush_matrix(dague_ddesc_t *_mat)
+{
+    dague_tssm_desc_t *mat = (dague_tssm_desc_t*)_mat;
+    uint64_t m, n, errors;
+    dague_tssm_tile_entry_t *tptr;
+    uint32_t thid;
+
+    errors = 0;
+    for(m = 0; m < mat->mt; m++) {
+        for(n = 0; n < mat->nt; n++) {
+            tptr = mat->mesh[ m * mat->nt + n ];
+            if( NULL == tptr )
+                continue;
+            dague_atomic_lock( &tptr->lock );
+            if( tptr->status != 0 ||
+                tptr->writer != -1 ||
+                tptr->nbreaders != 0 ||
+                tptr->current_list == &used_tiles ) {
+                dague_atomic_unlock( &tptr->lock );
+                fprintf(stderr, "dague:tssm:flush_matrix failed: [%lu, %lu] is not available for flushing\n",
+                        m, n);
+                errors++;
+                continue;
+            }
+            if( NULL == tptr->tile )
+                continue;
+            for( thid = 0; thid < dague_tssm_nbthreads; thid++ ) {
+                if( tptr->current_list == &clean_tiles[thid] ) {
+                    dague_linked_list_remove_item(tptr->current_list, &tptr->super);
+                    tptr->current_list = NULL;
+                    dague_atomic_lifo_push( &free_tiles[ tptr->tile_owner ], (dague_list_item_t*)tptr->tile );
+                    tptr->tile = NULL;
+                    tptr->tile_owner = -1;
+                    dague_atomic_unlock( &tptr->lock );
+                    break;
+                }
+            }
+            if( thid == dague_tssm_nbthreads ) {
+                /* Not in clean, not in used... It must be in dirty */
+                for( thid = 0; thid < dague_tssm_nbthreads; thid++ ) {
+                    if( tptr->current_list == &dirty_tiles[thid] ) {
+                        dague_linked_list_remove_item(tptr->current_list, &tptr->super);
+                        tptr->current_list = NULL;
+                        
+                        dague_tssm_sparse_tile_pack(tptr->tile, tptr->m, tptr->n, 
+                                                    mat->mb, mat->nb, 
+                                                    tptr->packed_ptr);
+
+                         dague_atomic_lifo_push( &free_tiles[ tptr->tile_owner ], (dague_list_item_t*)tptr->tile );
+                         tptr->tile = NULL;
+                         tptr->tile_owner = -1;
+                         break;
+                    }
+                }
+
+                dague_atomic_unlock( &tptr->lock );
+
+                if( thid == dague_tssm_nbthreads ) {
+                    /* That's bad: the tile is not NULL, but the entry does not belong to
+                     * used, any of the clean or any of the dirty... Internal Error 42. */
+                    fprintf(stderr, "dague:tssm:flush_matrix: internal error 42 - entry [%lu, %lu] points to a tile, but does not belong to any list\n",
+                            m, n);
+                    errors++;
+                    continue;
+                }
+            }
+        }
+    }
+    return errors;
+}
