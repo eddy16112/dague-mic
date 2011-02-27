@@ -5,6 +5,10 @@
 #include "data_dist/sparse-matrix/si-to-tssm.h"
 #include "data_dist/sparse-matrix/sparse-shm-matrix.h"
 
+#ifdef GEN_DEBUG_PIXMAP
+# include "data_dist/sparse-matrix/debug-png-generation.h"
+#endif
+
 /** TODO: include Mathieu's definition file here */
 extern int zlacpy(const char *name, int h, int w, void *ptrA, int ldA, void *ptrB, int ldB);
 
@@ -76,6 +80,30 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, uint64_t mt, uint
     uint64_t lbc=0;
     uint64_t i, j, bc, b;
  
+#ifdef GEN_DEBUG_PIXMAP
+    uint64_t bc;
+    for(bc=0; bc < cblknbr; bc++){
+        uint64_t b, strCol, endCol, fb, lb;
+
+        strCol = cblktab[bc].fcolnum;
+        endCol = cblktab[bc].lcolnum;
+
+        fb=cblktab[bc].bloknum;
+        /* The first block in the next column is just one past my last block */
+        lb=cblktab[bc+1].bloknum;
+
+        for(b=fb; b<lb; b++){
+            uint64_t endRow, strRow, ptr_offset;
+            strRow = bloktab[b].frownum;
+            endRow = bloktab[b].lrownum;
+
+            dague_pxmp_si_color_rectangle(strCol, endCol, strRow, endRow, mt*mb, nt*nb);
+        }
+
+    }
+    dague_pxmp_si_dump_image("test.png");
+#endif /* GEN_PIXMAP */
+
     /* "tmp_map_buf" is guaranteed to fit the maximum number of meta-data
      * entries, since at maximum we can only have an entry per element of the
      * tile. We will work in this buffer for every tile and when we are done
@@ -149,6 +177,9 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, uint64_t mt, uint
                     tmp_map_buf[blocksInTile].w = endCol - strCol + 1;
                     /* this offset is in elements, not in bytes */
                     tmp_map_buf[blocksInTile].offset = off_x*mb + off_y;
+#ifdef GEN_PIXMAP
+//                    dague_color_rectangle(&tmp_map_buf[blocksInTile], j, i, mt*mb, nt*nb, ELEM_SIZE);
+#endif /* GEN_PIXMAP */
                     ++blocksInTile;
                 }
             }
