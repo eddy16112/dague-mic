@@ -25,7 +25,7 @@ static int dague_tssm_nbthreads = 0;
 static void *dague_tssm_thread_init(void *_p)
 {
     uint64_t *p = (uint64_t*)_p;
-    int i;
+    uint64_t i;
     dague_list_item_t *tile;
     uint64_t threadid = p[0];
     uint64_t nbtilesperthread = p[1];
@@ -47,10 +47,12 @@ static void *dague_tssm_thread_init(void *_p)
 
 void dague_tssm_init(uint32_t nbthreads, size_t tile_size, uint32_t nbtilesperthread)
 {
-    int i;
+    uint32_t   i;
     pthread_t *tid;
     uint64_t **tp;
 
+    tid = (pthread_t*)malloc(nbthreads*sizeof(pthread_t));
+    memset(tid, 0, nbthreads*sizeof(pthread_t));
     assert( 0 == dague_tssm_nbthreads );
     assert( NULL == dirty_tiles );
     assert( NULL == clean_tiles );
@@ -594,7 +596,7 @@ static void *dague_tssm_flush_matrix_thread(void *_param)
 int dague_tssm_flush_matrix(dague_ddesc_t *_mat)
 {
     dague_tssm_desc_t *mat = (dague_tssm_desc_t*)_mat;
-    uint32_t thid;
+    int thid;
     uintptr_t **tp;
     pthread_t *tids;
     

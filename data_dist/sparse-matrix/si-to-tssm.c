@@ -71,19 +71,17 @@ void dague_tssm_sparse_tile_pack(void *tile_ptr, uint64_t m, uint64_t n, uint64_
 void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, uint64_t mt, uint64_t nt, uint32_t mb, uint32_t nb, 
                                       dague_sparse_input_symbol_matrix_t *sm)
 {
-    /* Mathieu said "don't use the baseval */
-    /* uint64_t baseval = sm->baseval; */ /* C/Fortran style, i.e. array numbering starts from zero/one */
-    uint64_t cblknbr = sm->cblknbr; /* Number of column blocks */ 
+    dague_int_t cblknbr = sm->cblknbr; /* Number of column blocks */ 
     dague_sparse_input_symbol_cblk_t * restrict cblktab = sm->cblktab; /* Array of column blocks [+1, based] */
     dague_sparse_input_symbol_blok_t * restrict bloktab = sm->bloktab; /* Array of blocks [based] */
-    uint64_t fbc=0; /* we start from zero, alhthough cblktab's comment says it is "+1 based", because Mathieu said so */
-    uint64_t lbc=0;
-    uint64_t i, j, bc, b;
+    dague_int_t fbc=0; /* we start from zero, alhthough cblktab's comment says it is "+1 based", because Mathieu said so */
+    dague_int_t lbc=0;
+    dague_int_t i, j, bc, b;
  
 #ifdef GEN_DEBUG_PIXMAP
-    uint64_t bc;
+    dague_int_t bc;
     for(bc=0; bc < cblknbr; bc++){
-        uint64_t b, strCol, endCol, fb, lb;
+        dague_int_t b, strCol, endCol, fb, lb;
 
         strCol = cblktab[bc].fcolnum;
         endCol = cblktab[bc].lcolnum;
@@ -93,7 +91,7 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, uint64_t mt, uint
         lb=cblktab[bc+1].bloknum;
 
         for(b=fb; b<lb; b++){
-            uint64_t endRow, strRow, ptr_offset;
+            dague_int_t endRow, strRow, ptr_offset;
             strRow = bloktab[b].frownum;
             endRow = bloktab[b].lrownum;
 
@@ -129,10 +127,10 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, uint64_t mt, uint
          * it has data that belongs to the j-the tile 
          */
         for(j=0; j<mt; j++){
-            uint64_t blocksInTile = 0;
+            dague_int_t blocksInTile = 0;
             for(bc=fbc; bc<=lbc; bc++){
-                uint64_t endCol, strCol;
-                uint64_t dx, dy, off_x, off_y, ldA;
+                dague_int_t endCol, strCol;
+                dague_int_t dx, dy, off_x, off_y, ldA;
 
                 /* Find the edges of the intersection of the i-th column of
                  * tiles and the "bc"-th block column.
@@ -148,12 +146,12 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, uint64_t mt, uint
                 /* For each block column iterate over all the blocks it contains
                  * and see if they have rows that map to the j-the tile.
                  */
-                uint64_t fb=cblktab[bc].bloknum;
+                dague_int_t fb=cblktab[bc].bloknum;
                 /* The first block in the next column is just one past my last block */
-                uint64_t lb=cblktab[bc+1].bloknum;
+                dague_int_t lb=cblktab[bc+1].bloknum;
 
                 for(b=fb; b<lb; b++){
-                    uint64_t endRow, strRow, ptr_offset;
+                    dague_int_t endRow, strRow, ptr_offset;
                     /* check if the b-th block has a first row that is not bigger than
                      * my last row and a last row that is not smaller than my first row
                      */
