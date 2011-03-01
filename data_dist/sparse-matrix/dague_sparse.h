@@ -11,8 +11,8 @@ typedef struct dsp_context_s {
     dague_int_t nnz;
     dague_int_t *colptr;
     dague_int_t *rows;
-    void *values;
-    void *rhs;
+    void        *values;
+    void        *rhs;
     dague_int_t *permtab;
     dague_int_t *peritab;
     dague_sparse_input_symbol_matrix_t *symbmtx;
