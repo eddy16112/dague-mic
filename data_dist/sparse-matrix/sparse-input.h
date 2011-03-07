@@ -15,7 +15,7 @@ typedef struct dague_sparse_input_symbol_cblk {
     dague_int_t    fcolnum;              /**< First column index                   */
     dague_int_t    lcolnum;              /**< Last column index (inclusive)        */
     dague_int_t    bloknum;              /**< First block in column (diagonal)     */
-    void *      cblkptr;              /**< Pointer to the column data           */
+    void          *cblkptr;              /**< Pointer to the column data           */
     dague_int_t    stride;               /**< Leading dimension of the column data */
 } dague_sparse_input_symbol_cblk_t;
 
@@ -35,15 +35,15 @@ typedef struct dague_sparse_input_symbol_matrix {
 
 
 typedef struct dsp_context_s {
-    int         format;     /* Matrix file format                         */
-    int         factotype;
-    char       *matrixname; /* Filename to get the matrix                 */
-    char       *ordername;  /* Filename where the ordering is stored      */
-    char       *symbname;   /* Filename where the symbol matrix is stored */
-    char       *type;       /* Type of the matrix                         */
-    char       *rhstype;    /* Type of the RHS                            */
-    dague_int_t n;          /* Number of unknowns/columns/rows            */
-    dague_int_t nnz;        /* Number of non-zero values in the input matrix */
+    int          format;     /* Matrix file format                         */
+    int          factotype;
+    char        *matrixname; /* Filename to get the matrix                 */
+    char        *ordername;  /* Filename where the ordering is stored      */
+    char        *symbname;   /* Filename where the symbol matrix is stored */
+    char        *type;       /* Type of the matrix                         */
+    char        *rhstype;    /* Type of the RHS                            */
+    dague_int_t  n;          /* Number of unknowns/columns/rows            */
+    dague_int_t  nnz;        /* Number of non-zero values in the input matrix */
     dague_int_t *colptr;    /* Vector of size N+1 storing the starting point of each column in the array rows */
     dague_int_t *rows;      /* Indices of the rows present in each column */
     void        *values;    /* Values of the matrix                       */

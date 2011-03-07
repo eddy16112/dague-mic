@@ -1,16 +1,9 @@
 /**
  *
- * @file core_zgemm.c
+ * @file zread.c
  *
- *  PLASMA core_blas kernel
- *  PLASMA is a software package provided by Univ. of Tennessee,
- *  Univ. of California Berkeley and Univ. of Colorado Denver
- *
- * @version 2.3.1
- * @author Hatem Ltaief
  * @author Mathieu Faverge
- * @author Jakub Kurzak
- * @date 2010-11-15
+ * @date 2011-03-01
  * @precisions normal z -> c d s
  *
  **/
@@ -20,7 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../matrix/precision.h"
+#include "data_dist/matrix/precision.h"
 #include <pastix.h>
 #include <read_matrix.h>
 /*#include "dague_sparse.h"*/
