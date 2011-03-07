@@ -15,6 +15,7 @@
 #include "dague_config.h"
 #include "linked_list.h"
 #include "data_distribution.h"
+#include "data_dist/matrix/matrix.h"
 #include "data_dist/sparse-matrix/si-to-tssm.h"
 
 #define TILE_STATUS_UNPACKING  (1<<0)
@@ -52,14 +53,7 @@ typedef struct dague_tssm_tile_entry {
 } dague_tssm_tile_entry_t;
 
 typedef struct dague_tssm_desc {
-    dague_ddesc_t super;
-
-    /* Write once values */
-    uint64_t mt;
-    uint64_t nt;
-    uint32_t mb;
-    uint32_t nb;
-    size_t data_size;
+    tiled_matrix_desc_t super;
 
     dague_tssm_tile_entry_t **mesh; /* nt x mt LAPACK style storage */
 } dague_tssm_desc_t;
@@ -80,12 +74,25 @@ typedef struct dague_tssm_desc {
 void dague_tssm_init( uint32_t nbcores, size_t tile_size, uint32_t nbtilespercore );
 
 /**
- * main entry point: create an internal representation of the matrix sm
- * on a tiled representation of size mt x nt, each tile being of size mb x nb
- * Thus, the (virtual) matrix size is (mb x mt) x (nb x nt)
+ * main entry point: initializes an internal representation of the matrix desc
+ * on a tiled representation of size lm x ln, each tile being of size mb x nb
+ * @param desc matrix description structure, already allocated, that will be initialize
+ * @param cores number of cores (must match value passed to dague_tssm_init)
+ * @param mb number of row in a tile
+ * @param nb number of column in a tile
+ * @param lm number of rows of the entire matrix
+ * @param ln number of column of the entire matrix
+ * @param i starting row index for the computation on a submatrix -- must be 0
+ * @param j starting column index for the computation on a submatrix -- must be 0
+ * @param m number of rows of the entire submatrix -- must be lm
+ * @param n numbr of column of the entire submatrix -- must be ln
+ * @param sm preallocated / initialized sparse matrix representation
  */
-dague_ddesc_t *dague_tssm_create_matrix(uint64_t mt, uint64_t nt, uint32_t mb, uint32_t nb,
-                                        dague_sparse_input_symbol_matrix_t *sm);
+void dague_tssm_matrix_init(dague_tssm_desc_t * desc, enum matrix_type mtype, unsigned int cores, 
+                            unsigned int mb, unsigned int nb, 
+                            unsigned int lm, unsigned int ln, unsigned int i, unsigned int j, 
+                            unsigned int m, unsigned int n, 
+                            dague_sparse_input_symbol_matrix_t *sm);
 
 /**
  * Flushes all caches of a matrix representation inside its own packed representation.

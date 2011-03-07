@@ -180,7 +180,8 @@ static int dague_tssm_cleanup_some_tile(int thid)
 
             /* Without the lock, pack it */
             dague_tssm_sparse_tile_pack(victim->tile, victim->m, victim->n, 
-                                        victim->desc->mb, victim->desc->nb, 
+                                        ((tiled_matrix_desc_t*)victim->desc)->mb, 
+                                        ((tiled_matrix_desc_t*)victim->desc)->nb, 
                                         victim->packed_ptr);
 
             dague_atomic_lock(&victim->lock);
@@ -291,9 +292,9 @@ static void *data_of(struct dague_ddesc *desc, ...)
     va_end(ap);
 
     assert( NULL != mat->mesh );
-    assert( (m < mat->mt) && (n < mat->nt) );
+    assert( (m < mat->super.mt) && (n < mat->super.nt) );
 
-    tptr = (dague_tssm_tile_entry_t *)mat->mesh[ m * mat->nt + n ];
+    tptr = (dague_tssm_tile_entry_t *)mat->mesh[ m * mat->super.nt + n ];
     if( NULL == tptr ) {
         return NULL;
     }
@@ -348,7 +349,7 @@ static void *data_of(struct dague_ddesc *desc, ...)
         
         dague_tssm_reclaim_tile(this_thread, 1, tptr);
         
-        dague_tssm_sparse_tile_unpack(tptr->tile, m, n, mat->mb, mat->nb, tptr->packed_ptr);
+        dague_tssm_sparse_tile_unpack(tptr->tile, m, n, mat->super.mb, mat->super.nb, tptr->packed_ptr);
         
         dague_atomic_lock( &tptr->lock );
         if( write_access ) {
@@ -383,8 +384,8 @@ static void data_release(struct dague_ddesc *desc, ...)
     va_end(ap);
 
     assert( NULL != mat->mesh );
-    assert( (m < mat->mt) && (n < mat->nt) );
-    tptr = (dague_tssm_tile_entry_t *)mat->mesh[ m * mat->nt + n ];
+    assert( (m < mat->super.mt) && (n < mat->super.nt) );
+    tptr = (dague_tssm_tile_entry_t *)mat->mesh[ m * mat->super.nt + n ];
     if( NULL == tptr ) {
         return;
     }
@@ -413,7 +414,7 @@ void dague_tssm_mesh_create_tile(dague_tssm_desc_t *mesh,
                                  dague_tssm_data_map_t *packed_ptr)
 {
     dague_tssm_tile_entry_t *e;
-    assert( (m < mesh->mt) && (n < mesh->nt) );
+    assert( (m < mesh->super.mt) && (n < mesh->super.nt) );
     if( NULL != packed_ptr ) {
         e = (dague_tssm_tile_entry_t*)calloc(1, sizeof(dague_tssm_tile_entry_t));
         DAGUE_LIST_ITEM_SINGLETON( &e->super );
@@ -428,30 +429,50 @@ void dague_tssm_mesh_create_tile(dague_tssm_desc_t *mesh,
         e->tile = NULL;
         e->tile_owner = -1;
         e->desc = mesh;
-        assert( mesh->mb == mb &&
-                mesh->nb == nb );
+        assert( mesh->super.mb == mb &&
+                mesh->super.nb == nb );
     } else {
         e = NULL;
     }
-    mesh->mesh[ m * mesh->nt + n ] = e;
+    mesh->mesh[ m * mesh->super.nt + n ] = e;
 }
 
-dague_ddesc_t *dague_tssm_create_matrix(uint64_t mt, uint64_t nt, uint32_t mb, uint32_t nb,
-                                        dague_sparse_input_symbol_matrix_t *sm)
+void dague_tssm_matrix_init(dague_tssm_desc_t * desc, enum matrix_type mtype, unsigned int cores, 
+                            unsigned int mb, unsigned int nb, 
+                            unsigned int lm, unsigned int ln, unsigned int i, unsigned int j, 
+                            unsigned int m, unsigned int n,
+                            dague_sparse_input_symbol_matrix_t *sm)
 {
+    tiled_matrix_desc_t *mat;
     dague_ddesc_t *res;
-    dague_tssm_desc_t *mat;
 
     assert( dague_tssm_nbthreads != 0 );
+    assert( dague_tssm_nbthreads == cores );
 
-    res = (dague_ddesc_t*)calloc(1, sizeof(dague_tssm_desc_t));
-    mat = (dague_tssm_desc_t *)res;
+    mat = (tiled_matrix_desc_t  *)desc;
+    res = (dague_ddesc_t *)desc;
 
-    mat->nt = nt;
-    mat->mt = mt;
-    mat->nb = nb;
+    mat->mtype = mtype;
     mat->mb = mb;
-    mat->data_size = ELEM_SIZE;
+    mat->nb = nb;
+    mat->bsiz = mb * nb;
+    mat->lm = lm;
+    mat->ln = ln;
+    assert( (lm % mb) == 0 );
+    mat->lmt = lm / mb;
+    assert( (ln % nb) == 0 );
+    mat->lnt = ln / nb;
+    assert(i == 0);
+    mat->i = i;
+    assert(j == 0);
+    mat->j = j;
+    assert(m == lm);
+    mat->m = m;
+    assert(n == ln);
+    mat->n = n;
+    mat->mt = m / mb;
+    mat->nt = n / nb;
+    mat->nb_local_tiles = mat->mt * mat->nt;
     
     res->myrank = 0;
     res->cores = dague_tssm_nbthreads;
@@ -460,11 +481,9 @@ dague_ddesc_t *dague_tssm_create_matrix(uint64_t mt, uint64_t nt, uint32_t mb, u
     res->data_of = data_of;
     res->data_release = data_release;
 
-    mat->mesh = (dague_tssm_tile_entry_t **)calloc( nt * mt, sizeof(dague_tssm_tile_entry_t*));
+    desc->mesh = (dague_tssm_tile_entry_t **)calloc( mat->nb_local_tiles, sizeof(dague_tssm_tile_entry_t*));
     /* Init mat->mesh using Anthony load function around here */
-    dague_sparse_input_to_tiles_load(mat, mt, nt, mb, nb, sm);
-
-    return res;
+    dague_sparse_input_to_tiles_load(desc, mat->mt, mat->nt, mat->mb, mat->nb, sm);
 }
 
 #if defined(DAGUE_DEBUG)
@@ -582,7 +601,7 @@ static void *dague_tssm_flush_matrix_thread(void *_param)
         tptr->current_list = NULL;
         
         dague_tssm_sparse_tile_pack(tptr->tile, tptr->m, tptr->n, 
-                                    mat->mb, mat->nb, 
+                                    mat->super.mb, mat->super.nb, 
                                     tptr->packed_ptr);
 
         dague_atomic_lifo_push( &free_tiles[ tptr->tile_owner ], (dague_list_item_t*)tptr->tile );
