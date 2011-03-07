@@ -1,3 +1,19 @@
+/**
+ *
+ * @file core_zgemm.c
+ *
+ *  PLASMA core_blas kernel
+ *  PLASMA is a software package provided by Univ. of Tennessee,
+ *  Univ. of California Berkeley and Univ. of Colorado Denver
+ *
+ * @version 2.3.1
+ * @author Hatem Ltaief
+ * @author Mathieu Faverge
+ * @author Jakub Kurzak
+ * @date 2010-11-15
+ * @precisions normal z -> c d s
+ *
+ **/
 #include "dague_config.h"
 
 #include <stdlib.h>
@@ -153,7 +169,6 @@ int dague_sparse_zrdmtx( dsp_context_t *dspctxt )
     /* Convert to the local data structure */
     symbptr = (dague_sparse_input_symbol_matrix_t *) malloc( sizeof(dague_sparse_input_symbol_matrix_t) );
 
-    symbptr->baseval = tmpsymbol.baseval;
     symbptr->cblknbr = tmpsymbol.cblknbr;
     symbptr->bloknbr = tmpsymbol.bloknbr;
     symbptr->nodenbr = tmpsymbol.nodenbr;
@@ -446,10 +461,10 @@ void dague_sparse_zcsc2cblk(dsp_context_t     *dspctxt,
                         coefindx += cblktab[itercblk].stride * itercoltab;
                         
                         coeftab[coefindx] = CSC_VAL(cscmtx,iterval);
-                        /* if (transcsc != NULL) */
-                        /* { */
+                        if (transcsc != NULL) 
+                        {
                         /*     SOLV_UCOEFTAB(itercblk)[coefindx] = trandcsc[iterval]; */
-                        /* } */
+                        }
                     }
                     else {
                         fprintf(stderr, "One coefficient is out of the structure\n" );
