@@ -48,13 +48,17 @@ jdf_rules(generated_files "${OLDJDF}")
 
 ### Generate .c files from .jdf for all required precisions
 set(JDF
+  # BLAS 
   zgemm_NN.jdf zgemm_TN.jdf zgemm_NT.jdf zgemm_TT.jdf
   ztrsm_LLN.jdf ztrsm_LLT.jdf ztrsm_LUN.jdf ztrsm_LUT.jdf ztrsm_RLN.jdf ztrsm_RLT.jdf ztrsm_RUN.jdf ztrsm_RUT.jdf
   ztrmm_LLN.jdf ztrmm_LLT.jdf ztrmm_LUN.jdf ztrmm_LUT.jdf ztrmm_RLN.jdf ztrmm_RLT.jdf ztrmm_RUN.jdf ztrmm_RUT.jdf
+  # Lapack
   zpotrf_rl.jdf zpotrf_ll.jdf 
   zpotrf_Url.jdf zpotrf_Lrl.jdf 
   zgetrf.jdf zgetrf_sd.jdf ztrsmpl.jdf
   zgeqrf.jdf
+  # Sparse 
+  zpotrf_sp.jdf
 )
 precisions_rules(generated_jdf "+;${DPLASMA_PRECISIONS}" "${JDF}")
 jdf_rules(generated_files "${generated_jdf}")
@@ -74,6 +78,8 @@ set(SOURCES
   zgetrs_wrapper.c 
   zgesv_wrapper.c 
   zgeqrf_wrapper.c
+  # Sparse
+  zpotrf_sp_wrapper.c 
 )
 precisions_rules(generated_files "+;${DPLASMA_PRECISIONS}" "${SOURCES}") 
 
