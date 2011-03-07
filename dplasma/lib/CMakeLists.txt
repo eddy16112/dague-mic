@@ -65,6 +65,9 @@ jdf_rules(generated_files "${generated_jdf}")
 
 ### Generate the dplasma wrappers for all required precisions 
 set(SOURCES
+  # kernels not included into PLASMA
+  core_zddtf2.c
+  core_zddtrf.c
   # Level 3 Blas
   zgemm_wrapper.c 
   ztrsm_wrapper.c 

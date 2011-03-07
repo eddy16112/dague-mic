@@ -12,11 +12,22 @@
  * @precisions normal z -> c d s
  *
  **/
-#include "common.h"
+#include <cblas.h>
+#include <plasma.h>
+#include <dague.h>
+#include "dplasma.h"
+
+#define coreblas_error(info, str) fprintf(stderr, "%s: %d - %s\n", __func__, info, str)
+#ifndef max
+#define max(a, b) ((a) > (b) ? (a) : (b))
+#endif
+#ifndef min
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#endif
 
 /***************************************************************************//**
  *
- * @ingroup CORE_PLASMA_Complex64_t
+ * @ingroup CORE_Dague_Complex64_t
  *
  *  CORE_zddtrf computes an LU factorization of a general diagonal dominant 
  *  M-by-N matrix A witout pivoting.
@@ -68,11 +79,11 @@
  *
  ******************************************************************************/
 int CORE_zddtrf(int M, int N, int IB,
-                PLASMA_Complex64_t *A, int LDA, int *INFO)
+                Dague_Complex64_t *A, int LDA, int *INFO)
 {
-    PLASMA_Complex64_t zone  = (PLASMA_Complex64_t)1.0;
-    PLASMA_Complex64_t mzone = (PLASMA_Complex64_t)-1.0;
-    int i, j, k, sb;
+    Dague_Complex64_t zone  = (Dague_Complex64_t)1.0;
+    Dague_Complex64_t mzone = (Dague_Complex64_t)-1.0;
+    int i, k, sb;
     int iinfo;
 
     /* Check input arguments */
@@ -104,7 +115,7 @@ int CORE_zddtrf(int M, int N, int IB,
         /*
          * Factor diagonal and subdiagonal blocks and test for exact singularity.
          */
-        iinfo = CORE_zddtf2( M-i, sb, &A[LDA*i+i], LDA );
+        CORE_zddtf2( M-i, sb, &A[LDA*i+i], LDA, &iinfo );
 
         /*
          * Adjust INFO
@@ -114,21 +125,23 @@ int CORE_zddtrf(int M, int N, int IB,
 
         if (i+sb < N) {
             /*  Compute block row of U */
-            CORE_ztrsm( PlasmaLeft, PlasmaLower, 
-                        PlasmaNoTrans, PlasmaUnit,
-                        sb, N-(i+sb), 
-                        zone, &A[LDA*i+i],      LDA,
-                              &A[LDA*(i+sb)+i], LDA);
+            cblas_ztrsm( CblasColMajor,
+                         CblasLeft, CblasLower, 
+                         CblasNoTrans, CblasUnit,
+                         sb, N-(i+sb), 
+                         CBLAS_SADDR(zone), &A[LDA*i+i],      LDA,
+                                            &A[LDA*(i+sb)+i], LDA);
 
             if ( i+sb < M )
             {
                 /* Update trailing submatrix */
-                CORE_zgemm(
-                    PlasmaNoTrans, PlasmaNoTrans,
+                cblas_zgemm(
+                    CblasColMajor,
+                    CblasNoTrans, CblasNoTrans,
                     M-(i+sb), N-(i+sb), sb,
-                    mzone, &A[LDA*i     + i+sb], LDA,
-                           &A[LDA*(i+sb)+ i   ], LDA,
-                    zone,  &A[LDA*(i+sb)+ i+sb], LDA);
+                    CBLAS_SADDR(mzone), &A[LDA*i     + i+sb], LDA,
+                                        &A[LDA*(i+sb)+ i   ], LDA,
+                    CBLAS_SADDR(zone),  &A[LDA*(i+sb)+ i+sb], LDA);
             }
         }
     }

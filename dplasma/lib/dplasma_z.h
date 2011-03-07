@@ -9,6 +9,13 @@
 #define _DPLASMA_Z_H_
 
 /***********************************************************
+ *               Plasma extra-kernels
+ */
+int CORE_zddtrf(int M, int N, int IB, Dague_Complex64_t *A, int LDA, int *INFO);
+int CORE_zddtf2(int M, int N, Dague_Complex64_t *A, int LDA, int *INFO);
+
+
+/***********************************************************
  *               Blocking interface 
  */
 /* Level 3 Blas */

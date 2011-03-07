@@ -13,11 +13,23 @@
  *
  **/
 #include <lapacke.h>
-#include "common.h"
+#include <cblas.h>
+#include <math.h>
+#include <plasma.h>
+#include <dague.h>
+#include "dplasma.h"
+
+#define coreblas_error(info, str) fprintf(stderr, "%s: %d - %s\n", __func__, info, str)
+#ifndef max
+#define max(a, b) ((a) > (b) ? (a) : (b))
+#endif
+#ifndef min
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#endif
 
 /***************************************************************************//**
  *
- * @ingroup CORE_PLASMA_Complex64_t
+ * @ingroup CORE_Dague_Complex64_t
  *
  *  CORE_zddtrf computes an LU factorization of a general diagonal dominant 
  *  M-by-N matrix A witout pivoting.
@@ -68,16 +80,16 @@
  *              to solve a system of equations.
  *
  ******************************************************************************/
-int CORE_zddtrf(int M, int N, 
-                PLASMA_Complex64_t *A, int LDA, int *INFO)
+int CORE_zddtf2(int M, int N, 
+                Dague_Complex64_t *A, int LDA, int *info)
 {
-    PLASMA_Complex64_t mzone = (PLASMA_Complex64_t)-1.0;
+    Dague_Complex64_t mzone = (Dague_Complex64_t)-1.0;
+    Dague_Complex64_t alpha;
     double sfmin;
     int i, j, k;
-    int iinfo;
 
     /* Check input arguments */
-    *INFO = 0;
+    *info = 0;
     if (M < 0) {
         coreblas_error(1, "Illegal value of M");
         return -1;
@@ -99,7 +111,7 @@ int CORE_zddtrf(int M, int N,
     k = min(M, N);
     for(i=0 ; i < k; i++) {
         alpha = A[i*LDA+i];
-        if ( alpha != (PLASMA_Complex64_t)0.0 ) {
+        if ( alpha != (Dague_Complex64_t)0.0 ) {
             /* Compute elements J+1:M of J-th column. */
             if (i < M) {
                 if ( cabs(alpha) > sfmin ) {
