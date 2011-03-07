@@ -39,8 +39,9 @@ void dague_zlacpy( char uplo, dague_int_t m, dague_int_t n, Dague_Complex64_t *A
  * The caller is responsible for allocating/deallocating the memory pointed
  * to by this pointer.
  */
-int dague_sparse_ztile_unpack(Dague_Complex64_t *tile_ptr, dague_int_t m, dague_int_t n, dague_int_t mb, dague_int_t nb, dague_tssm_data_map_t *map)
+int dague_tssm_ztile_unpack(void *tile_ptr, dague_int_t m, dague_int_t n, dague_int_t mb, dague_int_t nb, dague_tssm_data_map_t *map)
 {
+    Dague_Complex64_t *data = (Dague_Complex64_t*)tile_ptr;
     dague_int_t i=0;
 
     (void)m;
@@ -50,7 +51,7 @@ int dague_sparse_ztile_unpack(Dague_Complex64_t *tile_ptr, dague_int_t m, dague_
     assert( map );
     do {
         dague_tssm_data_map_t *mp = &map[i++];
-        dague_zlacpy('A', mp->h, mp->w, (Dague_Complex64_t*)mp->ptr, mp->ldA, tile_ptr + mp->offset, mb);
+        dague_zlacpy('A', mp->h, mp->w, (Dague_Complex64_t*)mp->ptr, mp->ldA, data + mp->offset, mb);
     } while( NULL != map[i].ptr );
 
     return i;
@@ -62,8 +63,9 @@ int dague_sparse_ztile_unpack(Dague_Complex64_t *tile_ptr, dague_int_t m, dague_
  * sparse matrix. The caller is responsible for allocating/deallocating
  * the memory pointed to by "tile_ptr".
  */
-void dague_sparse_ztile_pack(Dague_Complex64_t *tile_ptr, dague_int_t m, dague_int_t n, dague_int_t mb, dague_int_t nb, dague_tssm_data_map_t *map)
+void dague_tssm_ztile_pack(void *tile_ptr, dague_int_t m, dague_int_t n, dague_int_t mb, dague_int_t nb, dague_tssm_data_map_t *map)
 {
+    Dague_Complex64_t *data = (Dague_Complex64_t*)tile_ptr;
     dague_int_t i=0;
 
     (void)m;
@@ -73,7 +75,7 @@ void dague_sparse_ztile_pack(Dague_Complex64_t *tile_ptr, dague_int_t m, dague_i
     assert( map );
     do {
         dague_tssm_data_map_t *mp = &map[i++];
-        dague_zlacpy('A', mp->h, mp->w, tile_ptr + mp->offset, mb, (Dague_Complex64_t*)mp->ptr, mp->ldA);
+        dague_zlacpy('A', mp->h, mp->w, data + mp->offset, mb, (Dague_Complex64_t*)mp->ptr, mp->ldA);
     } while( NULL != map[i].ptr );
 
     return;

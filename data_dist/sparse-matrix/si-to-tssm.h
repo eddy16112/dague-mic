@@ -43,8 +43,17 @@ typedef struct dague_tssm_data_map {
 
 struct dague_tssm_desc;
 
-int  dague_sparse_ztile_unpack(Dague_Complex64_t *tile_ptr, dague_int_t m, dague_int_t n, dague_int_t mb, dague_int_t nb, dague_tssm_data_map_t *map);
-void dague_sparse_ztile_pack(Dague_Complex64_t *tile_ptr, dague_int_t m, dague_int_t n, dague_int_t mb, dague_int_t nb, dague_tssm_data_map_t *map);
+int  dague_tssm_ztile_unpack(void *tile_ptr, dague_int_t m, dague_int_t n, dague_int_t mb, dague_int_t nb, dague_tssm_data_map_t *map);
+void dague_tssm_ztile_pack(  void *tile_ptr, dague_int_t m, dague_int_t n, dague_int_t mb, dague_int_t nb, dague_tssm_data_map_t *map);
+
+int  dague_tssm_ctile_unpack(void *tile_ptr, dague_int_t m, dague_int_t n, dague_int_t mb, dague_int_t nb, dague_tssm_data_map_t *map);
+void dague_tssm_ctile_pack(  void *tile_ptr, dague_int_t m, dague_int_t n, dague_int_t mb, dague_int_t nb, dague_tssm_data_map_t *map);
+
+int  dague_tssm_dtile_unpack(void *tile_ptr, dague_int_t m, dague_int_t n, dague_int_t mb, dague_int_t nb, dague_tssm_data_map_t *map);
+void dague_tssm_dtile_pack(  void *tile_ptr, dague_int_t m, dague_int_t n, dague_int_t mb, dague_int_t nb, dague_tssm_data_map_t *map);
+
+int  dague_tssm_stile_unpack(void *tile_ptr, dague_int_t m, dague_int_t n, dague_int_t mb, dague_int_t nb, dague_tssm_data_map_t *map);
+void dague_tssm_stile_pack(  void *tile_ptr, dague_int_t m, dague_int_t n, dague_int_t mb, dague_int_t nb, dague_tssm_data_map_t *map);
 
 void dague_sparse_input_to_tiles_load(struct dague_tssm_desc *mesh, dague_int_t mt, dague_int_t nt, uint32_t mb, uint32_t nb, 
                                       dague_sparse_input_symbol_matrix_t *sm);
