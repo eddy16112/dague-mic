@@ -69,6 +69,7 @@ subs = {
     ('twoDBC_s',            'twoDBC_d',            'twoDBC_c',            'twoDBC_z'            ),
     ('stwoDBC',             'dtwoDBC',             'ctwoDBC',             'ztwoDBC'             ),
     ('cimagf',              'cimag',               'cimagf',              'cimag'               ),
+    ('ssi_to_tssm',         'dsi_to_tssm',         'csi_to_tssm',         'zsi_to_tssm'         ),
     ('sread',               'dread',               'cread',               'zread'               ),
     ('dague_sparse_s',      'dague_sparse_d',      'dague_sparse_c',      'dague_sparse_z'      ),
     ('s_read',              'd_read',              'c_read',              'z_read'              ),

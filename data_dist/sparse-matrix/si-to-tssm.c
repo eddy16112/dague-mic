@@ -2,6 +2,8 @@
 
 #include <assert.h>
 
+#include "data_dist/matrix/precision.h"
+#include "data_dist/sparse-matrix/sparse-input.h"
 #include "data_dist/sparse-matrix/si-to-tssm.h"
 #include "data_dist/sparse-matrix/sparse-shm-matrix.h"
 
@@ -9,66 +11,17 @@
 # include "data_dist/sparse-matrix/debug-png-generation.h"
 #endif
 
-/** TODO: include Mathieu's definition file here */
-extern int zlacpy(const char *name, int h, int w, void *ptrA, int ldA, void *ptrB, int ldB);
-
 #undef MIN
 #define MIN(_X , _Y ) (( (_X) < (_Y) ) ? (_X) : (_Y))
 #undef MAX
 #define MAX(_X , _Y ) (( (_X) > (_Y) ) ? (_X) : (_Y))
 
 /*
- * unpack() copies data from the block based compresed representation of the
- * sparse matrix into the memory pointed to by the first argument "tile_ptr".
- * The caller is responsible for allocating/deallocating the memory pointed
- * to by this pointer.
- */
-int dague_tssm_sparse_tile_unpack(void *tile_ptr, uint64_t m, uint64_t n, uint64_t mb, uint64_t nb, dague_tssm_data_map_t *map)
-{
-    uint64_t i=0;
-
-    (void)m;
-    (void)n;
-    (void)nb;
-
-    assert( map );
-    do {
-        dague_tssm_data_map_t *mp = &map[i++];
-        zlacpy("A", mp->h, mp->w, mp->ptr, mp->ldA, (void*)(((uintptr_t)tile_ptr)+mp->offset*ELEM_SIZE), mb);
-    } while( NULL != map[i].ptr );
-
-    return i;
-}
-
-/*
- * pack() copies data from the memory pointed to by the first argument
- * "tile_ptr", into the block based, compresed representation of the
- * sparse matrix. The caller is responsible for allocating/deallocating
- * the memory pointed to by "tile_ptr".
- */
-void dague_tssm_sparse_tile_pack(void *tile_ptr, uint64_t m, uint64_t n, uint64_t mb, uint64_t nb, dague_tssm_data_map_t *map)
-{
-    uint64_t i=0;
-
-    (void)m;
-    (void)n;
-    (void)nb;
-
-    assert( map );
-    do {
-        dague_tssm_data_map_t *mp = &map[i++];
-        zlacpy("A", mp->h, mp->w, (void*)(((uintptr_t)tile_ptr)+mp->offset*ELEM_SIZE), mb, mp->ptr, mp->ldA);
-    } while( NULL != map[i].ptr );
-
-    return;
-}
-
-/*
  * dague_pastix_to_tiles_load() reads a (slightly modified) pastix structure and creates
  * a mapping from the blocked columns to tiles so that the pack() and unpack() functions
  * can read/write the data that corresponds to a single tile from/to the pastix data.
  */
-void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, uint64_t mt, uint64_t nt, uint32_t mb, uint32_t nb, 
+void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, dague_int_t nt, uint32_t mb, uint32_t nb, 
                                       dague_sparse_input_symbol_matrix_t *sm)
 {
     dague_int_t cblknbr = sm->cblknbr; /* Number of column blocks */ 

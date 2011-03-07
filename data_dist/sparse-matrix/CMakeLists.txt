@@ -10,6 +10,7 @@ include_directories(".")
 
 set( precision_files
   zread.c
+  zsi_to_tssm.c
 )
 precisions_rules(generated_files "+;s;d;c;z" "${precision_files}")
 
