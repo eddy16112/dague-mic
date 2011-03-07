@@ -20,7 +20,7 @@ dplasma_zgetrs(dague_context_t *dague, const PLASMA_enum trans, tiled_matrix_des
     
     /* Check input arguments */
     if (trans != PlasmaNoTrans) {
-        fprintf(stderr, "dplasma_zgetrs", "only PlasmaNoTrans supported");
+        fprintf(stderr, "%s: %s\n", "dplasma_zgetrs", "only PlasmaNoTrans supported");
         return -1;
     }
     
