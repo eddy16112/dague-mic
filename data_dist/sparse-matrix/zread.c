@@ -162,6 +162,7 @@ int dague_sparse_zrdmtx( dsp_context_t *dspctxt )
     /* Convert to the local data structure */
     symbptr = (dague_sparse_input_symbol_matrix_t *) malloc( sizeof(dague_sparse_input_symbol_matrix_t) );
 
+    symbptr->elemsze = sizeof( Dague_Complex64_t );
     symbptr->cblknbr = tmpsymbol.cblknbr;
     symbptr->bloknbr = tmpsymbol.bloknbr;
     symbptr->nodenbr = tmpsymbol.nodenbr;

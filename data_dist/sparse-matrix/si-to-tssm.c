@@ -30,6 +30,7 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
     dague_int_t fbc=0; /* we start from zero, alhthough cblktab's comment says it is "+1 based", because Mathieu said so */
     dague_int_t lbc=0;
     dague_int_t i, j, bc, b;
+    int elem_size = sm->elemsze;
  
 #ifdef GEN_DEBUG_PIXMAP
     dague_int_t bc;
@@ -122,14 +123,14 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
                     off_y = strRow - j*mb;
 
                     ptr_offset = dx*ldA + bloktab[b].coefind + dy;
-                    tmp_map_buf[blocksInTile].ptr = (void*)( ((uintptr_t)cblktab[bc].cblkptr) + ptr_offset*ELEM_SIZE);
+                    tmp_map_buf[blocksInTile].ptr = (void*)( ((uintptr_t)cblktab[bc].cblkptr) + ptr_offset*elem_size);
                     tmp_map_buf[blocksInTile].ldA = ldA;
                     tmp_map_buf[blocksInTile].h = endRow - strRow + 1;
                     tmp_map_buf[blocksInTile].w = endCol - strCol + 1;
                     /* this offset is in elements, not in bytes */
                     tmp_map_buf[blocksInTile].offset = off_x*mb + off_y;
 #ifdef GEN_PIXMAP
-//                    dague_color_rectangle(&tmp_map_buf[blocksInTile], j, i, mt*mb, nt*nb, ELEM_SIZE);
+//                    dague_color_rectangle(&tmp_map_buf[blocksInTile], j, i, mt*mb, nt*nb, elem_size);
 #endif /* GEN_PIXMAP */
                     ++blocksInTile;
                 }

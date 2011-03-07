@@ -26,6 +26,7 @@ typedef struct dague_sparse_input_symbol_blok {
 } dague_sparse_input_symbol_blok_t;
 
 typedef struct dague_sparse_input_symbol_matrix {
+    int         elemsze;                 /**< Size of an element                */
     dague_int_t cblknbr;                 /**< Number of column blocks           */
     dague_int_t bloknbr;                 /**< Number of blocks                  */
     dague_int_t nodenbr;                 /**< Number of nodes in matrix         */
@@ -44,12 +45,12 @@ typedef struct dsp_context_s {
     char        *rhstype;    /* Type of the RHS                            */
     dague_int_t  n;          /* Number of unknowns/columns/rows            */
     dague_int_t  nnz;        /* Number of non-zero values in the input matrix */
-    dague_int_t *colptr;    /* Vector of size N+1 storing the starting point of each column in the array rows */
-    dague_int_t *rows;      /* Indices of the rows present in each column */
-    void        *values;    /* Values of the matrix                       */
-    void        *rhs;       /* Right Hand Side                            */ 
-    dague_int_t *permtab;   /* vector of permutation                      */
-    dague_int_t *peritab;   /* vector of inverse permutation              */
+    dague_int_t *colptr;     /* Vector of size N+1 storing the starting point of each column in the array rows */
+    dague_int_t *rows;       /* Indices of the rows present in each column */
+    void        *values;     /* Values of the matrix                       */
+    void        *rhs;        /* Right Hand Side                            */ 
+    dague_int_t *permtab;    /* vector of permutation                      */
+    dague_int_t *peritab;    /* vector of inverse permutation              */
     dague_sparse_input_symbol_matrix_t *symbmtx; /* Pointer to symbol matrix structure */
 } dsp_context_t;
 
