@@ -322,10 +322,10 @@ if( DAGUE_PROF_TRACE )
 endif( DAGUE_PROF_TRACE )
 
 if ( DAGUE_SPARSE )
-  find_package(PASTIX)
-  find_package(SCOTCH)
-#  find_package(PASTIX REQUIRED)
-#  find_package(SCOTCH REQUIRED)
+    #  find_package(PASTIX)
+    #find_package(SCOTCH)
+  find_package(PASTIX REQUIRED)
+  find_package(SCOTCH REQUIRED)
 endif( DAGUE_SPARSE )
 
 #

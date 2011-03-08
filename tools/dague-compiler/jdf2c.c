@@ -2218,6 +2218,9 @@ static void jdf_generate_code_flow_initialization(const jdf_t *jdf, const char *
             break;
         }
         coutput("  %s = ADATA(g%s);\n", f->varname, f->varname);
+        coutput("#if defined(DAGUE_SPARSE)\n"
+                "  if( %s == (void*)1 ) return -1;\n"
+                "#endif /* DAGUE_SPARSE */\n", f->varname);
     }
 
     string_arena_free(sa);

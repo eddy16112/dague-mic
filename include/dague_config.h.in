@@ -33,6 +33,9 @@
 #cmakedefine DAGUE_PROF_DRY_BODY
 #cmakedefine DAGUE_PROF_DRY_DEP
 
+/* sparse tiles */
+#cmakedefine DAGUE_SPARSE
+
 /* system */
 #cmakedefine HAVE_PTHREAD
 #cmakedefine HAVE_SCHED_SETAFFINITY
