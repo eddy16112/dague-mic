@@ -51,10 +51,8 @@ void dague_tssm_zmatrix_init(dague_tssm_desc_t * desc, enum matrix_type mtype, u
     mat->bsiz = mb * nb;
     mat->lm = lm;
     mat->ln = ln;
-    assert( (lm % mb) == 0 );
-    mat->lmt = lm / mb;
-    assert( (ln % nb) == 0 );
-    mat->lnt = ln / nb;
+    mat->lmt = (lm + mb - 1) / mb;
+    mat->lnt = (ln + nb - 1) / nb;
     assert(i == 0);
     mat->i = i;
     assert(j == 0);
@@ -63,8 +61,8 @@ void dague_tssm_zmatrix_init(dague_tssm_desc_t * desc, enum matrix_type mtype, u
     mat->m = m;
     assert(n == ln);
     mat->n = n;
-    mat->mt = m / mb;
-    mat->nt = n / nb;
+    mat->mt = (m + mb - 1) / mb;
+    mat->nt = (n + nb - 1) / nb;
     mat->nb_local_tiles = mat->mt * mat->nt;
     
     res->myrank = 0;
