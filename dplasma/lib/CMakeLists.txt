@@ -59,6 +59,7 @@ set(JDF
   zgeqrf.jdf
   # Sparse 
   zpotrf_sp.jdf
+  zgetrf_sp.jdf
 )
 precisions_rules(generated_jdf "+;${DPLASMA_PRECISIONS}" "${JDF}")
 jdf_rules(generated_files "${generated_jdf}")
