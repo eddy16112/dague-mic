@@ -38,6 +38,9 @@ int  dplasma_zgetrs( dague_context_t *dague, const PLASMA_enum trans, tiled_matr
 int  dplasma_zgesv ( dague_context_t *dague, tiled_matrix_desc_t* A, tiled_matrix_desc_t *L, tiled_matrix_desc_t *IPIV, tiled_matrix_desc_t *B ); 
 int  dplasma_zgeqrf( dague_context_t *dague, tiled_matrix_desc_t *A, tiled_matrix_desc_t *T) ;
 
+int  dplasma_zpotrf_sp( dague_context_t *dague, dague_tssm_desc_t* ddescA);
+int  dplasma_zgetrf_sp( dague_context_t *dague, dague_tssm_desc_t* ddescA, int ib);
+
 /***********************************************************
  *             Non-Blocking interface
  */
@@ -65,6 +68,9 @@ dague_object_t* dplasma_zpotrfl_New(const PLASMA_enum looking, const PLASMA_enum
 dague_object_t* dplasma_zgetrf_sd_New(tiled_matrix_desc_t *A, tiled_matrix_desc_t *LIPIV, int* INFO);
 
 
+dague_object_t* dplasma_zpotrf_sp_New(dague_tssm_desc_t* ddescA, int* INFO);
+dague_object_t* dplasma_zgetrf_sp_New(dague_tssm_desc_t* ddescA, int ib, int* INFO);
+
 /***********************************************************
  *               Destruct functions
  */
@@ -74,5 +80,8 @@ void dplasma_ztrsm_Destruct( dague_object_t *o );
 void dplasma_ztrsmpl_Destruct( dague_object_t *o );
 
 void dplasma_zpotrf_Destruct( dague_object_t *o );
+
+void dplasma_zpotrf_sp_Destruct( dague_object_t *o );
+void dplasma_zgetrf_sp_Destruct( dague_object_t *o );
 
 #endif /* _DPLASMA_Z_H_ */
