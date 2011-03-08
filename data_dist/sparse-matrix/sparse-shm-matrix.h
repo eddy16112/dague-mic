@@ -134,5 +134,13 @@ void dague_tssm_mesh_create_tile(dague_tssm_desc_t *mesh, uint64_t m, uint64_t n
                                  uint32_t mb, uint32_t nb, 
                                  dague_tssm_data_map_t *packed_ptr);
 
+
+
+int dague_sparse_zrdmtx( dsp_context_t *dspctxt );
+int dague_sparse_crdmtx( dsp_context_t *dspctxt );
+int dague_sparse_drdmtx( dsp_context_t *dspctxt );
+int dague_sparse_srdmtx( dsp_context_t *dspctxt );
+
+
 #endif /* _SPARSE_SHM_MATRIX_H_ */
 
