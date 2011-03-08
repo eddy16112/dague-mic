@@ -35,7 +35,7 @@ else(NOT SCOTCH_DIR)
   set(SCOTCH_FOUND TRUE)
   set(SCOTCH_INCLUDE_DIRS "${SCOTCH_DIR}/include")
   set(SCOTCH_LIBRARY_DIRS "${SCOTCH_DIR}/lib")
-  set(SCOTCH_LIBRARIES    "-lscotch -lscotcherrexit")
+  set(SCOTCH_LIBRARIES  scotch scotcherrexit)
 endif(NOT SCOTCH_DIR)
 
 if ( SCOTCH_FOUND )

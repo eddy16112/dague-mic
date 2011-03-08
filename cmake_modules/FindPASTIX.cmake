@@ -34,7 +34,7 @@ if(NOT PASTIX_DIR)
 else(NOT PASTIX_DIR)
   set(PASTIX_FOUND TRUE)
   set(PASTIX_INCLUDE_DIRS "${PASTIX_DIR}")
-  set(PASTIX_LIBRARIES    "-lpastix -lmatrix_drivers")
+  set(PASTIX_LIBRARIES pastix matrix_driver)
 endif(NOT PASTIX_DIR)
 
 if ( PASTIX_FOUND )
