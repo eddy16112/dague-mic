@@ -70,7 +70,6 @@ void dague_tssm_zmatrix_init(dague_tssm_desc_t * desc, enum matrix_type mtype, u
     res->nodes = 1;
     res->rank_of      = dague_tssm_rank_of;
     res->data_of      = dague_tssm_data_of;
-    res->data_release = dague_tssm_data_release;
     desc->mesh = (dague_tssm_tile_entry_t **)calloc( mat->nb_local_tiles, sizeof(dague_tssm_tile_entry_t*));
 
     desc->unpack = dague_tssm_ztile_unpack;

@@ -268,8 +268,11 @@ static void dague_tssm_reclaim_tile(int this_thread, int find_in_other_threads, 
 
 uint32_t dague_tssm_rank_of(struct dague_ddesc *desc, ...)
 {
+    uint32_t m, n;
     va_list ap;
     va_start(ap, desc);
+    m = va_arg(ap, uint32_t);
+    n = va_arg(ap, uint32_t);
     va_end(ap);
 
     return 0;
@@ -277,27 +280,33 @@ uint32_t dague_tssm_rank_of(struct dague_ddesc *desc, ...)
 
 void *dague_tssm_data_of(struct dague_ddesc *desc, ...)
 {
-    uint64_t m, n;
+    uint32_t m, n;
     va_list ap;
     dague_tssm_desc_t *mat = (dague_tssm_desc_t *)desc;
-    dague_tssm_tile_entry_t *tptr;
-    int write_access;
-    int this_thread;
 
     va_start(ap, desc);
-    m = va_arg(ap, uint64_t);
-    n = va_arg(ap, uint64_t);
-    write_access = va_arg(ap, int);
-    this_thread = va_arg(ap, int);
+    m = va_arg(ap, uint32_t);
+    n = va_arg(ap, uint32_t);
     va_end(ap);
 
     assert( NULL != mat->mesh );
     assert( (m < mat->super.mt) && (n < mat->super.nt) );
 
-    tptr = (dague_tssm_tile_entry_t *)mat->mesh[ m * mat->super.nt + n ];
-    if( NULL == tptr ) {
-        return NULL;
+    return (void*)mat->mesh[ m * mat->super.nt + n ];
+}
+
+void *dague_tssm_data_expand(void *metadata, int write_access, int this_thread)
+{
+    dague_tssm_tile_entry_t *tptr = (dague_tssm_tile_entry_t *)metadata;
+    dague_tssm_desc_t *mat;
+
+    /* If we receive NULL (Zero tile), or an odd pointer (network-related / in-arenas pointer )
+     * return the pointer (cleaned from its potential in-arenas flag)
+     */
+    if( (NULL == metadata) || (1 == ((intptr_t)metadata & 0x1)) ) {
+        return (void*)( (intptr_t)metadata & (~0x1) );
     }
+    mat = tptr->desc;
 
     dague_atomic_lock( &tptr->lock );
     /** If somebody else is already working on getting up this tile,
@@ -349,7 +358,7 @@ void *dague_tssm_data_of(struct dague_ddesc *desc, ...)
         
         dague_tssm_reclaim_tile(this_thread, 1, tptr);
         
-        mat->unpack(tptr->tile, m, n, mat->super.mb, mat->super.nb, tptr->packed_ptr);
+        mat->unpack(tptr->tile, tptr->m, tptr->n, mat->super.mb, mat->super.nb, tptr->packed_ptr);
         
         dague_atomic_lock( &tptr->lock );
         if( write_access ) {
@@ -367,28 +376,18 @@ void *dague_tssm_data_of(struct dague_ddesc *desc, ...)
     }
 }
 
-void dague_tssm_data_release(struct dague_ddesc *desc, ...)
+void dague_tssm_data_release(void *metadata, int write_access, int this_thread)
 {
-    uint64_t m, n;
-    va_list ap;
-    dague_tssm_desc_t *mat = (dague_tssm_desc_t *)desc;
-    dague_tssm_tile_entry_t *tptr;
-    int write_access;
-    int this_thread;
+    dague_tssm_tile_entry_t *tptr = (dague_tssm_tile_entry_t *)metadata;
+    dague_tssm_desc_t *mat;
 
-    va_start(ap, desc);
-    m = va_arg(ap, uint64_t);
-    n = va_arg(ap, uint64_t);
-    write_access = va_arg(ap, int);
-    this_thread = va_arg(ap, int);
-    va_end(ap);
-
-    assert( NULL != mat->mesh );
-    assert( (m < mat->super.mt) && (n < mat->super.nt) );
-    tptr = (dague_tssm_tile_entry_t *)mat->mesh[ m * mat->super.nt + n ];
-    if( NULL == tptr ) {
+    /* If we receive NULL (Zero tile), or an odd pointer (network-related / in-arenas pointer ),
+     * ignore.
+     */
+    if( (NULL == metadata) || (1 == ((intptr_t)metadata & 0x1)) ) {
         return;
     }
+    mat = tptr->desc;
     
     dague_atomic_lock( &tptr->lock );
     if( write_access ) {
