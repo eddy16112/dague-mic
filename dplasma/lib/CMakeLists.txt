@@ -84,6 +84,7 @@ set(SOURCES
   zgeqrf_wrapper.c
   # Sparse
   zpotrf_sp_wrapper.c 
+  zgetrf_sp_wrapper.c 
 )
 precisions_rules(generated_files "+;${DPLASMA_PRECISIONS}" "${SOURCES}") 
 
