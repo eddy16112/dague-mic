@@ -38,10 +38,10 @@ typedef struct CscFormat_ {
 } CscFormat;
 
 typedef struct CscMatrix_ {
-  INT                cscfnbr;
-  CscFormat         *cscftab;
-  INT               *rowtab;
-  Dague_Complex64_t *valtab;
+    INT                cscfnbr;
+    CscFormat         *cscftab;
+    INT               *rowtab;
+    Dague_Complex64_t *valtab;
 } CscMatrix;
 
 void dague_sparse_zcsc2pack(dsp_context_t     *dspctxt, 
@@ -394,9 +394,15 @@ void dague_sparse_zcsc2pack(dsp_context_t     *dspctxt,
         coefnbr *= symbptr->cblktab[icblk].stride;
         
         /* Could be done in parallel */
-      /* What about LU ? see with Anthony for the symmetric structure */
         symbptr->cblktab[icblk].cblkptr = (void *) malloc (coefnbr * sizeof(Dague_Complex64_t));
         memset( symbptr->cblktab[icblk].cblkptr, 0, coefnbr * sizeof(Dague_Complex64_t));
+
+        if (transcsc != NULL) 
+        {
+            symbptr->cblktab[icblk].ucblkptr = (void *) malloc (coefnbr * sizeof(Dague_Complex64_t));
+            memset( symbptr->cblktab[icblk].ucblkptr, 0, coefnbr * sizeof(Dague_Complex64_t));
+        }
+
         dague_sparse_zcsc2cblk(dspctxt, cscmtx, transcsc, icblk);
     }
 }
@@ -409,6 +415,7 @@ void dague_sparse_zcsc2cblk(dsp_context_t     *dspctxt,
     dague_sparse_input_symbol_cblk_t * cblktab;
     dague_sparse_input_symbol_blok_t * bloktab;
     Dague_Complex64_t *coeftab;
+    Dague_Complex64_t *ucoeftab;
     dague_int_t itercoltab;
     dague_int_t iterbloc;
     dague_int_t coefindx;
@@ -419,6 +426,7 @@ void dague_sparse_zcsc2cblk(dsp_context_t     *dspctxt,
     
     if (itercblk < CSC_FNBR(cscmtx)){
         coeftab = (Dague_Complex64_t*)(dspctxt->symbmtx->cblktab[itercblk].cblkptr);
+        ucoeftab = (Dague_Complex64_t*)(dspctxt->symbmtx->cblktab[itercblk].ucblkptr);
 
         for (itercoltab=0;
              itercoltab < CSC_COLNBR(cscmtx,itercblk);
@@ -457,7 +465,7 @@ void dague_sparse_zcsc2cblk(dsp_context_t     *dspctxt,
                         coeftab[coefindx] = CSC_VAL(cscmtx,iterval);
                         if (transcsc != NULL) 
                         {
-                        /*     SOLV_UCOEFTAB(itercblk)[coefindx] = trandcsc[iterval]; */
+                          ucoeftab[coefindx] = transcsc[iterval];
                         }
                     }
                     else {

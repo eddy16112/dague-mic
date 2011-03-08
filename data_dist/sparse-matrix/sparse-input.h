@@ -16,6 +16,7 @@ typedef struct dague_sparse_input_symbol_cblk {
     dague_int_t    lcolnum;              /**< Last column index (inclusive)        */
     dague_int_t    bloknum;              /**< First block in column (diagonal)     */
     void          *cblkptr;              /**< Pointer to the column data           */
+    void          *ucblkptr;              /**< Pointer to the column data           */
     dague_int_t    stride;               /**< Leading dimension of the column data */
 } dague_sparse_input_symbol_cblk_t;
 
