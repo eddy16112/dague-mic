@@ -135,6 +135,11 @@ void dague_tssm_mesh_create_tile(dague_tssm_desc_t *mesh, uint64_t m, uint64_t n
                                  dague_tssm_data_map_t *packed_ptr);
 
 
+uint32_t dague_tssm_rank_of(struct dague_ddesc *desc, ...);
+void *dague_tssm_data_of(struct dague_ddesc *desc, ...);
+
+void *dague_tssm_data_expand(void *metadata, int write_access, int this_thread);
+void dague_tssm_data_release(void *metadata, int write_access, int this_thread);
 
 int dague_sparse_zrdmtx( dsp_context_t *dspctxt );
 int dague_sparse_crdmtx( dsp_context_t *dspctxt );

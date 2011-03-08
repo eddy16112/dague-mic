@@ -275,6 +275,9 @@ uint32_t dague_tssm_rank_of(struct dague_ddesc *desc, ...)
     n = va_arg(ap, uint32_t);
     va_end(ap);
 
+    (void)m;
+    (void)n;
+
     return 0;
 }
 
@@ -379,7 +382,6 @@ void *dague_tssm_data_expand(void *metadata, int write_access, int this_thread)
 void dague_tssm_data_release(void *metadata, int write_access, int this_thread)
 {
     dague_tssm_tile_entry_t *tptr = (dague_tssm_tile_entry_t *)metadata;
-    dague_tssm_desc_t *mat;
 
     /* If we receive NULL (Zero tile), or an odd pointer (network-related / in-arenas pointer ),
      * ignore.
@@ -387,7 +389,6 @@ void dague_tssm_data_release(void *metadata, int write_access, int this_thread)
     if( (NULL == metadata) || (1 == ((intptr_t)metadata & 0x1)) ) {
         return;
     }
-    mat = tptr->desc;
     
     dague_atomic_lock( &tptr->lock );
     if( write_access ) {
