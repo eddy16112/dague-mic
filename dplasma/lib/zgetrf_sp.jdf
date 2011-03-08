@@ -28,7 +28,6 @@ extern int *gpu_counter;
 
 /* Globals
  */
-PRI_CHANGE   [type = int]
 ib           [type = int]
 INFO         [type = "int*"]
 
