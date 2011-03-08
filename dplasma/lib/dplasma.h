@@ -8,6 +8,7 @@
 #define _DPLASMA_H_
 
 #include "data_dist/matrix/matrix.h"
+#include "data_dist/sparse-matrix/sparse-shm-matrix.h"
 
 #include "generated/dplasma_s.h"
 #include "generated/dplasma_d.h"
