@@ -8,9 +8,11 @@
  */
 
 #include "common.h"
+#include "data_dist/matrix/precision.h"
 #include "data_dist/sparse-matrix/sparse-shm-matrix.h"
 #include "data_dist/sparse-matrix/sparse-input.h"
 #include <pastix.h>
+#include <read_matrix.h>
 
 /* #if defined(HAVE_CUDA) && defined(PRECISION_s) */
 /* #include "cuda_sgemm.h" */
@@ -22,8 +24,8 @@
 /* #define FMULS_POTRS(N, NRHS) ( (NRHS) * ( (N) * ((N) + 1.) ) ) */
 /* #define FADDS_POTRS(N, NRHS) ( (NRHS) * ( (N) * ((N) - 1.) ) ) */
 
-static int check_solution( dague_context_t *dague, PLASMA_enum uplo, 
-                           tiled_matrix_desc_t *ddescA, tiled_matrix_desc_t *ddescB, tiled_matrix_desc_t *ddescX );
+/* static int check_solution( dague_context_t *dague, PLASMA_enum uplo,  */
+/*                            tiled_matrix_desc_t *ddescA, tiled_matrix_desc_t *ddescB, tiled_matrix_desc_t *ddescX ); */
 
 int main(int argc, char ** argv)
 {
@@ -40,7 +42,7 @@ int main(int argc, char ** argv)
     PASTE_CODE_IPARAM_LOCALS(iparam);
 
     /* initializing matrix structure */
-    int info = 0;
+    //int info = 0;
 
     dspctxt.format = RSA;     /* Matrix file format                         */
     dspctxt.factotype = SPARSE_LLT;
@@ -52,7 +54,7 @@ int main(int argc, char ** argv)
     dspctxt.n       = 0;          /* Number of unknowns/columns/rows            */
     dspctxt.nnz     = 0;        /* Number of non-zero values in the input matrix */
     dspctxt.colptr  = NULL; /* Vector of size N+1 storing the starting point of each column in the array rows */
-    dspctxt.rows;   = NULL; /* Indices of the rows present in each column */
+    dspctxt.rows    = NULL; /* Indices of the rows present in each column */
     dspctxt.values  = NULL; /* Values of the matrix                       */
     dspctxt.rhs     = NULL; /* Right Hand Side                            */ 
     dspctxt.permtab = NULL; /* vector of permutation                      */
@@ -63,10 +65,10 @@ int main(int argc, char ** argv)
     dague_tssm_init(cores, MB*NB*sizeof(Dague_Complex64_t), 64);
 
     /* Initialize the descriptor */
-    PASTE_CODE_ALLOCATE_MATRIX(ddescA, 1, 
-        dague_tssm_zmatrix_init, (&ddescA, matrix_ComplexDouble, 
-                                  cores, MB, NB, dspctxt.n, dspctxt.n, 0, 0, 
-                                  dspctxt.n, dspctxt.n, dspctxt.symbmtx));
+    dague_tssm_desc_t ddescA;
+    dague_tssm_zmatrix_init(&ddescA, matrix_ComplexDouble, 
+                            cores, MB, NB, dspctxt.n, dspctxt.n, 0, 0, 
+                            dspctxt.n, dspctxt.n, dspctxt.symbmtx);
 
     //dplasma_zpotrf_sp();
 
@@ -254,7 +256,7 @@ int main(int argc, char ** argv)
     return EXIT_SUCCESS;
 }
 
-
+#if 0
 
 static int check_solution( dague_context_t *dague, PLASMA_enum uplo, 
                            tiled_matrix_desc_t *ddescA, tiled_matrix_desc_t *ddescB, tiled_matrix_desc_t *ddescX )
@@ -302,3 +304,4 @@ static int check_solution( dague_context_t *dague, PLASMA_enum uplo,
     free(work); free(W);
     return info_solution;
 }
+#endif

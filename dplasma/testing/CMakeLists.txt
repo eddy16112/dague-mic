@@ -8,6 +8,9 @@ endif()
   
 include(RulesTestings.cmake)
 
+include_directories(${PASTIX_INCLUDE_DIRS}) 
+include_directories(${SCOTCH_INCLUDE_DIRS}) 
+
 set(TESTS
   testing_zgemm.c
   testing_ztrmm.c
@@ -16,6 +19,7 @@ set(TESTS
   testing_zgetrf.c
   testing_zgetrf_sd.c
   testing_zgeqrf.c
+  testing_zpotrf_sp.c
 )
 testings_addexec(targets "+;${DPLASMA_PRECISIONS}" "${TESTS}")
 

@@ -25,6 +25,20 @@ macro(testings_addexec OUTPUTLIST PRECISIONS ZSOURCES)
       )
   endif()
 
+  if( DAGUE_SPARSE )
+    if( MPI_FOUND )
+      set(testings_addexec_LDFLAGS "${testings_addexec_LDFLAGS} -L${PASTIX_INCLUDE_DIRS} -L${SCOTCH_LIBRARY_DIRS}")
+      set(testings_addexec_LIBS   
+        ${testings_addexec_LIBS} dague_distribution_sparse_matrix-mpi ${PASTIX_LIBRARIES} ${SCOTCH_LIBRARIES}
+        )
+    else( MPI_FOUND )
+      set(testings_addexec_LDFLAGS "${testings_addexec_LDFLAGS} -L${PASTIX_INCLUDE_DIRS} -L${SCOTCH_LIBRARY_DIRS}")
+      set(testings_addexec_LIBS   
+        ${testings_addexec_LIBS} dague_distribution_sparse_matrix ${PASTIX_LIBRARIES} ${SCOTCH_LIBRARIES}
+        )
+    endif( MPI_FOUND )
+  endif( DAGUE_SPARSE )
+
   set(testings_addexec_GENFILES "")
   precisions_rules(testings_addexec_GENFILES "${PRECISIONS}" "${ZSOURCES}")
   foreach(testings_addexec_GENFILE ${testings_addexec_GENFILES})
