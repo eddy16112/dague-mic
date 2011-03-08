@@ -20,7 +20,7 @@ static dague_linked_list_t  used_tiles;
 static dague_linked_list_t *dirty_tiles = NULL;
 static dague_linked_list_t *clean_tiles = NULL;
 static dague_atomic_lifo_t *free_tiles = NULL;
-static uint32_t dague_tssm_nbthreads = 0;
+uint32_t dague_tssm_nbthreads = 0;
 
 static void *dague_tssm_thread_init(void *_p)
 {
