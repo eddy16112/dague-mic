@@ -70,7 +70,7 @@ int main(int argc, char ** argv)
                             cores, MB, NB, dspctxt.n, dspctxt.n, 0, 0, 
                             dspctxt.n, dspctxt.n, dspctxt.symbmtx);
 
-    //dplasma_zpotrf_sp();
+    dplasma_zpotrf_sp(dague, &ddescA);
 
     dague_tssm_flush_matrix((dague_ddesc_t *)&ddescA);
 
