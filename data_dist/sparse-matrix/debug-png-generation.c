@@ -24,19 +24,21 @@ static png_byte bit_depth = 8;
 static png_structp png_ptr;
 static png_infop info_ptr;
 static png_bytep * row_pointers;
-//static int pxmp_width=12240, pxmp_height=12240;
-static int pxmp_width=12240/2, pxmp_height=12240/2;
+static int pxmp_width=12240, pxmp_height=12240;
+//static int pxmp_width=12240/2, pxmp_height=12240/2;
+//static int pxmp_width=12240/120, pxmp_height=12240/120;
 static int64_t *dague_debug_si_elem_count;
+static int debug_png_first_time = 1;
 
 /******************************************************************************/
+
 /* Function bodies */
 void dague_pxmp_si_color_rectangle(uint64_t strCol, uint64_t endCol, uint64_t strRow, uint64_t endRow, uint64_t mtrx_height, uint64_t mtrx_width)
 {
-    uint32_t x,y;
-    static int first_time = 1;
+    uint64_t x,y;
 
-    if( first_time ){
-        first_time = 0;
+    if( debug_png_first_time ){
+        debug_png_first_time = 0;
         dague_debug_si_elem_count = (int64_t *)calloc(pxmp_height*pxmp_width, sizeof(int64_t));
 
         init_png_file();
@@ -47,11 +49,20 @@ void dague_pxmp_si_color_rectangle(uint64_t strCol, uint64_t endCol, uint64_t st
 
     }
 
+    for( y = strRow; y <= endRow; y++){
+        for( x = strCol; x <= endCol; x++){
+            int64_t py = y*pxmp_height/mtrx_height;
+            int64_t px = x*pxmp_width/mtrx_width;
+            ++dague_debug_si_elem_count[py*pxmp_width + px];
+        }
+    }
+/*
     for( y = (pxmp_height*strRow)/mtrx_height; y <= (pxmp_height*endRow)/mtrx_height; y++){
         for( x = (pxmp_width*strCol)/mtrx_width; x <= (pxmp_width*endCol)/mtrx_width; x++){
             ++dague_debug_si_elem_count[y*pxmp_width + x];
         }
     }
+*/
 }
 
 /***/
@@ -75,12 +86,13 @@ void dague_pxmp_si_dump_image(char *fname, int64_t max_elem_count)
     for( y = 0; y < pxmp_height; y++){
         png_byte* row = row_pointers[y];
         for( x = 0; x < pxmp_width; x++){
-//            numToColor( dague_debug_si_elem_count[y*pxmp_width + x], max_value, &(row[x*3]) );
-            numToColor( dague_debug_si_elem_count[y*pxmp_width + x], max_elem_count, &(row[x*3]) );
+            numToColor( dague_debug_si_elem_count[y*pxmp_width + x], max_value, &(row[x*3]) );
+//            numToColor( dague_debug_si_elem_count[y*pxmp_width + x], max_elem_count, &(row[x*3]) );
         }
     }
 
     write_png_file(fname);
+    debug_png_first_time = 1;
 }
 
 
@@ -165,6 +177,7 @@ static int f1(int x){
 static void numToColor(int64_t num, int64_t max_num, png_byte *pxl_ptr){
   int k;
 
+#if 0
 /* simplified version */
   if( num == 0 ){
       pxl_ptr[0] = 255;
@@ -179,6 +192,7 @@ static void numToColor(int64_t num, int64_t max_num, png_byte *pxl_ptr){
   pxl_ptr[2] = num;
 
   return;
+#endif
 
 /* extended, but weird heat map */
 
