@@ -24,7 +24,8 @@ static png_byte bit_depth = 8;
 static png_structp png_ptr;
 static png_infop info_ptr;
 static png_bytep * row_pointers;
-static int pxmp_width=800, pxmp_height=800;
+//static int pxmp_width=12240, pxmp_height=12240;
+static int pxmp_width=12240/2, pxmp_height=12240/2;
 static int64_t *dague_debug_si_elem_count;
 
 /******************************************************************************/
@@ -54,7 +55,7 @@ void dague_pxmp_si_color_rectangle(uint64_t strCol, uint64_t endCol, uint64_t st
 }
 
 /***/
-void dague_pxmp_si_dump_image(char *fname)
+void dague_pxmp_si_dump_image(char *fname, int64_t max_elem_count)
 {
     int64_t max_value = 0;
     int x, y;
@@ -67,10 +68,15 @@ void dague_pxmp_si_dump_image(char *fname)
         }
     }
 
+    max_elem_count /= (pxmp_width*pxmp_height);
+
+    printf("max_value: %ld, max_elem_count: %ld\n",max_value, max_elem_count);
+
     for( y = 0; y < pxmp_height; y++){
         png_byte* row = row_pointers[y];
         for( x = 0; x < pxmp_width; x++){
-            numToColor( dague_debug_si_elem_count[y*pxmp_width + x], max_value, &(row[x*3]) );
+//            numToColor( dague_debug_si_elem_count[y*pxmp_width + x], max_value, &(row[x*3]) );
+            numToColor( dague_debug_si_elem_count[y*pxmp_width + x], max_elem_count, &(row[x*3]) );
         }
     }
 
@@ -159,7 +165,25 @@ static int f1(int x){
 static void numToColor(int64_t num, int64_t max_num, png_byte *pxl_ptr){
   int k;
 
+/* simplified version */
+  if( num == 0 ){
+      pxl_ptr[0] = 255;
+      pxl_ptr[1] = 255;
+      pxl_ptr[2] = 255;
+      return;
+  }
+  num = (int64_t)(255*(double)num/((double)max_num));
+  num = (int64_t)(255-num);
+  pxl_ptr[0] = 0;
+  pxl_ptr[1] = 0;
+  pxl_ptr[2] = num;
+
+  return;
+
+/* extended, but weird heat map */
+
   num = (int64_t)(1280*(double)num/((double)max_num+1));
+  num = (int64_t)(1280-num-1);
   k = num/256; // k = {0,1,2,3,4}
   num = num%256;
 // We don't need to discretize num, we like the colors smooth
@@ -172,34 +196,23 @@ static void numToColor(int64_t num, int64_t max_num, png_byte *pxl_ptr){
   switch(k){
     case 0 : /* black to blue */
              pxl_ptr[2] = num;
-//             if( x < 16 ) sprintf(clr,"#00000%x",x);
-//             else sprintf(clr,"#0000%2x",x);
              break;
     case 1 : /* blue to green */
              pxl_ptr[1] = f1(num);
              pxl_ptr[2] = f0(num);
-//             if( f1(x) < 16 ) sprintf(clr,"#000%x%2x",f1(x),f0(x));
-//             else if ( f0(x) < 16 ) sprintf(clr,"#00%2x0%x",f1(x),f0(x));
-//             else sprintf(clr,"#00%2x%2x",f1(x),f0(x));
              break;
     case 2 : /* green to brown */
              pxl_ptr[0] = num;
              pxl_ptr[1] = (1<<bit_depth)-1;
-//             if( x < 16 ) sprintf(clr,"#0%xff00",x);
-//             else sprintf(clr,"#%2xff00",x);
              break;
     case 3 : /* brown to red */
              pxl_ptr[0] = (1<<bit_depth)-1; 
              pxl_ptr[1] = f0(num);
-//             if( f0(x) < 16 ) sprintf(clr,"#ff0%x00",f0(x));
-//             else sprintf(clr,"#ff%2x00",f0(x));
              break;
     case 4 : /* red to white */
              pxl_ptr[0] = (1<<bit_depth)-1; 
              pxl_ptr[1] = num;
              pxl_ptr[2] = num;
-//             if( x < 16 ) sprintf(clr,"#ff0%x0%x",x,x);
-//             else sprintf(clr,"#ff%2x%2x",x,x);
              break;
     default: fprintf(stderr,"Impossible value: %d\n",k);
              exit(-1);
