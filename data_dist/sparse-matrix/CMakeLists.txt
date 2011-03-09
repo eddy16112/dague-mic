@@ -18,6 +18,7 @@ precisions_rules(generated_files "+;s;d;c;z" "${precision_files}")
 set( dague_sparse_SRC
   sparse-shm-matrix.c 
   si-to-tssm.c
+  debug-png-generation.c
   ${generated_files}
   )
 

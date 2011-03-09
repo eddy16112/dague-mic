@@ -7,6 +7,7 @@
 #include "data_dist/sparse-matrix/si-to-tssm.h"
 #include "data_dist/sparse-matrix/sparse-shm-matrix.h"
 
+#define GEN_DEBUG_PIXMAP
 #ifdef GEN_DEBUG_PIXMAP
 # include "data_dist/sparse-matrix/debug-png-generation.h"
 #endif
@@ -33,7 +34,6 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
     int elem_size = sm->elemsze;
  
 #ifdef GEN_DEBUG_PIXMAP
-    dague_int_t bc;
     for(bc=0; bc < cblknbr; bc++){
         dague_int_t b, strCol, endCol, fb, lb;
 
@@ -53,7 +53,8 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
         }
 
     }
-    dague_pxmp_si_dump_image("test.png");
+//    dague_pxmp_si_dump_image("test.png");
+    dague_pxmp_si_dump_image("test.png", mt*mb*nt*nb);
 #endif /* GEN_PIXMAP */
 
     /* "tmp_map_buf" is guaranteed to fit the maximum number of meta-data
@@ -63,6 +64,10 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
      * entries there.
      */
     dague_tssm_data_map_t *tmp_map_buf = (dague_tssm_data_map_t *)calloc(nb*mb, sizeof(dague_tssm_data_map_t));
+
+    fprintf(stderr, "cblknbr lcolnum = %d, fcolnum = %d, stride = %d\n",
+	    cblktab[cblknbr-1].lcolnum, cblktab[cblknbr-1].fcolnum,
+	    cblktab[cblknbr-1].stride);
 
     for(i=0; i<nt; i++){
        /* We are filling up the meta-data structures of the tiles that are in
@@ -76,11 +81,11 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
         for(lbc=fbc; (lbc < cblknbr) && (cblktab[lbc].fcolnum < (i+1)*nb); lbc++)
             ;
 
-        /* Now for each tile "j" of this column, populare the map data structure,
+	/* Now for each tile "j" of this column, populare the map data structure,
          * by looking at every block column from fbc to lbc (inclusive) to see if
          * it has data that belongs to the j-the tile 
          */
-        for(j=0; j<mt; j++){
+        for(j=0; (j<mt) && (lbc < cblknbr); j++){
             dague_int_t blocksInTile = 0;
             for(bc=fbc; bc<=lbc; bc++){
                 dague_int_t endCol, strCol;
