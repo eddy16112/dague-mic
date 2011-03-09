@@ -2224,7 +2224,7 @@ static void jdf_generate_code_flow_initialization(const jdf_t *jdf, const char *
         coutput("  %s = ADATA(g%s);\n", f->varname, f->varname);
         coutput("#if defined(DAGUE_SPARSE)\n"
                 "  if( !DAGUE_ARENA_IS_PTR(g%s) ) {\n"
-                "    %s = dague_tssm_data_expand(%s, %d, context->eu_id);\n"
+                "    %s = dague_tssm_data_expand(ADATA(g%s), %d, context->eu_id);\n"
                 "    if( %s == (void*)1 ) {\n"
                 "      /* Put this task back */\n"
                 "      __dague_schedule(context, exec_context, 0);\n"
@@ -2241,7 +2241,7 @@ static void jdf_generate_code_flow_initialization(const jdf_t *jdf, const char *
                 string_arena_get_string( acc_sparse_free) );
         string_arena_add_string(acc_sparse_free,
                                 "      if( !DAGUE_ARENA_IS_PTR(g%s) ) {\n"
-                                "        dague_tssm_data_release(%s, %d, context->eu_id);\n"
+                                "        dague_tssm_data_release(ADATA(g%s), %d, context->eu_id);\n"
                                 "      }\n",
                                 f->varname,
                                 f->varname, (f->access_type & JDF_VAR_TYPE_WRITE) ? 1 : 0);
@@ -2257,7 +2257,7 @@ static void jdf_generate_code_sparse_release(const jdf_t *jdf, const jdf_functio
     coutput("#if defined(DAGUE_SPARSE)\n");
     for( di = 0, fl = f->dataflow; fl != NULL; fl = fl->next, di++ ) {
         coutput("  if( !DAGUE_ARENA_IS_PTR(g%s) ) {\n"
-                "    dague_tssm_data_release(%s, %d, context->eu_id);\n"
+                "    dague_tssm_data_release(ADATA(g%s), %d, context->eu_id);\n"
                 "  }\n",
                 fl->flow->varname, fl->flow->varname, (fl->flow->access_type & JDF_VAR_TYPE_WRITE) ? 1 : 0);
     }
