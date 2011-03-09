@@ -886,6 +886,9 @@ static void jdf_generate_structure(const jdf_t *jdf)
             "#if defined(HAVE_PAPI)\n"
             "#include <papime.h>\n"
             "#endif\n"
+            "#if defined(DAGUE_SPARSE)\n"
+            "#include \"data_dist/sparse-matrix/sparse-shm-matrix.h\"\n"
+            "#endif\n"
             "#include \"%s.h\"\n\n"
             "#define DAGUE_%s_NB_FUNCTIONS %d\n"
             "#define DAGUE_%s_NB_DATA %d\n"
@@ -2175,7 +2178,8 @@ static void jdf_generate_code_call_initialization(const jdf_t *jdf, const jdf_ca
     string_arena_free(sa2);
 }
 
-static void jdf_generate_code_flow_initialization(const jdf_t *jdf, const char *fname, const jdf_dataflow_t *f)
+static void jdf_generate_code_flow_initialization(const jdf_t *jdf, const char *fname, const jdf_dataflow_t *f,
+                                                  string_arena_t *acc_sparse_free)
 {
     jdf_dep_list_t *dl;
     expr_info_t info;
@@ -2219,11 +2223,45 @@ static void jdf_generate_code_flow_initialization(const jdf_t *jdf, const char *
         }
         coutput("  %s = ADATA(g%s);\n", f->varname, f->varname);
         coutput("#if defined(DAGUE_SPARSE)\n"
-                "  if( %s == (void*)1 ) return -1;\n"
-                "#endif /* DAGUE_SPARSE */\n", f->varname);
+                "  if( !DAGUE_ARENA_IS_PTR(g%s) ) {\n"
+                "    %s = dague_tssm_data_expand(%s, %d, context->eu_id);\n"
+                "    if( %s == (void*)1 ) {\n"
+                "      /* Put this task back */\n"
+                "      __dague_schedule(context, exec_context, 0);\n"
+                "      /* Release previously expanded data */\n"
+                "%s"
+                "      /* Tell the scheduler something annoying happened */\n"
+                "      return -2;\n"
+                "    }\n"
+                "  }\n"
+                "#endif /* DAGUE_SPARSE */\n", 
+                f->varname, 
+                f->varname, f->varname, (f->access_type & JDF_VAR_TYPE_WRITE) ? 1 : 0,
+                f->varname,
+                string_arena_get_string( acc_sparse_free) );
+        string_arena_add_string(acc_sparse_free,
+                                "      if( !DAGUE_ARENA_IS_PTR(g%s) ) {\n"
+                                "        dague_tssm_data_release(%s, %d, context->eu_id);\n"
+                                "      }\n",
+                                f->varname,
+                                f->varname, (f->access_type & JDF_VAR_TYPE_WRITE) ? 1 : 0);
     }
-
     string_arena_free(sa);
+}
+
+static void jdf_generate_code_sparse_release(const jdf_t *jdf, const jdf_function_entry_t *f)
+{
+    jdf_dataflow_list_t *fl;
+    int di;
+
+    coutput("#if defined(DAGUE_SPARSE)\n");
+    for( di = 0, fl = f->dataflow; fl != NULL; fl = fl->next, di++ ) {
+        coutput("  if( !DAGUE_ARENA_IS_PTR(g%s) ) {\n"
+                "    dague_tssm_data_release(%s, %d, context->eu_id);\n"
+                "  }\n",
+                fl->flow->varname, fl->flow->varname, (fl->flow->access_type & JDF_VAR_TYPE_WRITE) ? 1 : 0);
+    }
+    coutput("#endif /* defined(DAGUE_SPARSE) */\n");
 }
 
 static void jdf_generate_code_call_final_write(const jdf_t *jdf, const jdf_call_t *call, const char* datatype_name,
@@ -2439,7 +2477,7 @@ static int jdf_property_get_int( const jdf_def_list_t* properties, const char* p
 
 static void jdf_generate_code_hook(const jdf_t *jdf, const jdf_function_entry_t *f, const char *name)
 {
-    string_arena_t *sa, *sa2, *sa3;
+    string_arena_t *sa, *sa2, *sa3, *acc;
     expr_info_t linfo;
     assignment_info_t ai;
     jdf_dataflow_list_t *fl;
@@ -2478,13 +2516,16 @@ static void jdf_generate_code_hook(const jdf_t *jdf, const jdf_function_entry_t 
 
 
     coutput("  /** Lookup the input data, and store them in the context */\n");
+    acc = string_arena_new(64);
+    string_arena_init(acc);
     for( di = 0, fl = f->dataflow; fl != NULL; fl = fl->next, di++ ) {
-        jdf_generate_code_flow_initialization(jdf, f->fname, fl->flow);
+        jdf_generate_code_flow_initialization(jdf, f->fname, fl->flow, acc);
         coutput("  exec_context->data[%d].data = g%s;\n"
                 "  exec_context->data[%d].data_repo = e%s;\n",
                 di, fl->flow->varname,
                 di, fl->flow->varname);
     }
+    string_arena_free(acc);
 
     jdf_generate_code_papi_events_before(jdf, f);
     jdf_generate_code_cache_awareness_update(jdf, f);
@@ -2511,6 +2552,7 @@ static void jdf_generate_code_hook(const jdf_t *jdf, const jdf_function_entry_t 
     }
     jdf_coutput_prettycomment('-', "END OF %s BODY", f->fname);
     jdf_generate_code_dry_run_after(jdf, f);
+    jdf_generate_code_sparse_release(jdf, f);
 
     ai.idx = 0;
     coutput("  return 0;\n"
