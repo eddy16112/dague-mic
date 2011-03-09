@@ -93,6 +93,9 @@ int dague_sparse_zrdmtx( dsp_context_t *dspctxt )
                   dspctxt->format, 
                   0);                  /* MPI communicator */
 
+    dspctxt->nnz = dspctxt->colptr[dspctxt->n]-1;
+
+
     /*
      *    Check Matrix format because matrix needs :
      *    - to be in fortran numbering
@@ -144,7 +147,7 @@ int dague_sparse_zrdmtx( dsp_context_t *dspctxt )
                        &tmporder,
 		       dspctxt->n, 
                        dspctxt->n, 
-                       dspctxt->colptr[dspctxt->n]-1, 
+                       dspctxt->nnz, 
                        dspctxt->colptr,
 		       dspctxt->rows, 
                        dspctxt->values, 
