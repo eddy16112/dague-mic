@@ -6,6 +6,7 @@
 #include <signal.h>
 #include <pthread.h>
 
+#include "debug.h"
 #include "lifo.h"
 #include "linked_list.h"
 #include "bindthread.h"
@@ -311,6 +312,9 @@ void *dague_tssm_data_expand(void *metadata, int write_access, int this_thread)
     }
     mat = tptr->desc;
 
+    DEBUG(("Expanding tile %p at %d, %d, for thread %d in %s mode\n", 
+           tptr, tptr->m, tptr->n, this_thread, write_access ? "write" : "read" ));
+
     dague_atomic_lock( &tptr->lock );
     /** If somebody else is already working on getting up this tile,
      *  give the scheduler an opportunity to select another task
@@ -389,6 +393,9 @@ void dague_tssm_data_release(void *metadata, int write_access, int this_thread)
     if( (NULL == metadata) || (1 == ((intptr_t)metadata & 0x1)) ) {
         return;
     }
+
+    DEBUG(("Releasing tile %p at %d, %d, used by thread %d in %s mode\n", 
+           tptr, tptr->m, tptr->n, this_thread, write_access ? "write" : "read" ));
     
     dague_atomic_lock( &tptr->lock );
     if( write_access ) {
