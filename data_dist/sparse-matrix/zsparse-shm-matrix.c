@@ -28,7 +28,6 @@
 extern uint32_t dague_tssm_nbthreads;
 uint32_t dague_tssm_rank_of(struct dague_ddesc *desc, ...);
 void    *dague_tssm_data_of(struct dague_ddesc *desc, ...);
-void     dague_tssm_data_release(struct dague_ddesc *desc, ...);
 
 void dague_tssm_zmatrix_init(dague_tssm_desc_t * desc, enum matrix_type mtype, unsigned int cores, 
                              unsigned int mb, unsigned int nb, 
@@ -63,6 +62,9 @@ void dague_tssm_zmatrix_init(dague_tssm_desc_t * desc, enum matrix_type mtype, u
     mat->n = n;
     mat->mt = (m + mb - 1) / mb;
     mat->nt = (n + nb - 1) / nb;
+
+    printf("%u / %u x %u / %u -> %u / %u\n", m, n, mb, nb, mat->mt, mat->nt);
+
     mat->nb_local_tiles = mat->mt * mat->nt;
     
     res->myrank = 0;
