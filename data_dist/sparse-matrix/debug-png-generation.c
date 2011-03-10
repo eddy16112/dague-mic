@@ -6,6 +6,12 @@
 #include <math.h>
 #include <assert.h>
 
+#define EXTENDED_COLORS // Choose the heat-map to use
+
+#if !defined(SIMPLE_COLORS) && !defined(EXTENDED_COLORS) && !defined(MIDDLE_COLORS)
+# error "No color scheme was chosen"
+#endif
+
 #define PNG_DEBUG 3
 #include <png.h>
 #include "debug-png-generation.h"
@@ -18,9 +24,16 @@
 /* Forward declaration of auxiliary, helper functions */
 static int f1(int x);
 static int f0(int x);
-static void numToColor(int64_t num, int64_t max_num, png_byte *pxl_ptr);
-static void numToColor_extended(int64_t num, int64_t max_num, png_byte *pxl_ptr);
-static void numToColor_simple(int64_t num, int64_t max_num, png_byte *pxl_ptr);
+
+static void inline numToColor(int64_t num, int64_t max_num, png_byte *pxl_ptr);
+#if defined(SIMPLE_COLORS)
+  static void numToColor_simple(int64_t num, int64_t max_num, png_byte *pxl_ptr);
+#elif defined(EXTENDED_COLORS)
+  static void numToColor_extended(int64_t num, int64_t max_num, png_byte *pxl_ptr);
+#elif defined(MIDDLE_COLORS)
+  static void numToColor_middle(int64_t num, int64_t max_num, png_byte *pxl_ptr);
+#endif
+
 static void init_png_file(void);
 static void write_png_file(char *fname);
 static void err_exit(const char * s, ...);
@@ -194,6 +207,8 @@ static int f1(int x){
   return((int)f);
 }
 
+
+#if defined(MIDDLE_COLORS)
 /***/
 static void numToColor_middle(int64_t num, int64_t max_num, png_byte *pxl_ptr){
   int k;
@@ -212,8 +227,6 @@ static void numToColor_middle(int64_t num, int64_t max_num, png_byte *pxl_ptr){
              break;
     case 1 : /* yellow to green: drop linearly */
              pxl_ptr[0] = (png_byte)(hue_max_tones-1-f1(num)); // drop fast
-//             pxl_ptr[0] = (png_byte)(hue_max_tones-1-num); // drop linearly
-//             pxl_ptr[0] = (png_byte)f0(num); // drop slowly
              pxl_ptr[1] = (png_byte)(hue_max_tones-1);
              pxl_ptr[2] = (png_byte)0;
              break;
@@ -233,7 +246,9 @@ static void numToColor_middle(int64_t num, int64_t max_num, png_byte *pxl_ptr){
 
   return;
 }
+#endif
 
+#if defined(EXTENDED_COLORS)
 /***/
 static void numToColor_extended(int64_t num, int64_t max_num, png_byte *pxl_ptr){
   int k;
@@ -284,7 +299,9 @@ static void numToColor_extended(int64_t num, int64_t max_num, png_byte *pxl_ptr)
   }
   return;
 }
+#endif
 
+#if defined(SIMPLE_COLORS)
 /***/
 static void numToColor_simple(int64_t num, int64_t max_num, png_byte *pxl_ptr){
   if( num == 0 ){
@@ -301,15 +318,14 @@ static void numToColor_simple(int64_t num, int64_t max_num, png_byte *pxl_ptr){
 
   return;
 }
-
-#define EXTENDED_COLORS
+#endif
 
 static void inline numToColor(int64_t num, int64_t max_num, png_byte *pxl_ptr){
 #if defined(SIMPLE_COLORS)
     numToColor_simple(num, max_num, pxl_ptr);
 #elif defined(EXTENDED_COLORS)
     numToColor_extended(num, max_num, pxl_ptr);
-#else
+#elif defined(MIDDLE_COLORS)
     numToColor_middle(num, max_num, pxl_ptr);
 #endif
 }

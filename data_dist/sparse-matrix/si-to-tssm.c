@@ -69,16 +69,17 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
 	    cblktab[cblknbr-1].stride);
 
     for(i=0; i<nt; i++){
-       /* We are filling up the meta-data structures of the tiles that are in
-        * the i-th column. So, we need to find the first block column that is
-        * not after the begining of the i-th tile and the last block column
-        * that is not before the end of the i-th tile.
-        */
-        fbc = 0;
-        lbc = 0;
+//        fbc = 0;
+//        lbc = 0;
         
-//        fbc = lbc; /* start from where we left before */
-//        for(; (fbc < cblknbr) && (cblktab[fbc].fcolnum < i*nb); fbc++)
+       /* We are filling up the meta-data structures of the tiles that are in
+        * the i-th column. So, we need to find 
+        * a) fbc = the first block column whose last column is >= than the
+        *    begining of the i-th tile and 
+        * b) lbc = the last block column whose first column is < than the
+        *    begining of the (i+1)-th tile (or <= than the end of the i-th tile).
+        */
+        fbc = lbc; /* start from where we left before */
         for(; (fbc < cblknbr) && (cblktab[fbc].lcolnum < i*nb); fbc++)
             ;
    
@@ -94,7 +95,6 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
          * by looking at every block column from fbc to lbc (inclusive) to see if
          * it has data that belongs to the j-the tile 
          */
-//        for(j=0; (j<mt) && (lbc < cblknbr); j++){
         for(j=0; j<mt; j++){
             dague_int_t blocksInTile = 0;
             for(bc=fbc; bc<=lbc; bc++){
