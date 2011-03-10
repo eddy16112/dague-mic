@@ -50,9 +50,9 @@ int dague_tssm_ztile_unpack(void *tile_ptr, dague_int_t m, dague_int_t n, dague_
 
     assert( map );
     do {
-        dague_tssm_data_map_t *mp = &map[i++];
+        dague_tssm_data_map_elem_t *mp = &map->elements[i++];
         dague_zlacpy('A', mp->h, mp->w, (Dague_Complex64_t*)mp->ptr, mp->ldA, data + mp->offset, mb);
-    } while( NULL != map[i].ptr );
+    } while( NULL != map->elements[i].ptr );
 
     return i;
 }
@@ -74,9 +74,9 @@ void dague_tssm_ztile_pack(void *tile_ptr, dague_int_t m, dague_int_t n, dague_i
 
     assert( map );
     do {
-        dague_tssm_data_map_t *mp = &map[i++];
+        dague_tssm_data_map_elem_t *mp = &map->elements[i++];
         dague_zlacpy('A', mp->h, mp->w, data + mp->offset, mb, (Dague_Complex64_t*)mp->ptr, mp->ldA);
-    } while( NULL != map[i].ptr );
+    } while( NULL != map->elements[i].ptr );
 
     return;
 }

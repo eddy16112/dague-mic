@@ -157,7 +157,7 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
                 uint64_t map_size = sizeof(dague_tssm_data_map_t)+(blocksInTile*sizeof(dague_tssm_data_map_elem_t));
                 dague_tssm_data_map_t *mapEntry = (dague_tssm_data_map_t *)calloc(map_size, 1);
                 //dague_tssm_data_map_t *mapEntry = (dague_tssm_data_map_t *)calloc(1+blocksInTile, sizeof(dague_tssm_data_map_t));
-                memcpy(mapEntry->elements, tmp_map_buf, blocksInTile*sizeof(dague_tssm_data_map_t));
+                memcpy(mapEntry->elements, tmp_map_buf, blocksInTile*sizeof(dague_tssm_data_map_elem_t));
                 mapEntry->elements[blocksInTile].ptr = NULL; /* Just being ridiculous */
                 mapEntry->fill_ratio = -1;
 #ifdef COMPUTE_FILL_RATIO
