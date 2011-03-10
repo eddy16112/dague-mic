@@ -62,7 +62,7 @@ int main(int argc, char ** argv)
     dspctxt.symbmtx = NULL; /* Pointer to symbol matrix structure, filled in by zrdmtx  */
 
     dague_sparse_zrdmtx( &dspctxt );
-    dague_tssm_init(cores, MB*NB*sizeof(Dague_Complex64_t), 64);
+    dague_tssm_init(cores, MB*NB*sizeof(Dague_Complex64_t), 3);
 
     /* Initialize the descriptor */
     dague_tssm_desc_t ddescA;
