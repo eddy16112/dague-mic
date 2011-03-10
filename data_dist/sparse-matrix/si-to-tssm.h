@@ -32,13 +32,19 @@ ldA --------   ^|@&&&&#| |
  v  --------
         <w>
 */
-typedef struct dague_tssm_data_map {
+
+typedef struct dague_tssm_data_map_elem {
     void        *ptr;    /**< points to @ in the above drawing                       */
     dague_int_t  ldA;    /**< leading dimension of the sparse-input representation   */
     /* h, w, and offset are in the bounds of the tile, supposed to fit uint32_t  */
     uint32_t     h;      /**< height of useful rectangle in this sparse-input block  */
     uint32_t     w;      /**< width of useful rectangle in this sparse-input block   */
     uint32_t     offset; /**< Position of this rectangle inside the tile             */
+} dague_tssm_data_map_elem_t;
+
+typedef struct dague_tssm_data_map {
+    float fill_ratio;
+    dague_tssm_data_map_elem_t elements[1];
 } dague_tssm_data_map_t;
 
 struct dague_tssm_desc;
