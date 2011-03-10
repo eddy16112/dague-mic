@@ -16,8 +16,8 @@
 #include <png.h>
 #include "debug-png-generation.h"
 
-#define CANVAS_WIDTH (12240/120)
-#define CANVAS_HEIGHT (12240/120)
+//#define CANVAS_WIDTH (12240/32)
+//#define CANVAS_HEIGHT (12240/32)
 #define COLORMAP_HEIGHT 8
 
 /******************************************************************************/
@@ -44,21 +44,24 @@ static png_byte bit_depth = 8;
 static png_structp png_ptr;
 static png_infop info_ptr;
 static png_bytep * row_pointers;
-static int pxmp_width=CANVAS_WIDTH;
-static int pxmp_height=CANVAS_HEIGHT+COLORMAP_HEIGHT;
+static int pxmp_width;//=CANVAS_WIDTH;
+static int pxmp_height;//=CANVAS_HEIGHT+COLORMAP_HEIGHT;
 static int64_t *dague_debug_si_elem_count;
 static int debug_png_first_time = 1;
 
 /******************************************************************************/
 
 /* Function bodies */
-void dague_pxmp_si_color_rectangle(uint64_t strCol, uint64_t endCol, uint64_t strRow, uint64_t endRow, uint64_t mtrx_height, uint64_t mtrx_width)
+void dague_pxmp_si_color_rectangle(uint64_t strCol, uint64_t endCol, uint64_t strRow, uint64_t endRow, uint64_t mtrx_height, uint64_t mtrx_width, uint64_t ratio)
 {
     uint64_t x,y;
     uint64_t offset;
 
     if( debug_png_first_time ){
         debug_png_first_time = 0;
+
+        pxmp_width=(mtrx_width+ratio-1)/ratio;
+        pxmp_height=(mtrx_height+ratio-1)/ratio+COLORMAP_HEIGHT;
         int64_t pixel_count = pxmp_height*pxmp_width;
         dague_debug_si_elem_count = (int64_t *)calloc(pixel_count, sizeof(int64_t));
 
@@ -73,8 +76,10 @@ void dague_pxmp_si_color_rectangle(uint64_t strCol, uint64_t endCol, uint64_t st
     offset = COLORMAP_HEIGHT*pxmp_width;
     for( y = strRow; y <= endRow; y++){
         for( x = strCol; x <= endCol; x++){
-            int64_t py = y*CANVAS_HEIGHT/mtrx_height;
-            int64_t px = x*CANVAS_WIDTH/mtrx_width;
+//            int64_t py = y*CANVAS_HEIGHT/mtrx_height;
+//            int64_t px = x*CANVAS_WIDTH/mtrx_width;
+            int64_t py = y/ratio;
+            int64_t px = x/ratio;
             ++dague_debug_si_elem_count[offset + py*pxmp_width + px];
         }
     }
@@ -89,7 +94,7 @@ void dague_pxmp_si_dump_image(char *fname, int64_t max_elem_count)
     int x, y;
 
     // Maximum possible value.
-    max_elem_count /= (CANVAS_WIDTH*CANVAS_HEIGHT);
+//    max_elem_count /= (CANVAS_WIDTH*CANVAS_HEIGHT);
 
     for( y = COLORMAP_HEIGHT; y < pxmp_height; y++){
         for( x = 0; x < pxmp_width; x++){
@@ -99,6 +104,7 @@ void dague_pxmp_si_dump_image(char *fname, int64_t max_elem_count)
         }
     }
     assert(max_value <= max_elem_count);
+    // printf("\n>>> %d %d\n\n",max_value, max_elem_count);
 
     //printf("max_value: %ld, max_elem_count: %ld\n",max_value, max_elem_count);
 

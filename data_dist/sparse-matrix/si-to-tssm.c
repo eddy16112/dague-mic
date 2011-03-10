@@ -9,7 +9,7 @@
 
 #define COMPUTE_FILL_RATIO
 
-//#define GEN_DEBUG_PIXMAP
+#define GEN_DEBUG_PIXMAP
 #ifdef GEN_DEBUG_PIXMAP
 # include "data_dist/sparse-matrix/debug-png-generation.h"
 #endif
@@ -34,6 +34,7 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
     dague_int_t lbc=0;
     dague_int_t i, j, bc, b;
     int elem_size = sm->elemsze;
+    uint64_t ratio = nb;
  
 #ifdef GEN_DEBUG_PIXMAP
     for(bc=0; bc < cblknbr; bc++){
@@ -51,11 +52,11 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
             strRow = bloktab[b].frownum;
             endRow = bloktab[b].lrownum;
 
-            dague_pxmp_si_color_rectangle(strCol, endCol, strRow, endRow, mt*mb, nt*nb);
+            dague_pxmp_si_color_rectangle(strCol, endCol, strRow, endRow, mt*mb, nt*nb, ratio);
         }
 
     }
-    dague_pxmp_si_dump_image("test.png", mt*mb*nt*nb);
+    dague_pxmp_si_dump_image("test.png", (ratio*ratio));
 #endif /* GEN_PIXMAP */
 
     /* "tmp_map_buf" is guaranteed to fit the maximum number of meta-data
@@ -179,6 +180,8 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
         }
     }
 #ifdef GEN_DEBUG_PIXMAP
+    float aaa =0;
+    float bbb = 0;
     for(j=0; j<mt; j++){
         for(i=0; i<nt; i++){
            dague_int_t map_elem_count=0;
@@ -192,6 +195,9 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
                dague_int_t endRow, strRow;
                dague_tssm_data_map_elem_t *mp = &mapEntry->elements[map_elem_count++];
 
+               aaa += mapEntry->fill_ratio;
+               bbb ++;
+
 
                strCol = i*nb+(mp->offset)/mb;
                endCol = strCol+(mp->w)-1;
@@ -202,12 +208,13 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
                assert(endRow>=strRow);
                assert(strRow>=0);
 
-               dague_pxmp_si_color_rectangle(strCol, endCol, strRow, endRow, mt*mb, nt*nb);
+               dague_pxmp_si_color_rectangle(strCol, endCol, strRow, endRow, mt*mb, nt*nb, ratio);
            } while( NULL != mapEntry->elements[map_elem_count].ptr );
 
        }
     }
-    dague_pxmp_si_dump_image("test2.png", mt*mb*nt*nb);
+    printf("### Average Fill Ratio: %f\n",aaa/bbb);
+    dague_pxmp_si_dump_image("test2.png", (ratio*ratio));
 #endif
 
     return;
