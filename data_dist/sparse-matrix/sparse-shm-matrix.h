@@ -48,6 +48,8 @@ typedef struct dague_tssm_tile_entry {
     uint32_t nbreaders;
     uint32_t status;
 
+    int32_t  worker_id;
+
     void    *tile;
     int32_t  tile_owner; /**< Thread rank of the thread that allocated the tile */
 } dague_tssm_tile_entry_t;
