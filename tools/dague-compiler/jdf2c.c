@@ -2227,6 +2227,7 @@ static void jdf_generate_code_flow_initialization(const jdf_t *jdf, const char *
                 "    %s = dague_tssm_data_expand(ADATA(g%s), %d, context->eu_id);\n"
                 "    if( %s == (void*)1 ) {\n"
                 "      /* Put this task back */\n"
+                "      DAGUE_LIST_ITEM_SINGLETON( (dague_list_item_t*)exec_context );\n"
                 "      __dague_schedule(context, exec_context, 0);\n"
                 "      /* Release previously expanded data */\n"
                 "%s"
