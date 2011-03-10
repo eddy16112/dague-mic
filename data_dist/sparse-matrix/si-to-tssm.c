@@ -162,9 +162,9 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
                 mapEntry->fill_ratio = -1;
 #ifdef COMPUTE_FILL_RATIO
                 { // Just to have my own scope
-                uint64_t filled_data = 0;
+                uint64_t map_elem_count=0, filled_data = 0;
                 do {
-                    dague_tssm_data_map_elem_t *mp = &mapEntries->elements[map_elem_count++];
+                    dague_tssm_data_map_elem_t *mp = &mapEntry->elements[map_elem_count++];
 
                     filled_data += mp->w * mp->h;
                 } while( NULL != mapEntry->elements[map_elem_count].ptr );
@@ -172,7 +172,6 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
                 mapEntry->fill_ratio = (float)filled_data/((float)mb*(float)nb);
                 }
 #endif
-                mapEntry->elements[blocksInTile].ptr = NULL; /* Just being ridiculous */
 
                 /* Pass the meta-data to the LRU handling code */
                 dague_tssm_mesh_create_tile(mesh, j, i, mb, nb, mapEntry);
@@ -186,12 +185,12 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
            dague_tssm_tile_entry_t *meta_data = mesh->mesh[j*nt+i];
            if( NULL == meta_data )
                continue;
-           dague_tssm_data_map_t *mapEntries = meta_data->packed_ptr;
+           dague_tssm_data_map_t *mapEntry = meta_data->packed_ptr;
 
            do {
                dague_int_t strCol, endCol;
                dague_int_t endRow, strRow;
-               dague_tssm_data_map_elem_t *mp = &mapEntries->elements[map_elem_count++];
+               dague_tssm_data_map_elem_t *mp = &mapEntry->elements[map_elem_count++];
 
 
                strCol = i*nb+(mp->offset)/mb;
@@ -204,7 +203,7 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
                assert(strRow>=0);
 
                dague_pxmp_si_color_rectangle(strCol, endCol, strRow, endRow, mt*mb, nt*nb);
-           } while( NULL != mapEntries[map_elem_count].ptr );
+           } while( NULL != mapEntry->elements[map_elem_count].ptr );
 
        }
     }
