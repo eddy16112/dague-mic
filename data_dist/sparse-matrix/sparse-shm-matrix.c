@@ -17,10 +17,21 @@
 #undef MAX
 #define MAX(a, b) (((a) < (b))?(b):(a))
 
+
+#if defined(DAGUE_DEBUG)
+#define CHECK_AND_RETURN(v) do { \
+    assert( (v) != NULL );       \
+    return (v);                  \
+    } while(0)
+#else
+#define CHECK_AND_RETURN(v) return (v)
+#endif
+
 static dague_linked_list_t  used_tiles;
 static dague_linked_list_t *dirty_tiles = NULL;
 static dague_linked_list_t *clean_tiles = NULL;
 static dague_atomic_lifo_t *free_tiles = NULL;
+static size_t all_tiles_size = 0;
 uint32_t dague_tssm_nbthreads = 0;
 
 static void *dague_tssm_thread_init(void *_p)
@@ -53,7 +64,6 @@ void dague_tssm_init(uint32_t nbthreads, size_t tile_size, uint32_t nbtilesperth
     uint64_t **tp;
 
     tid = (pthread_t*)malloc(nbthreads*sizeof(pthread_t));
-    memset(tid, 0, nbthreads*sizeof(pthread_t));
     assert( 0 == dague_tssm_nbthreads );
     assert( NULL == dirty_tiles );
     assert( NULL == clean_tiles );
@@ -65,6 +75,8 @@ void dague_tssm_init(uint32_t nbthreads, size_t tile_size, uint32_t nbtilesperth
     dirty_tiles = (dague_linked_list_t*)malloc( nbthreads * sizeof(dague_linked_list_t) );
     clean_tiles = (dague_linked_list_t*)malloc( nbthreads * sizeof(dague_linked_list_t) );
     free_tiles = (dague_atomic_lifo_t*)malloc( nbthreads * sizeof(dague_atomic_lifo_t) );
+
+    all_tiles_size = tile_size;
 
     tp = (uint64_t**)malloc( nbthreads * 3 * sizeof(uint64_t) );
     for(i = 0; i < nbthreads; i++) {
@@ -171,6 +183,11 @@ static int dague_tssm_cleanup_some_tile(int thid)
                  */
                 dague_atomic_unlock(&victim->lock);
                 continue;
+            }
+            if( NULL == victim->tile ) {
+                /* Another possible bad luck: somebody else has cleaned it */
+                dague_atomic_unlock(&victim->lock);
+                continue;;
             }
             /* Possible candidate: at least right now, nobody is using this tile
              * Let everybody know that I'm packing it. Hopefully, nobody will be dumb
@@ -296,7 +313,7 @@ void *dague_tssm_data_of(struct dague_ddesc *desc, ...)
     assert( NULL != mat->mesh );
     assert( (m < mat->super.mt) && (n < mat->super.nt) );
 
-    return (void*)mat->mesh[ m * mat->super.nt + n ];
+    return (void*)mat->mesh[ n * mat->super.mt + m ];
 }
 
 void *dague_tssm_data_expand(void *metadata, int write_access, int this_thread)
@@ -311,8 +328,9 @@ void *dague_tssm_data_expand(void *metadata, int write_access, int this_thread)
         return (void*)( (intptr_t)metadata & (~0x1) );
     }
     mat = tptr->desc;
+    (void)mat;
 
-    DEBUG(("Expanding tile %p at %d, %d, for thread %d in %s mode\n", 
+    DEBUG(("Expanding tile %p at %lu, %lu, for thread %d in %s mode\n", 
            tptr, tptr->m, tptr->n, this_thread, write_access ? "write" : "read" ));
 
     dague_atomic_lock( &tptr->lock );
@@ -322,6 +340,8 @@ void *dague_tssm_data_expand(void *metadata, int write_access, int this_thread)
      */
     if( tptr->status & TILE_STATUS_UNPACKING ) {
         dague_atomic_unlock( &tptr->lock );
+        DEBUG(("Another thread is already unpacking: expansion of tile %p at %lu, %lu for thread %d in %s mode delayed\n",
+               tptr, tptr->m, tptr->n, this_thread, write_access ? "write" : "read" ));
         return (void*)1;
     }
 
@@ -336,6 +356,8 @@ void *dague_tssm_data_expand(void *metadata, int write_access, int this_thread)
                 /** Oops: somebody decided to pack this tile...
                  *  can't write while this is going on
                  */
+                DEBUG(("Another thread decided to pack while trying to access tile for writing: expansion of tile %p at %lu, %lu for thread %d in %s mode delayed\n",
+                       tptr, tptr->m, tptr->n, this_thread, write_access ? "write" : "read" ));
                 dague_atomic_unlock( &tptr->lock );
                 return (void*)1;
             }
@@ -345,7 +367,7 @@ void *dague_tssm_data_expand(void *metadata, int write_access, int this_thread)
             tptr->status = TILE_STATUS_DIRTY;
             tptr->writer = this_thread;
             dague_atomic_unlock( &tptr->lock );
-            return tptr->tile;
+            CHECK_AND_RETURN( tptr->tile );
         } else {
             assert( tptr->writer == -1 );
             /** We don't care if the tile is being packed right now.
@@ -354,32 +376,38 @@ void *dague_tssm_data_expand(void *metadata, int write_access, int this_thread)
             tptr->nbreaders++;
             dague_tssm_move_tiles_locked( &used_tiles, tptr );
             dague_atomic_unlock( &tptr->lock );
-            return tptr->tile;
+            CHECK_AND_RETURN( tptr->tile );
         }
     } else {
-        /** This page is not there, and nobody is trying to pick it up 
-         *  Mark that we are unpacking it, find a tile to unpack, and unpack it
+        /** This tile is not here, and nobody is trying to pick it up yet.
+         *  Mark that we are unpacking it, note that this tile is in use,
+         *  find a tile space to unpack, and unpack it
          */
         tptr->status = TILE_STATUS_UNPACKING;
+
+        if( write_access ) {
+            tptr->status   |= TILE_STATUS_DIRTY;
+            tptr->writer    = this_thread;
+            tptr->nbreaders = 0;
+        } else {
+            tptr->writer    = -1;
+            tptr->nbreaders = 1;
+        }
         dague_atomic_unlock( &tptr->lock );
         
         dague_tssm_reclaim_tile(this_thread, 1, tptr);
         
+        memset(tptr->tile, 0, all_tiles_size);
         mat->unpack(tptr->tile, tptr->m, tptr->n, mat->super.mb, mat->super.nb, tptr->packed_ptr);
-        
+
         dague_atomic_lock( &tptr->lock );
-        if( write_access ) {
-            tptr->status    = TILE_STATUS_DIRTY;
-            tptr->writer    = this_thread;
-            tptr->nbreaders = 0;
-        } else {
-            tptr->status    = 0;
-            tptr->writer    = -1;
-            tptr->nbreaders = 1;
-        }
+        /* Done with the unpacking */
+        tptr->status &= ~TILE_STATUS_UNPACKING;
+        /* Bookeeping of the tile */
         dague_tssm_move_tiles_locked( &used_tiles, tptr );
         dague_atomic_unlock( &tptr->lock );
-        return tptr->tile;
+
+        CHECK_AND_RETURN( tptr->tile );
     }
 }
 
@@ -394,7 +422,7 @@ void dague_tssm_data_release(void *metadata, int write_access, int this_thread)
         return;
     }
 
-    DEBUG(("Releasing tile %p at %d, %d, used by thread %d in %s mode\n", 
+    DEBUG(("Releasing tile %p at %lu, %lu, used by thread %d in %s mode\n", 
            tptr, tptr->m, tptr->n, this_thread, write_access ? "write" : "read" ));
     
     dague_atomic_lock( &tptr->lock );
@@ -475,6 +503,7 @@ int dague_tssm_flush_matrix(dague_ddesc_t *_mat)
                 if( tptr->current_list == &clean_tiles[thid] ) {
                     dague_linked_list_remove_item(tptr->current_list, &tptr->super);
                     tptr->current_list = NULL;
+                    DAGUE_LIST_ITEM_SINGLETON((dague_list_item_t*)tptr->tile);
                     dague_atomic_lifo_push( &free_tiles[ tptr->tile_owner ], (dague_list_item_t*)tptr->tile );
                     tptr->tile = NULL;
                     tptr->tile_owner = -1;
@@ -493,6 +522,7 @@ int dague_tssm_flush_matrix(dague_ddesc_t *_mat)
                                   mat->mb, mat->nb, 
                                   tptr->packed_ptr);
                         
+                        DAGUE_LIST_ITEM_SINGLETON((dague_list_item_t*)tptr->tile);
                         dague_atomic_lifo_push( &free_tiles[ tptr->tile_owner ], (dague_list_item_t*)tptr->tile );
                         tptr->tile = NULL;
                         tptr->tile_owner = -1;
@@ -541,6 +571,7 @@ static void *dague_tssm_flush_matrix_thread(void *_param)
     }
     while( (tptr = (dague_tssm_tile_entry_t *)dague_linked_list_remove_head( &todo )) ) {
         tptr->current_list = NULL;
+        DAGUE_LIST_ITEM_SINGLETON((dague_list_item_t*)tptr->tile);
         dague_atomic_lifo_push( &free_tiles[ tptr->tile_owner ], (dague_list_item_t*)tptr->tile );
         tptr->tile = NULL;
         tptr->tile_owner = -1;
@@ -562,6 +593,7 @@ static void *dague_tssm_flush_matrix_thread(void *_param)
                   mat->super.mb, mat->super.nb, 
                   tptr->packed_ptr);
 
+        DAGUE_LIST_ITEM_SINGLETON((dague_list_item_t*)tptr->tile);
         dague_atomic_lifo_push( &free_tiles[ tptr->tile_owner ], (dague_list_item_t*)tptr->tile );
         tptr->tile = NULL;
         tptr->tile_owner = -1;
