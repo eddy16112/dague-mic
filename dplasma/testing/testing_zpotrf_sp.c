@@ -11,8 +11,63 @@
 #include "data_dist/matrix/precision.h"
 #include "data_dist/sparse-matrix/sparse-shm-matrix.h"
 #include "data_dist/sparse-matrix/sparse-input.h"
+#include "dplasma/lib/flops.h"
 #include <pastix.h>
 #include <read_matrix.h>
+/*
+#undef FLOPS_POTRF
+#define FLOPS_POTRF(n) 1.0
+
+#undef FLOPS_TRSM_R
+#define FLOPS_TRSM_R(m, n) 1.0
+
+#undef FLOPS_HERK(m, n)
+#define FLOPS_HERK(m, n) 1.0
+
+#undef FLOPS_GEMM(m, n, k)
+#define FLOPS_GEMM(m, n, k) 3.0
+*/
+static double tssm_cholesky_compute_flops(dague_tssm_desc_t *mesh)
+{
+    uint64_t k, m, n;
+    double flops = 0.;
+
+#define Mat(__mat, __m, __n) ((__mat)->mesh[ (__n) * (__mat)->super.mt + (__m) ])
+    /* Todo: fix when using non square tiles. */
+    assert( mesh->super.mb == mesh->super.nb );
+
+    for (k = 0; k < mesh->super.mt; k++) {
+        assert( NULL != Mat(mesh, k, k) );
+        flops += FLOPS_POTRF((double)mesh->super.mb);
+
+        for (m = k+1; m < mesh->super.mt; m++) {
+            if( Mat(mesh, m, k) != NULL ) {
+                flops += FLOPS_TRSM_R((double)mesh->super.mb,
+                                      (double)mesh->super.nb);
+            }
+        }
+        for (m = k+1; m < mesh->super.mt; m++) {
+            assert( NULL != Mat(mesh, m, m) );
+            if( Mat(mesh, m, k) != NULL ) {
+                flops += FLOPS_HERK((double)mesh->super.mb, 
+                                    (double)mesh->super.nb);
+                for (n = k+1; n < m; n++) {
+                    if( Mat(mesh, n, k) != NULL ) {
+                        assert( Math(mesh, m, n) != NULL );
+                        flops += FLOPS_GEMM((double)mesh->super.mb,
+                                            (double)mesh->super.mb,
+                                            (double)mesh->super.mb);
+                        flops += (double)mesh->super.mb * (double)mesh->super.nb;
+                    }
+                }
+            }
+        }
+    }
+
+#undef Mat
+
+    return flops;
+}
 
 /* #if defined(HAVE_CUDA) && defined(PRECISION_s) */
 /* #include "cuda_sgemm.h" */
@@ -32,6 +87,7 @@ int main(int argc, char ** argv)
     dague_context_t* dague;
     dsp_context_t    dspctxt;
     int iparam[IPARAM_SIZEOF];
+    double flops;
 
     /* Set defaults for non argv iparams */
     iparam_default_facto(iparam);
@@ -69,6 +125,10 @@ int main(int argc, char ** argv)
     dague_tssm_zmatrix_init(&ddescA, matrix_ComplexDouble, 
                             cores, MB, NB, dspctxt.n, dspctxt.n, 0, 0, 
                             dspctxt.n, dspctxt.n, dspctxt.symbmtx);
+
+    flops = tssm_cholesky_compute_flops(&ddescA);
+
+    printf("Number of floating points operations: %g GFLOPs\n", flops/1.e9);
 
     dplasma_zpotrf_sp(dague, &ddescA);
 

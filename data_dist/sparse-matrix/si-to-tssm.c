@@ -69,51 +69,51 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
 	    cblktab[cblknbr-1].lcolnum, cblktab[cblknbr-1].fcolnum,
 	    cblktab[cblknbr-1].stride);
 
-    for(i=0; i<nt; i++){
+    for(j=0; j<nt; j++){
        /* We are filling up the meta-data structures of the tiles that are in
-        * the i-th column. So, we need to find 
+        * the j-th column. So, we need to find 
         * a) fbc = the first block column whose last column is >= than the
-        *    begining of the i-th tile and 
+        *    begining of the j-th tile column and 
         * b) lbc = the last block column whose first column is < than the
-        *    begining of the (i+1)-th tile (or <= than the end of the i-th tile).
+        *    begining of the (j+1)-th tile column (or <= than the end of the j-th tile column).
         */
-        fbc = lbc; /* start from where we left before */
-        for(; (fbc < cblknbr) && (cblktab[fbc].lcolnum < i*nb); fbc++)
+        fbc = lbc = 0; /* start from where we left before */
+        for(; (fbc < cblknbr) && (cblktab[fbc].lcolnum < j*nb); fbc++)
             ;
    
-        for(lbc=fbc; (lbc < cblknbr) && (cblktab[lbc].fcolnum < (i+1)*nb); lbc++)
+        for(lbc=fbc; (lbc < cblknbr) && (cblktab[lbc].fcolnum < (j+1)*nb); lbc++)
             ;
         --lbc;
 
         // If there are no block columns for this tile column, skip it
-        if( cblktab[fbc].fcolnum >= (i+1)*nb )
+        if( cblktab[fbc].fcolnum >= (j+1)*nb )
             continue;
 
-	/* Now for each tile "j" of this column, populare the map data structure,
+        /* Now for each tile "i, j" (j is this column), populate the map data structure,
          * by looking at every block column from fbc to lbc (inclusive) to see if
-         * it has data that belongs to the j-the tile 
+         * it has data that belongs to the i, j tile 
          */
-        for(j=0; j<mt; j++){
+        for(i=0; i<mt; i++){
             dague_int_t blocksInTile = 0;
             for(bc=fbc; bc<=lbc; bc++){
                 dague_int_t endCol, strCol;
                 dague_int_t dx, dy, off_x, off_y, ldA;
 
-                /* Find the edges of the intersection of the i-th column of
+                /* Find the edges of the intersection of the j-th column of
                  * tiles and the "bc"-th block column.
                  */
-                endCol = MIN( cblktab[bc].lcolnum , (i+1)*nb-1 );
-                strCol = MAX( cblktab[bc].fcolnum , i*nb );
+                endCol = MIN( cblktab[bc].lcolnum , (j+1)*nb-1 );
+                strCol = MAX( cblktab[bc].fcolnum , j*nb );
                 assert( endCol >= strCol );
 
-                /* The offset from the beginning of this block to the beginning of the tile */
+                /* The horizontal offset from the beginning of this block to the beginning of the tile */
                 dx = strCol - cblktab[bc].fcolnum;
-                /* The offset from the beginning of the tile to the data of this block */
-                off_x = strCol - i*nb;
+                /* The horizontal offset from the beginning of the tile to the data of this block */
+                off_x = strCol - j*nb;
                 ldA = cblktab[bc].stride;
 
                 /* For each block column iterate over all the blocks it contains
-                 * and see if they have rows that map to the j-the tile.
+                 * and see if they have rows that map to the i, j tile.
                  */
                 dague_int_t fb=cblktab[bc].bloknum;
                 /* The first block in the next column is just one past my last block */
@@ -124,19 +124,19 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
                     /* check if the b-th block has a first row that is not bigger than
                      * my last row and a last row that is not smaller than my first row
                      */
-                    if( bloktab[b].frownum >= (j+1)*mb )
+                    if( bloktab[b].frownum >= (i+1)*mb )
                         continue;
-                    if( bloktab[b].lrownum < j*mb )
+                    if( bloktab[b].lrownum < i*mb )
                         continue;
 
-                    /* Find the edges of the intersection of the j-th row of
+                    /* Find the edges of the intersection of the i-th row of
                      * tiles and the "b"-th block of the "bc"-th block column.
                      */
-                    endRow = MIN( bloktab[b].lrownum , (j+1)*mb-1 );
-                    strRow = MAX( bloktab[b].frownum , j*mb );
+                    endRow = MIN( bloktab[b].lrownum , (i+1)*mb-1 );
+                    strRow = MAX( bloktab[b].frownum , i*mb );
                     dy = strRow - bloktab[b].frownum;
-                    off_y = strRow - j*mb;
-                    ptr_offset = dx*ldA + bloktab[b].coefind + dy;
+                    off_y = strRow - i*mb;
+                    ptr_offset = bloktab[b].coefind + dx*ldA + dy;
                     tmp_map_buf[blocksInTile].ptr = (void*)( ((uintptr_t)cblktab[bc].cblkptr) + ptr_offset*elem_size);
                     tmp_map_buf[blocksInTile].ldA = ldA;
                     tmp_map_buf[blocksInTile].h = endRow - strRow + 1;
@@ -167,21 +167,22 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
                 mapEntry->map_elem_count = map_elem_count;
 
                 /* Pass the meta-data to the LRU handling code */
-                dague_tssm_mesh_create_tile(mesh, j, i, mb, nb, mapEntry);
+                dague_tssm_mesh_create_tile(mesh, i, j, mb, nb, mapEntry);
             }
         }
     }
 #ifdef GEN_DEBUG_PIXMAP
     float fill_ratio_sum = 0;
     float non_empty_tile_count = 0;
-    for(j=0; j<mt; j++){
-        for(i=0; i<nt; i++){
+    for(i=0; i<mt; i++){
+        for(j=0; j<nt; j++){
            dague_int_t map_elem_count=0;
-           dague_tssm_tile_entry_t *meta_data = mesh->mesh[j*nt+i];
+           dague_tssm_tile_entry_t *meta_data = mesh->mesh[j*mt+i];
            if( NULL == meta_data )
                continue;
            dague_tssm_data_map_t *mapEntry = meta_data->packed_ptr;
 
+           assert( j > i /* This assert holds for Cholesky only */ );
            assert( mapEntry->map_elem_count > 0 );
            assert( NULL != mapEntry->elements[0].ptr );
 
@@ -193,11 +194,11 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
                dague_int_t endRow, strRow;
                dague_tssm_data_map_elem_t *mp = &mapEntry->elements[map_elem_count++];
 
-               strCol = i*nb+(mp->offset)/mb;
+               strCol = j*nb+(mp->offset)/mb;
                endCol = strCol+(mp->w)-1;
                assert(endCol>=strCol);
                assert(strCol>=0);
-               strRow = j*mb+(mp->offset)%mb;
+               strRow = i*mb+(mp->offset)%mb;
                endRow = strRow+(mp->h)-1;
                assert(endRow>=strRow);
                assert(strRow>=0);
@@ -207,7 +208,7 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
 
        }
     }
-    printf("## Average Tile Fill Ratio: %f\n   Non-empty tile count: %.0f (%.2f%%)\n   Total tile count: (%ldx%ld)=%ld\n",fill_ratio_sum/non_empty_tile_count, non_empty_tile_count, 100*non_empty_tile_count/(nt*mt), nt, mt, nt*mt);
+    printf("## Average Tile Fill Ratio: %f\n   Non-empty tile count: %.0f (%.2f%%)\n   Total tile count: (%ldx%ld)=%ld\n",fill_ratio_sum/non_empty_tile_count, non_empty_tile_count, 100.0*non_empty_tile_count/(nt*mt), nt, mt, nt*mt);
     dague_pxmp_si_dump_image("test2.png", (ratio*ratio));
 #endif
 

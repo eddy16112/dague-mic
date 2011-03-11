@@ -480,7 +480,7 @@ void dague_tssm_mesh_create_tile(dague_tssm_desc_t *mesh,
                                  uint32_t mb, uint32_t nb, 
                                  dague_tssm_data_map_t *packed_ptr)
 {
-    dague_tssm_tile_entry_t *e;
+    dague_tssm_tile_entry_t *e = NULL;
     assert( (m < mesh->super.mt) && (n < mesh->super.nt) );
     if( NULL != packed_ptr ) {
         e = (dague_tssm_tile_entry_t*)calloc(1, sizeof(dague_tssm_tile_entry_t));
@@ -498,10 +498,8 @@ void dague_tssm_mesh_create_tile(dague_tssm_desc_t *mesh,
         e->desc = mesh;
         assert( mesh->super.mb == mb &&
                 mesh->super.nb == nb );
-    } else {
-        e = NULL;
-    }
-    mesh->mesh[ m * mesh->super.nt + n ] = e;
+    } 
+    mesh->mesh[ n * mesh->super.mt + m ] = e;
 }
 
 #if defined(DAGUE_DEBUG)
@@ -515,7 +513,7 @@ int dague_tssm_flush_matrix(dague_ddesc_t *_mat)
     errors = 0;
     for(m = 0; m < mat->super.mt; m++) {
         for(n = 0; n < mat->super.nt; n++) {
-            tptr = mat->mesh[ m * mat->super.nt + n ];
+            tptr = mat->mesh[ n * mat->super.mt + m ];
             if( NULL == tptr )
                 continue;
             dague_atomic_lock( &tptr->lock );

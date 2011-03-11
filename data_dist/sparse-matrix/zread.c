@@ -210,7 +210,9 @@ int dague_sparse_zrdmtx( dsp_context_t *dspctxt )
         
         while ( ! (bloknum < symbptr->cblktab[cblknum+1].bloknum) )
           cblknum++;
-        
+
+        symbptr->bloktab[bloknum].coefind = symbptr->cblktab[cblknum].stride;        
+
         symbptr->cblktab[cblknum].stride += symbptr->bloktab[bloknum].lrownum 
             - symbptr->bloktab[bloknum].frownum + 1;
     }
