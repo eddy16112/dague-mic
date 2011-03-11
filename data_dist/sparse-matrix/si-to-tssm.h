@@ -43,11 +43,17 @@ typedef struct dague_tssm_data_map_elem {
 } dague_tssm_data_map_elem_t;
 
 typedef struct dague_tssm_data_map {
-    float fill_ratio;
+    uint64_t filled_data;
+    uint64_t map_elem_count;
     dague_tssm_data_map_elem_t elements[1];
 } dague_tssm_data_map_t;
 
 struct dague_tssm_desc;
+
+void dague_tssm_ztile_compress(void **compr_tile_ptr, dague_int_t *extent, dague_tssm_data_map_t *map);
+void dague_tssm_ctile_compress(void **compr_tile_ptr, dague_int_t *extent, dague_tssm_data_map_t *map);
+void dague_tssm_dtile_compress(void **compr_tile_ptr, dague_int_t *extent, dague_tssm_data_map_t *map);
+void dague_tssm_stile_compress(void **compr_tile_ptr, dague_int_t *extent, dague_tssm_data_map_t *map);
 
 int  dague_tssm_ztile_unpack(void *tile_ptr, dague_int_t m, dague_int_t n, dague_int_t mb, dague_int_t nb, dague_tssm_data_map_t *map);
 void dague_tssm_ztile_pack(  void *tile_ptr, dague_int_t m, dague_int_t n, dague_int_t mb, dague_int_t nb, dague_tssm_data_map_t *map);

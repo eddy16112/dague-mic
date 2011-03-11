@@ -7,8 +7,6 @@
 #include "data_dist/sparse-matrix/si-to-tssm.h"
 #include "data_dist/sparse-matrix/sparse-shm-matrix.h"
 
-#define COMPUTE_FILL_RATIO
-
 #define GEN_DEBUG_PIXMAP
 #ifdef GEN_DEBUG_PIXMAP
 # include "data_dist/sparse-matrix/debug-png-generation.h"
@@ -72,9 +70,6 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
 	    cblktab[cblknbr-1].stride);
 
     for(i=0; i<nt; i++){
-//        fbc = 0;
-//        lbc = 0;
-        
        /* We are filling up the meta-data structures of the tiles that are in
         * the i-th column. So, we need to find 
         * a) fbc = the first block column whose last column is >= than the
@@ -154,25 +149,20 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
                 }
             }
             if( blocksInTile > 0 ){
+                uint64_t map_elem_count=0, filled_data = 0;
                 /* Put the meta-data in a buffer with just one extra element */
                 uint64_t map_size = sizeof(dague_tssm_data_map_t)+(blocksInTile*sizeof(dague_tssm_data_map_elem_t));
                 dague_tssm_data_map_t *mapEntry = (dague_tssm_data_map_t *)calloc(map_size, 1);
-                //dague_tssm_data_map_t *mapEntry = (dague_tssm_data_map_t *)calloc(1+blocksInTile, sizeof(dague_tssm_data_map_t));
                 memcpy(mapEntry->elements, tmp_map_buf, blocksInTile*sizeof(dague_tssm_data_map_elem_t));
                 mapEntry->elements[blocksInTile].ptr = NULL; /* Just being ridiculous */
-                mapEntry->fill_ratio = -1;
-#ifdef COMPUTE_FILL_RATIO
-                { // Just to have my own scope
-                uint64_t map_elem_count=0, filled_data = 0;
+
+                /* Count the number of non-zero elements of this tile (filled data) */
                 do {
                     dague_tssm_data_map_elem_t *mp = &mapEntry->elements[map_elem_count++];
-
                     filled_data += mp->w * mp->h;
                 } while( NULL != mapEntry->elements[map_elem_count].ptr );
-
-                mapEntry->fill_ratio = (float)filled_data/((float)mb*(float)nb);
-                }
-#endif
+                mapEntry->filled_data = filled_data;
+                mapEntry->map_elem_count = map_elem_count;
 
                 /* Pass the meta-data to the LRU handling code */
                 dague_tssm_mesh_create_tile(mesh, j, i, mb, nb, mapEntry);
@@ -180,8 +170,8 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
         }
     }
 #ifdef GEN_DEBUG_PIXMAP
-    float aaa =0;
-    float bbb = 0;
+    float fill_ratio_sum = 0;
+    float non_empty_tile_count = 0;
     for(j=0; j<mt; j++){
         for(i=0; i<nt; i++){
            dague_int_t map_elem_count=0;
@@ -190,14 +180,13 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
                continue;
            dague_tssm_data_map_t *mapEntry = meta_data->packed_ptr;
 
+           fill_ratio_sum += (float)(mapEntry->filled_data)/(float)(nb*mb);
+           non_empty_tile_count++;
+
            do {
                dague_int_t strCol, endCol;
                dague_int_t endRow, strRow;
                dague_tssm_data_map_elem_t *mp = &mapEntry->elements[map_elem_count++];
-
-               aaa += mapEntry->fill_ratio;
-               bbb ++;
-
 
                strCol = i*nb+(mp->offset)/mb;
                endCol = strCol+(mp->w)-1;
@@ -213,7 +202,7 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
 
        }
     }
-    printf("### Average Fill Ratio: %f\n",aaa/bbb);
+    printf("### Average Fill Ratio: %f\n   Non-empty tile count: %d\n\n",fill_ratio_sum/non_empty_tile_count, non_empty_tile_count);
     dague_pxmp_si_dump_image("test2.png", (ratio*ratio));
 #endif
 
