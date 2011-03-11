@@ -150,9 +150,11 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
             }
             if( blocksInTile > 0 ){
                 uint64_t map_elem_count=0, filled_data = 0;
-                /* Put the meta-data in a buffer with just one extra element */
+                /* Allocate a buffer with one extra element than we need */
                 uint64_t map_size = sizeof(dague_tssm_data_map_t)+(blocksInTile*sizeof(dague_tssm_data_map_elem_t));
                 dague_tssm_data_map_t *mapEntry = (dague_tssm_data_map_t *)calloc(map_size, 1);
+
+                /* Put the meta-data in the newly allocated buffer */
                 memcpy(mapEntry->elements, tmp_map_buf, blocksInTile*sizeof(dague_tssm_data_map_elem_t));
                 mapEntry->elements[blocksInTile].ptr = NULL; /* Just being ridiculous */
 
@@ -180,6 +182,9 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
                continue;
            dague_tssm_data_map_t *mapEntry = meta_data->packed_ptr;
 
+           assert( mapEntry->map_elem_count > 0 );
+           assert( NULL != mapEntry->elements[0].ptr );
+
            fill_ratio_sum += (float)(mapEntry->filled_data)/(float)(nb*mb);
            non_empty_tile_count++;
 
@@ -202,7 +207,7 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
 
        }
     }
-    printf("### Average Fill Ratio: %f\n   Non-empty tile count: %d\n\n",fill_ratio_sum/non_empty_tile_count, non_empty_tile_count);
+    printf("## Average Tile Fill Ratio: %f\n   Non-empty tile count: %.0f (%.2f%%)\n   Total tile count: (%ldx%ld)=%ld\n",fill_ratio_sum/non_empty_tile_count, non_empty_tile_count, 100*non_empty_tile_count/(nt*mt), nt, mt, nt*mt);
     dague_pxmp_si_dump_image("test2.png", (ratio*ratio));
 #endif
 
