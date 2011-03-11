@@ -37,7 +37,6 @@ static double tssm_cholesky_compute_flops(dague_tssm_desc_t *mesh)
     assert( mesh->super.mb == mesh->super.nb );
 
     for (k = 0; k < mesh->super.mt; k++) {
-        assert( NULL != Mat(mesh, k, k) );
         flops += FLOPS_POTRF((double)mesh->super.mb);
 
         for (m = k+1; m < mesh->super.mt; m++) {
@@ -47,13 +46,12 @@ static double tssm_cholesky_compute_flops(dague_tssm_desc_t *mesh)
             }
         }
         for (m = k+1; m < mesh->super.mt; m++) {
-            assert( NULL != Mat(mesh, m, m) );
             if( Mat(mesh, m, k) != NULL ) {
                 flops += FLOPS_HERK((double)mesh->super.mb, 
                                     (double)mesh->super.nb);
                 for (n = k+1; n < m; n++) {
-                    if( Mat(mesh, n, k) != NULL ) {
-                        assert( Math(mesh, m, n) != NULL );
+                    if( Mat(mesh, n, k) != NULL &&
+                        Mat(mesh, m, n) != NULL ) {
                         flops += FLOPS_GEMM((double)mesh->super.mb,
                                             (double)mesh->super.mb,
                                             (double)mesh->super.mb);
