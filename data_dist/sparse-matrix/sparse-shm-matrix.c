@@ -15,9 +15,8 @@
 
 /*
 #undef DEBUG
-#define DEBUG(a) printf a
+#define DEBUG(a) do { printf a; fflush(stdout); } while(0)
 */
-
 #undef MAX
 #define MAX(a, b) (((a) < (b))?(b):(a))
 
@@ -30,7 +29,6 @@
 #define CHECK_AND_RETURN(v) return (v)
 #endif
 
-static dague_linked_list_t  used_tiles;
 static dague_linked_list_t *dirty_tiles = NULL;
 static dague_linked_list_t *clean_tiles = NULL;
 static dague_linked_list_t *free_tiles = NULL;
@@ -73,7 +71,6 @@ void dague_tssm_init(uint32_t nbthreads, size_t tile_size, uint32_t nbtilesperth
 
     dague_tssm_nbthreads = nbthreads;
 
-    dague_linked_list_construct( &used_tiles );
     dirty_tiles = (dague_linked_list_t*)malloc( nbthreads * sizeof(dague_linked_list_t) );
     clean_tiles = (dague_linked_list_t*)malloc( nbthreads * sizeof(dague_linked_list_t) );
     free_tiles = (dague_linked_list_t*)malloc( nbthreads * sizeof(dague_linked_list_t) );
@@ -180,10 +177,11 @@ static int dague_tssm_reclaim_clean_tile(int this_thread, int find_in_other_thre
     return 0;
 }
 
-static void *dague_tssm_cleanup_some_tile(int thid)
+static int dague_tssm_cleanup_some_tile(int thid, dague_tssm_tile_entry_t *tptr)
 {
     dague_tssm_tile_entry_t *victim;
     void *tile;
+    int tile_owner;
     do {
         victim = (dague_tssm_tile_entry_t *)dague_linked_list_remove_head( &dirty_tiles[thid] );
         if( NULL != victim ) {
@@ -226,8 +224,20 @@ static void *dague_tssm_cleanup_some_tile(int thid)
             if( (victim->nbreaders == 0) && (victim->writer == -1) ) {
                 tile = victim->tile;
                 victim->tile = NULL;
+                if( victim->current_list != NULL ) {
+                    assert( victim->tile_owner != -1 );
+                    assert( victim->current_list == &clean_tiles[victim->tile_owner] );
+                    dague_linked_list_remove_item( victim->current_list, (dague_list_item_t*)victim );
+                    victim->current_list = NULL;
+                }
+                tile_owner = victim->tile_owner;
+                victim->tile_owner = -1;
                 dague_atomic_unlock(&victim->lock);
-                return tile;
+                dague_atomic_lock( &tptr->lock );
+                tptr->tile = tile;
+                tptr->tile_owner = tile_owner;;
+                dague_atomic_unlock( &tptr->lock );
+                return 1;
             }
             /* This tile has been cleaned, but it's now in use should be by a reader */
             /* Unlock it, and find another victim: it's in the used list, not the clean list */
@@ -237,7 +247,7 @@ static void *dague_tssm_cleanup_some_tile(int thid)
     } while( NULL != victim );
 
     /* Nothing else to clean */
-    return NULL;
+    return 0;
 }
 
 static void dague_tssm_reclaim_tile(int this_thread, int find_in_other_threads, dague_tssm_tile_entry_t *tptr)
@@ -268,11 +278,7 @@ static void dague_tssm_reclaim_tile(int this_thread, int find_in_other_threads, 
         /* Nope: I really need to reclaim a tile...
          * Let's try to move some from dirty to clean
          */
-        if( ( tile = dague_tssm_cleanup_some_tile(this_thread) ) != NULL ) {
-            dague_atomic_lock( &tptr->lock );
-            tptr->tile = tile;
-            tptr->tile_owner = 0;
-            dague_atomic_unlock( &tptr->lock );
+        if( dague_tssm_cleanup_some_tile(this_thread, tptr) ) {
             return;
         }
 
@@ -280,11 +286,7 @@ static void dague_tssm_reclaim_tile(int this_thread, int find_in_other_threads, 
             for(thid = ((this_thread + 1) % dague_tssm_nbthreads);
                 thid != this_thread;
                 thid = ((thid + 1) % dague_tssm_nbthreads) ) {
-                if( ( tile = dague_tssm_cleanup_some_tile(thid) ) != NULL ) {
-                    dague_atomic_lock( &tptr->lock );
-                    tptr->tile = tile;
-                    tptr->tile_owner = 0;
-                    dague_atomic_unlock( &tptr->lock );
+                if( dague_tssm_cleanup_some_tile(thid, tptr)  ) {                    
                     return;
                 }
             }
@@ -355,6 +357,10 @@ void *dague_tssm_data_expand(void *metadata, int write_access, int this_thread)
      *  Is the tile there?
      */
     if( NULL != tptr->tile ) {
+        if( NULL != tptr->current_list ) {
+            dague_linked_list_remove_item( tptr->current_list, (dague_list_item_t*)tptr );
+            tptr->current_list = NULL;
+        }
         if( write_access ) {
             assert( tptr->writer == -1 );
             assert( tptr->nbreaders == 0 );
@@ -371,21 +377,21 @@ void *dague_tssm_data_expand(void *metadata, int write_access, int this_thread)
             tptr->status = TILE_STATUS_DIRTY;
             tptr->worker_id = -1;
             tptr->writer = this_thread;
-            dague_tssm_move_tiles_locked( &used_tiles, tptr );
+            tptr->current_list = NULL;
         } else {
             assert( tptr->writer == -1 );
             /** We don't care if the tile is being packed right now.
              *  We just ensure that nobody is going to claim the
              *  tile out */
-            if( tptr->nbreaders == 0 ) 
-                dague_tssm_move_tiles_locked( &used_tiles, tptr );
+            if( tptr->nbreaders == 0 ) {
+                tptr->current_list = NULL;
+            }
             tptr->nbreaders++;
         }
         DEBUG(("Expanding tile %p at %lu, %lu, in memory [%p] for thread %d in %s mode\n", 
                tptr, tptr->m, tptr->n, tptr->tile, this_thread, write_access ? "write" : "read" ));
     } else {
         assert( NULL == tptr->current_list );
-        dague_tssm_move_tiles_locked( &used_tiles, tptr );
         assert( (tptr->status & TILE_STATUS_PACKING) == 0 );
         /** This tile is not here, and nobody is trying to pick it up yet.
          *  Mark that we are unpacking it, note that this tile is in use,
@@ -423,7 +429,7 @@ void *dague_tssm_data_expand(void *metadata, int write_access, int this_thread)
         }
     }
 
-    assert( tptr->current_list == &used_tiles );
+    assert( tptr->current_list == NULL );
     dague_atomic_unlock( &tptr->lock );
     CHECK_AND_RETURN( tptr->tile );
 }
@@ -453,10 +459,16 @@ void dague_tssm_data_release(void *metadata, int write_access, int this_thread)
            tptr->writer, tptr->nbreaders));
 
     if( (tptr->nbreaders == 0) && (tptr->writer == -1) ) {
-        assert( tptr->current_list == &used_tiles );
+        assert( tptr->current_list == NULL );
         if( tptr->status & TILE_STATUS_DIRTY ) {
+            DEBUG(("    Tile %p at %lu, %lu in memory [%p] released by thread %d in %s mode. Pushed in dirty_tiles[%d]\n",
+                   tptr, tptr->m, tptr->n, tptr->tile, this_thread, write_access ? "write" : "read",
+                   tptr->tile_owner));
             dague_tssm_move_tiles_locked( &dirty_tiles[tptr->tile_owner], tptr );
         } else {
+            DEBUG(("    Tile %p at %lu, %lu in memory [%p] released by thread %d in %s mode. Pushed in clean_tiles[%d]\n",
+                   tptr, tptr->m, tptr->n, tptr->tile, this_thread, write_access ? "write" : "read",
+                   tptr->tile_owner));
             dague_tssm_move_tiles_locked( &clean_tiles[tptr->tile_owner], tptr );
         }
     }
@@ -510,11 +522,11 @@ int dague_tssm_flush_matrix(dague_ddesc_t *_mat)
             if( tptr->status != 0 ||
                 tptr->writer != -1 ||
                 tptr->nbreaders != 0 ||
-                tptr->current_list == &used_tiles ) {
+                tptr->current_list == NULL ) {
                 dague_atomic_unlock( &tptr->lock );
                 fprintf(stderr, 
                         "dague:tssm:flush_matrix failed: [%lu, %lu] is not available for flushing:\n"
-                        "  status = %x, writer = %d, nbreaders = %u, current_list = used_tiles\n",
+                        "  status = %x, writer = %d, nbreaders = %u, current_list = NULL\n",
                         m, n,
                         tptr->status, tptr->writer, tptr->nbreaders);
                 errors++;
