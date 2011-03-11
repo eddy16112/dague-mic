@@ -35,26 +35,34 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
     uint64_t ratio = nb;
  
 #ifdef GEN_DEBUG_PIXMAP
-    for(bc=0; bc < cblknbr; bc++){
-        dague_int_t strCol, endCol, fb, lb;
+    {
+        uint64_t nnz = 0;
+        for(bc=0; bc < cblknbr; bc++){
+            dague_int_t strCol, endCol, fb, lb;
+            
+            strCol = cblktab[bc].fcolnum;
+            endCol = cblktab[bc].lcolnum;
+            
+            fb=cblktab[bc].bloknum;
+            /* The first block in the next column is just one past my last block */
+            lb=cblktab[bc+1].bloknum;
 
-        strCol = cblktab[bc].fcolnum;
-        endCol = cblktab[bc].lcolnum;
+            for(b=fb; b<lb; b++){
+                dague_int_t endRow, strRow;
+                strRow = bloktab[b].frownum;
+                endRow = bloktab[b].lrownum;
+                
+                assert( strRow >= strCol );
+                assert( endRow >= endCol );
 
-        fb=cblktab[bc].bloknum;
-        /* The first block in the next column is just one past my last block */
-        lb=cblktab[bc+1].bloknum;
-
-        for(b=fb; b<lb; b++){
-            dague_int_t endRow, strRow;
-            strRow = bloktab[b].frownum;
-            endRow = bloktab[b].lrownum;
-
-            dague_pxmp_si_color_rectangle(strCol, endCol, strRow, endRow, mt*mb, nt*nb, ratio);
+                nnz += (endRow-strRow+1) * (endCol-strCol+1);
+                dague_pxmp_si_color_rectangle(strCol, endCol, strRow, endRow, mt*mb, nt*nb, ratio);
+            }
+            
         }
-
+        dague_pxmp_si_dump_image("test.png", (ratio*ratio));
+        printf("Number of non Zero Elements in the input matrix: %llu\n", nnz);
     }
-    dague_pxmp_si_dump_image("test.png", (ratio*ratio));
 #endif /* GEN_PIXMAP */
 
     /* "tmp_map_buf" is guaranteed to fit the maximum number of meta-data
@@ -128,12 +136,13 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
                         continue;
                     if( bloktab[b].lrownum < i*mb )
                         continue;
-
+                    
                     /* Find the edges of the intersection of the i-th row of
                      * tiles and the "b"-th block of the "bc"-th block column.
                      */
                     endRow = MIN( bloktab[b].lrownum , (i+1)*mb-1 );
                     strRow = MAX( bloktab[b].frownum , i*mb );
+
                     dy = strRow - bloktab[b].frownum;
                     off_y = strRow - i*mb;
                     ptr_offset = bloktab[b].coefind + dx*ldA + dy;
@@ -182,7 +191,6 @@ void dague_sparse_input_to_tiles_load(dague_tssm_desc_t *mesh, dague_int_t mt, d
                continue;
            dague_tssm_data_map_t *mapEntry = meta_data->packed_ptr;
 
-           assert( j > i /* This assert holds for Cholesky only */ );
            assert( mapEntry->map_elem_count > 0 );
            assert( NULL != mapEntry->elements[0].ptr );
 
