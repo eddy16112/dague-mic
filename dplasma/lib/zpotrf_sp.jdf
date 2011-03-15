@@ -87,7 +87,8 @@ END
 /**************************************************
  *                      TRSM                      *
  **************************************************/
-TRSM(m, k) [high_priority = on]
+TRSM(m, k) [high_priority = on
+	    absorbant="A(m, k)"]
 
 // Execution space
 m = 1..Amt-1
@@ -140,7 +141,8 @@ END
 /**************************************************
  *                      HERK                      *
  **************************************************/
-HERK(k, m) [high_priority = on]
+HERK(k, m) [high_priority = on
+            absorbant="A(m, k)"]
 
 // Execution space
 k = 0..Amt-1
@@ -193,7 +195,9 @@ END
  *                      GEMM                      *
  **************************************************/
 // Name
-GEMM(k, m, n)
+GEMM(k, m, n) [absorbant="A(m, n)"
+	       absorbant="A(m, k)"
+	       absorbant="A(k, n)"]
 
 // Execution space
 k = 0..Amt-1
