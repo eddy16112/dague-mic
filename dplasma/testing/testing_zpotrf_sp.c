@@ -14,19 +14,7 @@
 #include "dplasma/lib/flops.h"
 #include <pastix.h>
 #include <read_matrix.h>
-/*
-#undef FLOPS_POTRF
-#define FLOPS_POTRF(n) 1.0
 
-#undef FLOPS_TRSM_R
-#define FLOPS_TRSM_R(m, n) 1.0
-
-#undef FLOPS_HERK(m, n)
-#define FLOPS_HERK(m, n) 1.0
-
-#undef FLOPS_GEMM(m, n, k)
-#define FLOPS_GEMM(m, n, k) 3.0
-*/
 static double tssm_cholesky_compute_flops(dague_tssm_desc_t *mesh)
 {
     uint64_t k, m, n;
@@ -35,6 +23,11 @@ static double tssm_cholesky_compute_flops(dague_tssm_desc_t *mesh)
 #define Mat(__mat, __m, __n) ((__mat)->mesh[ (__n) * (__mat)->super.mt + (__m) ])
     /* Todo: fix when using non square tiles. */
     assert( mesh->super.mb == mesh->super.nb );
+
+    printf("POTRF flops: %g\n", FLOPS_POTRF((double)mesh->super.mb));
+    printf("TRSM flops: %g\n", FLOPS_TRSM_R((double)mesh->super.mb, (double)mesh->super.nb));
+    printf("HERK flops: %g\n", FLOPS_HERK((double)mesh->super.mb, (double)mesh->super.nb));
+    printf("GEMM flops: %g\n", FLOPS_GEMM((double)mesh->super.mb, (double)mesh->super.mb, (double)mesh->super.mb) );
 
     for (k = 0; k < mesh->super.mt; k++) {
         flops += FLOPS_POTRF((double)mesh->super.mb);
@@ -86,6 +79,7 @@ int main(int argc, char ** argv)
     dsp_context_t    dspctxt;
     int iparam[IPARAM_SIZEOF];
     double flops;
+    struct timeval start, bench, realend, realtime, benchtime;
 
     /* Set defaults for non argv iparams */
     iparam_default_facto(iparam);
@@ -93,6 +87,14 @@ int main(int argc, char ** argv)
 
     /* Initialize DAGuE */
     dague = setup_dague(argc, argv, iparam);
+    if( dague->nb_nodes != 1 ) {
+        fprintf(stderr, 
+                "Check that the absorbant property of the JDF refer only local tiles\n"
+                "and remove this warning in %s at line %d...\n",
+                __FILE__, __LINE__);
+        cleanup_dague(dague);
+        return 1;
+    }
     PASTE_CODE_IPARAM_LOCALS(iparam);
 
     /* initializing matrix structure */
@@ -116,7 +118,7 @@ int main(int argc, char ** argv)
     dspctxt.symbmtx = NULL; /* Pointer to symbol matrix structure, filled in by zrdmtx  */
 
     dague_sparse_zrdmtx( &dspctxt );
-    dague_tssm_init(cores, MB*NB*sizeof(Dague_Complex64_t), 64);
+    dague_tssm_init(cores, MB*NB*sizeof(Dague_Complex64_t), 8);
 
     /* Initialize the descriptor */
     dague_tssm_desc_t ddescA;
@@ -127,11 +129,21 @@ int main(int argc, char ** argv)
     flops = tssm_cholesky_compute_flops(&ddescA);
 
     printf("Number of floating points operations: %g GFLOPs\n", flops/1.e9);
-
+        
+    gettimeofday(&start, NULL);
     dplasma_zpotrf_sp(dague, &ddescA);
-
+    gettimeofday(&bench, NULL);
     dague_tssm_flush_matrix((dague_ddesc_t *)&ddescA);
+    gettimeofday(&realend, NULL);
 
+    timersub(&bench, &start, &benchtime);
+    timersub(&realend, &start, &realtime);
+    
+    printf("Bench Time: %ld.%06lds\n", 
+           ( long)benchtime.tv_sec, ( long)benchtime.tv_usec);
+    printf("Other Time: %ld.%06lds\n", 
+           ( long)realtime.tv_sec, ( long)realtime.tv_usec);
+    
 #if 0
     if(!check) 
     {
