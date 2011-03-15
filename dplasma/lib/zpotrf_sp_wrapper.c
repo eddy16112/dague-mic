@@ -29,6 +29,8 @@ dplasma_zpotrf_sp_New(dague_tssm_desc_t *A, int *info)
         pri_change, info, 
         A->super.m, A->super.n, A->super.mb, A->super.nb, A->super.mt, A->super.nt);
     
+    printf("zpotrf_sp: %d tasks to do\n", dague_zpotrf->nb_local_tasks);
+
     dplasma_add2arena_tile(
         ((dague_zpotrf_sp_object_t*)dague_zpotrf)->arenas[DAGUE_zpotrf_sp_DEFAULT_ARENA], 
         A->super.mb*A->super.nb*sizeof(Dague_Complex64_t),
