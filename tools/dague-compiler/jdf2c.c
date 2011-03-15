@@ -26,7 +26,8 @@ static const char *jdf_cfilename;
 static int jdf_expr_depends_on_symbol(const char *varname, const jdf_expr_t *expr);
 static void jdf_generate_code_hook(const jdf_t *jdf, const jdf_function_entry_t *f, const char *fname);
 static void jdf_generate_code_release_deps(const jdf_t *jdf, const jdf_function_entry_t *f, const char *fname);
-static void jdf_generate_code_iterate_successors(const jdf_t *jdf, const jdf_function_entry_t *f, const char *prefix);
+static void jdf_generate_code_iterate(const jdf_t *jdf, const jdf_function_entry_t *f, const char *prefix,
+                                      const char *left, const char *right, jdf_dep_type_t dep_type);
 
 static int jdf_property_get_int( const jdf_def_list_t* properties, const char* prop_name, int ret_if_not_found );
 
@@ -1507,11 +1508,12 @@ static void jdf_generate_startup_task(const jdf_t *jdf, const jdf_function_entry
 static void jdf_generate_internal_init(const jdf_t *jdf, const jdf_function_entry_t *f, const char *fname)
 {
     string_arena_t *sa1, *sa2;
-    jdf_def_list_t *dl;
+    jdf_def_list_t *dl, *absorbant_prop;
     int nesting;
     const jdf_function_entry_t *pf;
     expr_info_t info1, info2;
-
+    jdf_expr_t *absorbant;
+    
     sa1 = string_arena_new(64);
     sa2 = string_arena_new(64);
 
@@ -1566,13 +1568,33 @@ static void jdf_generate_internal_init(const jdf_t *jdf, const jdf_function_entr
         }
     }
 
+    /* handle the case where this tile is not local */
     string_arena_init(sa1);
-    coutput("%s  if( !%s_pred(%s) ) continue;\n"
-            "%s  nb_tasks++;\n",
+    coutput("%s  if( !%s_pred(%s) ) continue;\n",
             indent(nesting), f->fname, UTIL_DUMP_LIST_FIELD(sa1, f->parameters, next, name,
                                                             dump_string, NULL, 
-                                                            "", "", ", ", ""),
+                                                            "", "", ", ", ""));
+
+    /* handle the case where this tile is local, but empty (sparse mode) */
+    if(NULL != (absorbant = jdf_find_property(f->properties, "absorbant", &absorbant_prop)) ) {
+        string_arena_t *sa3;
+        expr_info_t info3;
+        coutput("#if defined(DAGUE_SPARSE)\n");
+        sa3 = string_arena_new(64);
+        do {
+            string_arena_init(sa3);
+            info3.prefix = "";
+            info3.sa = sa3;
+            coutput("%s  if(NULL == %s) continue;\n",
+                    indent(nesting), dump_expr( (void**)&absorbant, &info3 ));
+        } while( NULL != (absorbant = jdf_find_property(absorbant_prop->next, "absorbant", &absorbant_prop)) );        
+        string_arena_free(sa3);
+        coutput("#endif\n");
+    }
+
+    coutput("%s  nb_tasks++;\n",
             indent(nesting));
+
     for(dl = f->definitions; dl != NULL; dl = dl->next) {
         coutput("%s  %s_max = MAX(%s_max, %s);\n"
                 "%s  %s_min = MIN(%s_min, %s);\n",
@@ -1620,11 +1642,27 @@ static void jdf_generate_internal_init(const jdf_t *jdf, const jdf_function_entr
             }
         }
 
-        coutput("%s  if( %s_pred(%s) ) {\n"
-                "%s    /* We did find one! Allocate the dependencies array. */\n",
+        coutput("%s  if( %s_pred(%s) ) {\n",
                 indent(nesting), f->fname, UTIL_DUMP_LIST_FIELD(sa2, f->parameters, next, name,
                                                                 dump_string, NULL, 
-                                                                "", "", ", ", ""),
+                                                                "", "", ", ", ""));
+
+        if(NULL != (absorbant = jdf_find_property(f->properties, "absorbant", &absorbant_prop)) ) {
+            string_arena_t *sa3;
+            expr_info_t info3;
+            coutput("#if defined(DAGUE_SPARSE)\n");
+            sa3 = string_arena_new(64);
+            do {
+                string_arena_init(sa3);
+                info3.prefix = "";
+                info3.sa = sa3;
+                coutput("%s    if(NULL == %s) continue;\n",
+                        indent(nesting), dump_expr( (void**)&absorbant, &info3 ));
+            } while( NULL != (absorbant = jdf_find_property(absorbant_prop->next, "absorbant", &absorbant_prop)) );        
+            string_arena_free(sa3);
+            coutput("#endif\n");
+        }
+        coutput("%s    /* We did find one! Allocate the dependencies array. */\n",
                 indent(nesting));
 
         string_arena_init(sa1);
@@ -1780,8 +1818,12 @@ static void jdf_generate_one_function( const jdf_t *jdf, const jdf_function_entr
                                                  "", prefix, ", ", ""));
 
     sprintf(prefix, "iterate_successors_of_%s_%s", jdf_basename, f->fname);
-    jdf_generate_code_iterate_successors(jdf, f, prefix);
+    jdf_generate_code_iterate(jdf, f, prefix, "rank_src", "rank_dst", JDF_DEP_TYPE_OUT);
     string_arena_add_string(sa, "  .iterate_successors = %s,\n", prefix);
+
+    sprintf(prefix, "iterate_predecessors_of_%s_%s", jdf_basename, f->fname);
+    jdf_generate_code_iterate(jdf, f, prefix, "rank_dst", "rank_src", JDF_DEP_TYPE_IN);
+    string_arena_add_string(sa, "  .iterate_predecessors = %s,\n", prefix);
 
     sprintf(prefix, "release_deps_of_%s_%s", jdf_basename, f->fname);
     jdf_generate_code_release_deps(jdf, f, prefix);
@@ -2223,7 +2265,11 @@ static void jdf_generate_code_flow_initialization(const jdf_t *jdf, const char *
         }
         coutput("  %s = ADATA(g%s);\n", f->varname, f->varname);
         coutput("#if defined(DAGUE_SPARSE)\n"
-                "  if( !DAGUE_ARENA_IS_PTR(g%s) ) {\n"
+                "  if( (%s == NULL) && !sparse_shortcut ) {\n"
+                "%s"
+                "  sparse_shortcut = 1;\n"
+                "  }\n"
+                "  if( !sparse_shortcut && !DAGUE_ARENA_IS_PTR(g%s) ) {\n"
                 "    %s = dague_tssm_data_expand(ADATA(g%s), %d, context->eu_id);\n"
                 "    if( %s == (void*)1 ) {\n"
                 "      /* Put this task back */\n"
@@ -2236,10 +2282,12 @@ static void jdf_generate_code_flow_initialization(const jdf_t *jdf, const char *
                 "    }\n"
                 "  }\n"
                 "#endif /* DAGUE_SPARSE */\n", 
+                f->varname,
+                string_arena_get_string( acc_sparse_free),
                 f->varname, 
                 f->varname, f->varname, (f->access_type & JDF_VAR_TYPE_WRITE) ? 1 : 0,
                 f->varname,
-                string_arena_get_string( acc_sparse_free) );
+                string_arena_get_string( acc_sparse_free));
         string_arena_add_string(acc_sparse_free,
                                 "      if( !DAGUE_ARENA_IS_PTR(g%s) ) {\n"
                                 "        dague_tssm_data_release(ADATA(g%s), %d, context->eu_id);\n"
@@ -2257,7 +2305,7 @@ static void jdf_generate_code_sparse_release(const jdf_t *jdf, const jdf_functio
 
     coutput("#if defined(DAGUE_SPARSE)\n");
     for( di = 0, fl = f->dataflow; fl != NULL; fl = fl->next, di++ ) {
-        coutput("  if( !DAGUE_ARENA_IS_PTR(g%s) ) {\n"
+        coutput("  if( !sparse_shortcut && !DAGUE_ARENA_IS_PTR(g%s) ) {\n"
                 "    dague_tssm_data_release(ADATA(g%s), %d, context->eu_id);\n"
                 "  }\n",
                 fl->flow->varname, fl->flow->varname, (fl->flow->access_type & JDF_VAR_TYPE_WRITE) ? 1 : 0);
@@ -2495,6 +2543,9 @@ static void jdf_generate_code_hook(const jdf_t *jdf, const jdf_function_entry_t 
     ai.expr = NULL;
     coutput("static int %s(dague_execution_unit_t *context, dague_execution_context_t *exec_context)\n"
             "{\n"
+            "#if defined(DAGUE_SPARSE)\n"
+            "  int sparse_shortcut = 0;\n"
+            "#endif /* defined(DAGUE_SPARSE) */\n"
             "  __dague_%s_internal_object_t *__dague_object = (__dague_%s_internal_object_t *)exec_context->dague_object;\n"
             "  (void)context;\n"
             "  (void)__dague_object;\n"
@@ -2532,6 +2583,11 @@ static void jdf_generate_code_hook(const jdf_t *jdf, const jdf_function_entry_t 
     jdf_generate_code_cache_awareness_update(jdf, f);
 
     jdf_generate_code_dry_run_before(jdf, f);
+
+    coutput("#if defined(DAGUE_SPARSE)\n"
+            "  if( !sparse_shortcut ) {\n"
+            "#endif /* defined(DAGUE_SPARSE) */\n");
+
     jdf_coutput_prettycomment('-', "%s BODY", f->fname);
     if( profile_on ) {
         sa3 = string_arena_new(64);
@@ -2552,6 +2608,9 @@ static void jdf_generate_code_hook(const jdf_t *jdf, const jdf_function_entry_t 
         coutput("#line %d \"%s\"\n", cfile_lineno, jdf_cfilename);
     }
     jdf_coutput_prettycomment('-', "END OF %s BODY", f->fname);
+    coutput("#if defined(DAGUE_SPARSE)\n"
+            "  } /* !sparse_shortcut */\n"
+            "#endif /* defined(DAGUE_SPARSE) */\n");
     jdf_generate_code_dry_run_after(jdf, f);
     jdf_generate_code_sparse_release(jdf, f);
 
@@ -2746,7 +2805,7 @@ static void jdf_generate_code_release_deps(const jdf_t *jdf, const jdf_function_
 }
 
 static char *jdf_dump_context_assignment(string_arena_t *sa_open, const jdf_t *jdf, const char *calltext,
-                                         const jdf_call_t *call, int lineno, const char *prefix, const char *var)
+                                         const jdf_call_t *call, int lineno, const char *prefix, const char *var, const char *peer_name)
 {
     jdf_function_entry_t *t;
     jdf_expr_list_t *el;
@@ -2854,9 +2913,9 @@ static char *jdf_dump_context_assignment(string_arena_t *sa_open, const jdf_t *j
     
     string_arena_add_string(sa_open, 
                             "#if defined(DISTRIBUTED)\n"
-                            "%s%s  rank_dst = ((dague_ddesc_t*)__dague_object->super.%s)->rank_of((dague_ddesc_t*)__dague_object->super.%s, %s);\n"
+                            "%s%s  %s = ((dague_ddesc_t*)__dague_object->super.%s)->rank_of((dague_ddesc_t*)__dague_object->super.%s, %s);\n"
                             "#endif\n",
-                            prefix, indent(nbopen), t->predicate->func_or_mem, t->predicate->func_or_mem,
+                            prefix, indent(nbopen), peer_name, t->predicate->func_or_mem, t->predicate->func_or_mem,
                             UTIL_DUMP_LIST_FIELD(sa2, t->predicate->parameters, next, expr,
                                                  dump_expr, &linfo,
                                                  "", "", ", ", ""));
@@ -2903,7 +2962,8 @@ static char *jdf_dump_context_assignment(string_arena_t *sa_open, const jdf_t *j
     return string_arena_get_string(sa_open);
 }
 
-static void jdf_generate_code_iterate_successors(const jdf_t *jdf, const jdf_function_entry_t *f, const char *name)
+static void jdf_generate_code_iterate(const jdf_t *jdf, const jdf_function_entry_t *f, const char *name,
+                                      const char *left, const char *right, jdf_dep_type_t dep_type)
 {
     jdf_dataflow_list_t *fl;
     jdf_dep_list_t *dl;
@@ -2943,8 +3003,9 @@ static void jdf_generate_code_iterate_successors(const jdf_t *jdf, const jdf_fun
 
     coutput("  nc.dague_object = exec_context->dague_object;\n");
     coutput("#if defined(DISTRIBUTED)\n"
-            "  rank_src = ((dague_ddesc_t*)__dague_object->super.%s)->rank_of((dague_ddesc_t*)__dague_object->super.%s, %s);\n"
+            "  %s = ((dague_ddesc_t*)__dague_object->super.%s)->rank_of((dague_ddesc_t*)__dague_object->super.%s, %s);\n"
             "#endif\n",
+            left,
             f->predicate->func_or_mem, f->predicate->func_or_mem,
             UTIL_DUMP_LIST_FIELD(sa, f->predicate->parameters, next, expr,
                                  dump_expr, &info,
@@ -2958,7 +3019,7 @@ static void jdf_generate_code_iterate_successors(const jdf_t *jdf, const jdf_fun
 
         depnb = 0;
         for(dl = fl->flow->deps; dl != NULL; dl = dl->next) {
-            if( dl->dep->type & JDF_DEP_TYPE_OUT )  {
+            if( dl->dep->type & dep_type )  {
                 coutput("#if defined(DISTRIBUTED)\n"
                         "  arena = __dague_object->super.arenas[DAGUE_%s_%s_ARENA];\n"
                         "#endif  /* defined(DISTRIBUTED) */\n",
@@ -2974,7 +3035,7 @@ static void jdf_generate_code_iterate_successors(const jdf_t *jdf, const jdf_fun
                         
                         coutput("%s\n",
                                 jdf_dump_context_assignment(sa1, jdf, string_arena_get_string(sa), dl->dep->guard->calltrue, dl->dep->lineno, 
-                                                            "  ", "nc") );
+                                                            "  ", "nc", right) );
                     } else {
                         flowtomem = 1;
                     }
@@ -2987,7 +3048,7 @@ static void jdf_generate_code_iterate_successors(const jdf_t *jdf, const jdf_fun
                                 "  }\n",
                                 dump_expr((void**)&dl->dep->guard->guard, &info),
                                 jdf_dump_context_assignment(sa1, jdf, string_arena_get_string(sa), dl->dep->guard->calltrue, dl->dep->lineno, 
-                                                            "    ", "nc") );
+                                                            "    ", "nc", right) );
                     } else {
                         flowtomem = 1;
                     }
@@ -3000,7 +3061,7 @@ static void jdf_generate_code_iterate_successors(const jdf_t *jdf, const jdf_fun
                                 "  }",
                                 dump_expr((void**)&dl->dep->guard->guard, &info),
                                 jdf_dump_context_assignment(sa1, jdf, string_arena_get_string(sa), dl->dep->guard->calltrue, dl->dep->lineno, 
-                                                            "    ", "nc"));
+                                                            "    ", "nc", right));
 
                         depnb++;
                         string_arena_init(sa);
@@ -3012,7 +3073,7 @@ static void jdf_generate_code_iterate_successors(const jdf_t *jdf, const jdf_fun
                                     "%s\n"
                                     "  }\n",
                                     jdf_dump_context_assignment(sa1, jdf, string_arena_get_string(sa), dl->dep->guard->callfalse, dl->dep->lineno, 
-                                                                "    ", "nc") );
+                                                                "    ", "nc", right) );
                         } else {
                             coutput("\n");
                         }
@@ -3029,7 +3090,7 @@ static void jdf_generate_code_iterate_successors(const jdf_t *jdf, const jdf_fun
                                     "  }\n",
                                     dump_expr((void**)&dl->dep->guard->guard, &info),
                                     jdf_dump_context_assignment(sa1, jdf, string_arena_get_string(sa), dl->dep->guard->callfalse, dl->dep->lineno, 
-                                                                "    ", "nc") );
+                                                                "    ", "nc", right) );
                         } else {
                             flowtomem = 1;
                         }
@@ -3041,10 +3102,11 @@ static void jdf_generate_code_iterate_successors(const jdf_t *jdf, const jdf_fun
         }
 
         if( (1 == flowempty) && (0 == flowtomem) ) {
-            coutput("  /* This flow has only IN dependencies */\n");
+            coutput("  /* This flow has only %s dependencies */\n", dep_type == JDF_DEP_TYPE_IN ? "OUT" : "IN");
         } else if( 1 == flowempty ) {
             coutput("  /* This flow has only OUTPUT dependencies to Memory */\n");
-            flownb++;
+            if( dep_type == JDF_DEP_TYPE_OUT )
+                flownb++;
         } else {
             flownb++;
         }
