@@ -25,6 +25,7 @@ void dague_zlacpy( char uplo, dague_int_t m, dague_int_t n, Dague_Complex64_t *A
     /* For now, only general case is implemented, need to implement upper and 
      * lower and use it in scalapack/lapack convert instead of the actual function */
     uplo = 'U';
+    (void)uplo;
 
     for ( j=0; j<n; j++ )
     {
@@ -83,60 +84,65 @@ void dague_tssm_ztile_pack(void *tile_ptr, dague_int_t m, dague_int_t n, dague_i
     return;
 }
 
+typedef struct dague_tssm_dope_vector{
+    uint64_t extent;
+    uint64_t map_elem_count;
+    dague_tssm_data_map_elem_t map_elems[1];
+}dague_tssm_dope_vector_t;
 
-/* At the end of this function the pointer pointed to by the first parameter "compr_tile_ptr" will contain:
- * - A uint64_t holding the number of rectangles in the buffer (say N).
- * - N structs of type dague_tssm_data_map_elem_t "describing" the N rectangles.
+
+/*
+ * At the end of this function the buffer pointed to by the first parameter (compr_tile_ptr) will contain:
+ * - A uint64_t holding the extent of the buffer, in bytes.
+ * - A uint64_t holding the number of data rectangles in the buffer (say N).
+ * - N structs of type dague_tssm_data_map_elem_t "describing" the N rectangles. However the "ptr" element of
+ *   each map element will be the offset into the data part of the compressed buffer (cumulative size).
  * - The data of the N rectangles.
- * The second parameter "extent" will
  */
-void dague_tssm_ztile_compress(void **compr_tile_ptr, dague_int_t *extent, dague_tssm_data_map_t *map)
+void dague_tssm_ztile_compress(void **compr_tile_ptr, dague_tssm_data_map_t *map)
 {
     Dague_Complex64_t *cmprsd_buffer;
     dague_int_t i=0;
-    uint64_t compressed_size, cumulative_size, data_offset, counter_offset;
+    uint64_t compressed_size, cumulative_size, data_offset, dope_vector_size;
+    dague_tssm_dope_vector_t *dope_vector;
 
     assert( map );
 
-    counter_offset = sizeof(uint64_t);
-    compressed_size = map->filled_data*sizeof(Dague_Complex64_t) + map->map_elem_count*sizeof(dague_tssm_data_map_elem_t) + counter_offset;
+    /* The "-1" is because there is already room for 1 map element in the struct. */
+    dope_vector_size = sizeof(dague_tssm_dope_vector_t) + (map->map_elem_count-1)*sizeof(dague_tssm_data_map_elem_t);
 
-    // Pass the extent of this buffer to the caller
-    *extent = compressed_size;
-
+    /* Allocate the compressed buffer */
+    compressed_size = map->filled_data*sizeof(Dague_Complex64_t) + dope_vector_size;
     cmprsd_buffer = (Dague_Complex64_t*)calloc(compressed_size, 1);
     assert( cmprsd_buffer );
 
-    // Pass the pointer to the compressed buffer to the caller
+    dope_vector = (dague_tssm_dope_vector_t *)cmprsd_buffer;
+
+    /* Pass the pointer to the compressed buffer to the caller */
     *compr_tile_ptr = cmprsd_buffer;
 
-    // The first "data_offset" bytes will be occupied by meta-data
-    data_offset = map->map_elem_count*sizeof(dague_tssm_data_map_elem_t);
+    dope_vector->extent = compressed_size;
+    dope_vector->map_elem_count = map->map_elem_count;
 
     cumulative_size = 0;
     do {
         intptr_t dst_ptr;
-        dague_tssm_data_map_elem_t mp = map->elements[i];
+        dague_tssm_data_map_elem_t *mp = &(map->elements[i]);
 
         /* Copy the data of this rectangle into the buffer. */
-        dst_ptr = (intptr_t)cmprsd_buffer + counter_offset + data_offset + cumulative_size;
-#warning "Need to verify this with someone. Especially that 'mp.h' at the end."
-        dague_zlacpy('A', mp.h, mp.w, (Dague_Complex64_t*)mp.ptr, mp.ldA, (void *)dst_ptr, mp.h);
+        dst_ptr = (intptr_t)cmprsd_buffer + dope_vector_size + cumulative_size;
+        dague_zlacpy('A', mp->h, mp->w, (Dague_Complex64_t*)mp->ptr, mp->ldA, (void *)dst_ptr, mp->h);
 
-        cumulative_size += mp.h*mp.w*sizeof(Dague_Complex64_t);
+        /* Copy the map element into the compressed buffer and overwrite the pointer stored
+	 * in the map element to point to where we just copied the data in the buffer.
+	 */
+        memcpy( &(dope_vector->map_elems[i]), mp, sizeof(dague_tssm_data_map_elem_t) );
+        dope_vector->map_elems[i].ptr = (void *)cumulative_size;
 
-        /* Overwrite the pointer stored in the map element to point to where we just copied the data in the buffer. */
-        mp.ptr = (void *)dst_ptr;
-        /* Copy the meta-data of this map element into the buffer. */
-        dst_ptr = (intptr_t)cmprsd_buffer + counter_offset + i*sizeof(dague_tssm_data_map_elem_t);
-        memcpy((void *)dst_ptr, &mp, sizeof(dague_tssm_data_map_elem_t));
+        cumulative_size += mp->h*mp->w*sizeof(Dague_Complex64_t);
 
         ++i;
     } while( NULL != map->elements[i].ptr );
-    *((uint64_t *)cmprsd_buffer) = i;
 
     return;
 }
-
-
-

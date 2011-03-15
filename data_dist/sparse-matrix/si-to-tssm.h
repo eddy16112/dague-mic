@@ -50,10 +50,10 @@ typedef struct dague_tssm_data_map {
 
 struct dague_tssm_desc;
 
-void dague_tssm_ztile_compress(void **compr_tile_ptr, dague_int_t *extent, dague_tssm_data_map_t *map);
-void dague_tssm_ctile_compress(void **compr_tile_ptr, dague_int_t *extent, dague_tssm_data_map_t *map);
-void dague_tssm_dtile_compress(void **compr_tile_ptr, dague_int_t *extent, dague_tssm_data_map_t *map);
-void dague_tssm_stile_compress(void **compr_tile_ptr, dague_int_t *extent, dague_tssm_data_map_t *map);
+void dague_tssm_ztile_compress(void **compr_tile_ptr, dague_tssm_data_map_t *map);
+void dague_tssm_ctile_compress(void **compr_tile_ptr, dague_tssm_data_map_t *map);
+void dague_tssm_dtile_compress(void **compr_tile_ptr, dague_tssm_data_map_t *map);
+void dague_tssm_stile_compress(void **compr_tile_ptr, dague_tssm_data_map_t *map);
 
 int  dague_tssm_ztile_unpack(void *tile_ptr, dague_int_t m, dague_int_t n, dague_int_t mb, dague_int_t nb, dague_tssm_data_map_t *map);
 void dague_tssm_ztile_pack(  void *tile_ptr, dague_int_t m, dague_int_t n, dague_int_t mb, dague_int_t nb, dague_tssm_data_map_t *map);
