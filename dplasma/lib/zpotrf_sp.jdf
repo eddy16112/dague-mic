@@ -88,6 +88,7 @@ END
  *                      TRSM                      *
  **************************************************/
 TRSM(m, k) [high_priority = on
+	    sparsehole = on
 	    absorbant="A(m, k)"]
 
 // Execution space
@@ -195,7 +196,7 @@ END
  *                      GEMM                      *
  **************************************************/
 // Name
-GEMM(k, m, n) [absorbant="A(m, n)"
+GEMM(k, m, n) [sparsehole = on
 	       absorbant="A(m, k)"
 	       absorbant="A(k, n)"]
 
