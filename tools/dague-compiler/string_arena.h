@@ -63,6 +63,58 @@ static void string_arena_add_string(string_arena_t *sa, const char *format, ...)
     va_end(ap);
 }
 
+#if defined(__GNUC__)
+static void string_arena_prepend_string(string_arena_t *sa, const char *format, ...) __attribute__((format(printf,2,3)));
+#endif
+static void string_arena_prepend_string(string_arena_t *sa, const char *format, ...)
+{
+    va_list ap, ap2;
+    int length;
+    char *oldptr;
+
+    va_start(ap, format);
+    /* va_list might have pointer to internal state and using
+       it twice is a bad idea.  So make a copy for the second
+       use.  Copy order taken from Autoconf docs. */
+#if defined(HAVE_VA_COPY)
+    va_copy(ap2, ap);
+#elif defined(HAVE_UNDERSCORE_VA_COPY)
+    __va_copy(ap2, ap);
+#else
+    memcpy (&ap2, &ap, sizeof(va_list));
+#endif
+
+    sa->ptr[sa->pos] = '\0';
+    oldptr = strdup(sa->ptr);
+    sa->pos = 0;
+    sa->ptr[0] = '\0';
+
+    length = vsnprintf(sa->ptr + sa->pos, sa->size - sa->pos, format, ap);
+    if( length >= (sa->size - sa->pos) ) {
+        /* realloc */
+        sa->size = sa->pos + length + 1;
+        sa->ptr = (char*)realloc( sa->ptr, sa->size );
+        length = vsnprintf(sa->ptr + sa->pos, sa->size - sa->pos, format, ap2);
+    }
+    sa->pos += length;
+
+    length = snprintf(sa->ptr + sa->pos, sa->size - sa->pos, "%s", oldptr);
+    if( length >= (sa->size - sa->pos) ) {
+        /* realloc */
+        sa->size = sa->pos + length + 1;
+        sa->ptr = (char*)realloc( sa->ptr, sa->size );
+        length = snprintf(sa->ptr + sa->pos, sa->size - sa->pos, "%s", oldptr);
+    }
+    sa->pos += length;
+
+    free(oldptr);
+
+#if defined(HAVE_VA_COPY) || defined(HAVE_UNDERSCORE_VA_COPY)
+    va_end(ap2);
+#endif  /* defined(HAVE_VA_COPY) || defined(HAVE_UNDERSCORE_VA_COPY) */
+    va_end(ap);
+}
+
 static void string_arena_init(string_arena_t *sa)
 {
     sa->pos = 0;
