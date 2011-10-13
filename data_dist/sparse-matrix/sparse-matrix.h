@@ -33,7 +33,7 @@ typedef struct dague_symbol_blok {
     dague_int_t frownum;                 /**< First row index                       */
     dague_int_t lrownum;                 /**< Last row index (inclusive)            */
     dague_int_t coefind;                 /**< Index of the first byte of this block */
-} dague_symbol_block_t;
+} dague_symbol_blok_t;
 
 typedef struct dague_symbol_cblk {
     dague_int_t    fcolnum;              /**< First column index                      */
@@ -44,8 +44,7 @@ typedef struct dague_symbol_cblk {
     void          *ucblkptr;             /**< Pointer to the column data (Upper part) */
 } dague_symbol_cblk_t;
 
-typedef struct dague_sparse_input_symbol_matrix {
-    int         elemsze;                    /**< Size of an element                */
+typedef struct dague_symbol_matrix {
     dague_int_t cblknbr;                    /**< Number of column blocks           */
     dague_int_t bloknbr;                    /**< Number of blocks                  */
     dague_int_t nodenbr;                    /**< Number of nodes in matrix         */
@@ -76,7 +75,7 @@ typedef struct dsp_context_s {
     void        *rhs;        /* Right Hand Side                            */ 
     dague_int_t *permtab;    /* vector of permutation                      */
     dague_int_t *peritab;    /* vector of inverse permutation              */
-    sparse_matrix_desc_t *symbmtx; /* Pointer to symbol matrix structure */
+    sparse_matrix_desc_t *desc; /* Pointer to symbol matrix structure */
 } sparse_context_t;
 
 #endif /* _SPARSE_MATRIX_H_ */

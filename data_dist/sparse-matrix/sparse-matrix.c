@@ -22,6 +22,7 @@
 
 #include "dague_config.h"
 #include "dague.h"
+#include "data_dist/matrix/precision.h"
 #include "data_dist/sparse-matrix/sparse-matrix.h"
 
 static int sparse_matrix_size_of(enum spmtx_type type)
@@ -40,23 +41,38 @@ static int sparse_matrix_size_of(enum spmtx_type type)
     }
 }
 
-uint32_t sparse_matrix_rank_of(struct dague_ddesc *mat, dague_int_t cblknum, dague_int_t bloknum)
+uint32_t sparse_matrix_rank_of(struct dague_ddesc *mat, ... )
 {
     return 0;
 }
 
-void *sparse_matrix_data_of(struct dague_ddesc *mat, dague_int_t cblknum, dague_int_t bloknum)
+void *sparse_matrix_data_of(struct dague_ddesc *mat, ... )
 {
+    va_list ap;
+    dague_int_t cblknum, bloknum;
     sparse_matrix_desc_t *spmtx = (sparse_matrix_desc_t*)mat;
-    
-    return spmtx.symbmtx.cblktab[cblknum].cblkptr 
-        + (size_t)(spmtx.typesze) * (size_t)(spmtx.symbmtx.bloktab[bloknum].coefind);
+
+    va_start(ap, mat);
+    cblknum = va_arg(ap, unsigned int);
+    bloknum = va_arg(ap, unsigned int);
+    va_end(ap);
+
+    return (char*)spmtx->symbmtx.cblktab[cblknum].cblkptr 
+      + (size_t)(spmtx->typesze) * (size_t)(spmtx->symbmtx.bloktab[bloknum].coefind);
 }
 
 #ifdef DAGUE_PROF_TRACE
-uint32_t sparse_matrix_data_key(struct dague_ddesc *mat, dague_int_t cblknum, dague_int_t bloknum)
+uint32_t sparse_matrix_data_key(struct dague_ddesc *mat, ... )
 {
-  return (uint32_t)bloknum;
+    va_list ap;
+    dague_int_t cblknum, bloknum;
+    
+    va_start(ap, mat);
+    cblknum = va_arg(ap, unsigned int);
+    bloknum = va_arg(ap, unsigned int);
+    va_end(ap);
+    (void)cblknum;
+    return (uint32_t)bloknum;
 }
 
 int sparse_matrix_key_to_string(struct dague_ddesc *mat, uint32_t datakey, char *buffer, uint32_t buffer_size)
@@ -96,8 +112,8 @@ int sparse_matrix_key_to_string(struct dague_ddesc *mat, uint32_t datakey, char 
 }
 #endif
 
-void sparse_matrix_init( sparse_matrix_t *desc, 
-                         enum matrix_type mtype, 
+void sparse_matrix_init( sparse_matrix_desc_t *desc, 
+                         enum spmtx_type mtype, 
                          int nodes, int cores, int myrank)
 {
     /* dague_ddesc structure */
@@ -114,7 +130,7 @@ void sparse_matrix_init( sparse_matrix_t *desc,
 #endif /* DAGUE_PROF_TRACE */
 
     desc->mtype   = mtype;
-    desc->typesze = sparse_matrix_sizeof( mtype );
+    desc->typesze = sparse_matrix_size_of( mtype );
 
     DEBUG(("sparse_matrix_init: desc = %p, mtype = %zu, \n"
            "\tnodes = %u, cores = %u, myrank = %u\n",
@@ -122,7 +138,4 @@ void sparse_matrix_init( sparse_matrix_t *desc,
            desc->super.super.nodes, 
            desc->super.super.cores,
            desc->super.super.myrank));
-
 }
-
-#endif /* DAGUE_PROF_TRACE */
