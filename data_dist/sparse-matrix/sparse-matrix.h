@@ -13,8 +13,8 @@
 
 #include <stdint.h>
 #include "dague_config.h"
-#include "precision.h"
 #include "data_distribution.h"
+#include "data_dist/matrix/precision.h"
 
 typedef int64_t dague_int_t;
 
@@ -59,7 +59,7 @@ typedef struct sparse_matrix_desc_t {
     dague_symbol_matrix_t symbmtx; /* Pointer to symbol matrix structure  */
 } sparse_matrix_desc_t;
 
-typedef struct dsp_context_s {
+typedef struct sparse_context_s {
     int          format;     /* Matrix file format                         */
     int          factotype;
     char        *matrixname; /* Filename to get the matrix                 */
