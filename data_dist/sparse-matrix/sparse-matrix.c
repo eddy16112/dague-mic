@@ -54,8 +54,8 @@ void *sparse_matrix_data_of(struct dague_ddesc *mat, ... )
 
     va_start(ap, mat);
     cblknum = va_arg(ap, unsigned int);
-    bloknum = va_arg(ap, unsigned int);
     va_end(ap);
+    bloknum = spmtx->symbmtx.cblktab[cblknum].bloknum;
 
     return (char*)spmtx->symbmtx.cblktab[cblknum].cblkptr 
       + (size_t)(spmtx->typesze) * (size_t)(spmtx->symbmtx.bloktab[bloknum].coefind);
@@ -69,9 +69,8 @@ uint32_t sparse_matrix_data_key(struct dague_ddesc *mat, ... )
     
     va_start(ap, mat);
     cblknum = va_arg(ap, unsigned int);
-    bloknum = va_arg(ap, unsigned int);
     va_end(ap);
-    (void)cblknum;
+    bloknum = spmtx->symbmtx.cblktab[cblknum].bloknum;
     return (uint32_t)bloknum;
 }
 
