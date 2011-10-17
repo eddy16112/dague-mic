@@ -1,6 +1,14 @@
 #ifndef _DAGUE_PASTIX_INTERNAL_H_
 #define _DAGUE_PASTIX_INTERNAL_H_
 
+#include "common_pastix.h"
+
+#if 0
+#include <ptscotch.h>
+#else
+#include <scotch.h>
+#endif
+
 #include "dof.h"
 #include "ftgt.h"
 #include "symbol.h"
