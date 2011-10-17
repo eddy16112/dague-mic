@@ -1,0 +1,87 @@
+extern "C" %{
+  /**
+   * PLASMA include for defined and constants.
+   *
+   * @precisions normal z -> s d c
+   *
+   */
+#include <plasma.h>
+#include <core_blas.h>
+
+#include "dague.h"
+#include "data_distribution.h"
+#include "dplasmajdf.h"
+
+#include "sopalin_acces.h"
+
+#define PRECISION_z
+
+#if defined(HAVE_CUDA)
+#undef HAVE_CUDA
+#endif
+
+#if defined(HAVE_CUDA) && defined(PRECISION_s)
+#include "gpu_data.h"
+#include "cuda_zgemm.h"
+extern int *gpu_counter;
+#endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
+%}
+
+/* Globals
+ */
+descA    [type = "sparse_matrix_desc_t *"]
+A        [type = "dague_ddesc_t *"]
+datacode [type = "SolverMatrix*"]
+
+/**************************************************
+ *                POTRF_TRSM                      *
+ **************************************************/
+POTRF_TRSM(k) [high_priority = on]
+
+// Execution space
+cblknum = 0..SYMB_CBLKNBR-1
+
+// Parallel partitioning
+:A(k) // Should match SOLV_COEFTAB(k)
+
+// Parameters
+RW C <- (UPDOWN_LISTPTR(UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(k)))==UPDOWN_LISTPTR(UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(k)+1))) ? A(k) : C GEMM(UPDOWN_LISTBLOK(UPDOWN_LISTPTR(UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(k)+1))-1))
+     -> C GEMM(SYMB_BLOKNUM(k)..SYMB_BLOKNUM(k+1)-1)
+     -> A(k)
+
+BODY
+      DRYRUN(
+	     /* compute_1dplus */
+	     );
+      printlog(
+               "thread %d compute_1dplus( %d )\n",
+               context->eu_id, k);
+END
+
+/**************************************************
+ *                      GEMM                      *
+ **************************************************/
+
+GEMM(k)
+
+// Execution space
+k = 0..SYMB_BLOKNBR-1
+fcblk = SYMB_CBLKNUM(k)
+cblk  = SYMB_LCBLKNUM(k) // TODO
+
+// Parallel partitioning
+:A(fcblk)
+
+// Parameters
+READ  A <- C POTRF_TRSM(cblk)
+RW    C <- (k==UPDOWN_LISTPTR(UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblk)))) ? A(fcblk): C GEMM(UPDOWN_LISTPTR_PREVIOUS(k,fcblk))
+        -> (k==UPDOWN_LISTPTR(UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblk)+1))-1) ? C POTRF_TRSM(fcblk): C GEMM(UPDOWN_LISTPTR_NEXT(k,fcblk))
+
+BODY
+      DRYRUN(
+	     /* compute_1dgemm */
+          );
+      printlog(
+               "thread %d compute_1dgemm( %d , %d )\n",
+               context->eu_id, k, fcblk);
+END
