@@ -1,0 +1,23 @@
+if ( DAGUE_WITH_SPARSE )
+
+  if(NOT DSPARSE_PRECISIONS)
+    set(DSPARSE_PRECISIONS "s;d;c;z" CACHE STRING "The precisions to compile in dsparse (accepts a colon separated list of s;d;c;z)" FORCE)
+  endif()
+
+  include_directories(${PLASMA_INCLUDE_DIRS})
+  include_directories(${PASTIX_INCLUDE_DIRS})
+  include_directories(${SCOTCH_INCLUDE_DIRS})
+  include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+  if( ${CMAKE_CURRENT_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR} )
+  else( ${CMAKE_CURRENT_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR} )
+    include_directories(${CMAKE_CURRENT_BINARY_DIR})
+    include_directories(${CMAKE_CURRENT_BINARY_DIR}/include)
+  endif( ${CMAKE_CURRENT_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR} )
+  
+  #add_subdirectory(include)
+  #add_subdirectory(lib)
+  #add_subdirectory(testing)
+
+endif()
