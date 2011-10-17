@@ -21,6 +21,7 @@ set( dague_sparse_SRC
   ${generated_files}
   )
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/pastix_internal)
 include_directories(${PASTIX_INCLUDE_DIRS}) 
 include_directories(${SCOTCH_INCLUDE_DIRS}) 
 
