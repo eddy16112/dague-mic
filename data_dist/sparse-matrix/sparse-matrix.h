@@ -18,9 +18,10 @@
 
 typedef int64_t dague_int_t;
 
-#define DSPARSE_LLT   1
-#define DSPARSE_LDLT  2 
-#define DSPARSE_LU    3
+/* WARNING: Has to follow Pastix enum API_FACT */
+#define DSPARSE_LLT   0
+#define DSPARSE_LDLT  1 
+#define DSPARSE_LU    2
 
 enum spmtx_type {
     spmtx_RealFloat     = 0,  /**< float          */
