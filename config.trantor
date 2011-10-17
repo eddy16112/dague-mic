@@ -1,0 +1,51 @@
+#!/bin/sh
+rm -rf CMakeCache.txt CMakeFiles
+
+LOCATION=`dirname $0`
+HWLOCDIR="/usr"
+CUDADIR="/opt/cuda"
+PLASMADIR="/opt/plasma-2.4.1"
+MPICC="/usr/bin/mpicc"
+
+CC=icc
+FC=ifort
+
+
+CUDA="-DDAGUE_GPU_WITH_CUDA=OFF"
+#CUDA="-DCUDA_DIR=${CUDADIR}"
+
+#MPI="-DMPI_COMPILER=${MPICC}"
+MPI="-DDAGUE_DIST_WITH_MPI=OFF"
+
+PLASMA="-DPLASMA_DIR=${PLASMADIR}"
+HWLOC="-DHWLOC_DIR=${HWLOCDIR}"
+#DAGUE_Q2J="-DDAGUE_Q2J=ON -DDAGUE_OMEGA_DIR=SOMEWHERE"
+
+#/opt/intel/bin/iccvars.sh intel64
+#/opt/intel/bin/ifortvars.sh intel64
+
+export CC=icc
+export CXX=icpc
+export FC=ifort
+
+echo cmake -G "Unix Makefiles" \
+    ${MPI}                \
+    ${PLASMA} \
+    ${HWLOC} \
+    ${CUDA} \
+    ${DAGUE_Q2J} \
+    ${LOCATION}
+
+cmake -G "Unix Makefiles" \
+    ${MPI}                \
+    ${PLASMA} \
+    ${HWLOC} \
+    ${CUDA} \
+    ${DAGUE_Q2J} \
+    ${LOCATION} \
+    -DDAGUE_WITH_SPARSE=ON \
+    -DPASTIX_DIR=/home/mfaverge/INRIA/svn/ricar/install \
+    -DSCOTCH_DIR=/opt/scotch/int64
+
+
+
