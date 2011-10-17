@@ -354,6 +354,11 @@ if( DAGUE_PROF_GRAPHER )
   list(APPEND EXTRA_SOURCES src/dague_prof_grapher.c)
 endif( DAGUE_PROF_GRAPHER )
 
+if( DAGUE_WITH_SPARSE )
+  find_package( PASTIX REQUIRED )
+  find_package( SCOTCH REQUIRED )
+endif()
+
 #
 ##
 ###
