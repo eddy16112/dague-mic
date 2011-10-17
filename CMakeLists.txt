@@ -413,8 +413,9 @@ endif (MPI_FOUND)
 #
 
 add_subdirectory(tools)
-add_subdirectory(dplasma)
 add_subdirectory(data_dist)
+add_subdirectory(dplasma)
+add_subdirectory(dsparse)
 add_subdirectory(tests)
 
 # Configuration header
