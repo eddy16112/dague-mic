@@ -17,7 +17,7 @@ if ( DAGUE_WITH_SPARSE )
   endif( ${CMAKE_CURRENT_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR} )
   
   #add_subdirectory(include)
-  #add_subdirectory(lib)
+  add_subdirectory(lib)
   add_subdirectory(testing)
 
 endif()
