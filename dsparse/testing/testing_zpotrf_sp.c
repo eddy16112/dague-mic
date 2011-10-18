@@ -29,14 +29,14 @@ int main(int argc, char ** argv)
                 "Check that the absorbant property of the JDF refer only local tiles\n"
                 "and remove this warning in %s at line %d...\n",
                 __FILE__, __LINE__);
-        cleanup_dague(dague);
+        cleanup_dague(dague, iparam, sparam);
         return 1;
     }
     PASTE_CODE_IPARAM_LOCALS(iparam);
 
     /* initializing matrix structure */
     //int info = 0;
-    PASTE_CODE_INIT_CONTEXT( dspctxt, DSPARSE_LLT );
+    PASTE_CODE_INIT_CONTEXT( dspctxt, DSPARSE_LDLT );
 
     /* Initialize the descriptor */
     sparse_matrix_desc_t ddescA;
@@ -46,19 +46,19 @@ int main(int argc, char ** argv)
     sparse_matrix_zrdmtx( &dspctxt );
 
     /* compute the number of flops */
-    flops = dsparse_zpotrf_sp_flops_count( &ddescA );
-    if ( loud && rank == 0 )
-      printf("Number of floating points operations: %g GFLOPs\n", flops/1.e9);
+    /* flops = dsparse_zpotrf_sp_flops_count( &ddescA ); */
+    /* if ( loud && rank == 0 ) */
+    /*   printf("Number of floating points operations: %g GFLOPs\n", flops/1.e9); */
         
-    if(loud > 2) printf("+++ Computing potrf ... ");
-    PASTE_CODE_ENQUEUE_KERNEL(dague, zpotrf_sp, 
-                              ((sparse_matrix_desc_t*)&ddescA));
-    PASTE_CODE_PROGRESS_KERNEL(dague, zpotrf_sp);
+    /* if(loud > 2) printf("+++ Computing potrf ... "); */
+    /* PASTE_CODE_ENQUEUE_KERNEL(dague, zpotrf_sp,  */
+    /*                           ((sparse_matrix_desc_t*)&ddescA)); */
+    /* PASTE_CODE_PROGRESS_KERNEL(dague, zpotrf_sp); */
 
-    dsparse_zpotrf_sp_Destruct( DAGUE_zpotrf_sp );
-    if(loud > 2) printf("Done.\n");
+    /* dsparse_zpotrf_sp_Destruct( DAGUE_zpotrf_sp ); */
+    /* if(loud > 2) printf("Done.\n"); */
 
-    cleanup_dague(dague);
+    cleanup_dague(dague, iparam, sparam);
 
     sparse_matrix_destroy( (sparse_matrix_desc_t*)&ddescA );
 

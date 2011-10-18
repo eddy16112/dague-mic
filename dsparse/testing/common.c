@@ -67,7 +67,7 @@ void print_usage(void)
             "\n"
             " -m -M --matrix    : Matrix filename (default: ./rsaname)\n"
             " -n -N --rhs       : Right Hand side filename (default: ./rhsname)\n"
-            " -o -O --order     : Ordering filename (default: ./ordername )\n"
+            " -p -P --order     : Ordering filename (default: ./ordername )\n"
             " -s -S --symbol    : Symbol factorization filename (default: ./symbname )\n"
             "\n"
             " -x --check        : verify the results\n"
@@ -99,9 +99,9 @@ static struct option long_options[] =
     {"n",           required_argument,  0, 'n'},
     {"N",           required_argument,  0, 'n'},
     {"rhs",         required_argument,  0, 'n'},
-    {"o",           required_argument,  0, 'o'},
-    {"O",           required_argument,  0, 'o'},
-    {"order",       required_argument,  0, 'o'},
+    {"p",           required_argument,  0, 'p'},
+    {"P",           required_argument,  0, 'p'},
+    {"order",       required_argument,  0, 'p'},
     {"s",           required_argument,  0, 's'},
     {"S",           required_argument,  0, 's'},
     {"symbol",      required_argument,  0, 's'},
@@ -169,7 +169,7 @@ static void parse_arguments(int argc, char** argv, int* iparam, char** sparam)
             
             case 'm': sparam[SPARAM_MATRIX]   = strdup(optarg); break;
             case 'n': sparam[SPARAM_RHS]      = strdup(optarg); break;
-            case 'o': sparam[SPARAM_ORDERING] = strdup(optarg); break;
+            case 'p': sparam[SPARAM_ORDERING] = strdup(optarg); break;
             case 's': sparam[SPARAM_SYMBOL]   = strdup(optarg); break;
             case 'x': iparam[IPARAM_CHECK] = 1; iparam[IPARAM_VERBOSE] = max(2, iparam[IPARAM_VERBOSE]); break; 
             case '.': iparam[IPARAM_DOT] = 1; dot_filename = strdup(optarg); break;
@@ -240,14 +240,13 @@ static void parse_arguments(int argc, char** argv, int* iparam, char** sparam)
     }
 }
 
-static void param_default(int* iparam, char **sparam)
+void param_default(int* iparam, char **sparam)
 {
     /* Just in case someone forget to add the initialization :) */
     memset(iparam, 0, IPARAM_SIZEOF * sizeof(int)); 
     memset(sparam, 0, SPARAM_SIZEOF * sizeof(char*)); 
     iparam[IPARAM_NNODES] = 1;
     iparam[IPARAM_NGPUS] = -1;
-    iparam[IPARAM_QR_DOMINO] = 1;
 }
 
 #ifdef DAGUE_PROF_TRACE

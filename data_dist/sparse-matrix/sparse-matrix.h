@@ -65,6 +65,7 @@ typedef struct sparse_context_s {
     int          format;     /* Matrix file format                         */
     int          factotype;
     char        *matrixname; /* Filename to get the matrix                 */
+    char        *rhsname;    /* Filename to get the matrix                 */
     char        *ordername;  /* Filename where the ordering is stored      */
     char        *symbname;   /* Filename where the symbol matrix is stored */
     char        *type;       /* Type of the matrix                         */
@@ -80,5 +81,15 @@ typedef struct sparse_context_s {
     sparse_matrix_desc_t *desc; /* Pointer to symbol matrix structure */
     
 } sparse_context_t;
+
+void sparse_matrix_init( sparse_matrix_desc_t *desc, 
+                         enum spmtx_type mtype, 
+                         int nodes, int cores, int myrank);
+void sparse_matrix_destroy( sparse_matrix_desc_t *desc );
+
+int sparse_matrix_zrdmtx( sparse_context_t *dspctxt );
+int sparse_matrix_crdmtx( sparse_context_t *dspctxt );
+int sparse_matrix_drdmtx( sparse_context_t *dspctxt );
+int sparse_matrix_srdmtx( sparse_context_t *dspctxt );
 
 #endif /* _SPARSE_MATRIX_H_ */

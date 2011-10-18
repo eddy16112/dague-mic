@@ -18,6 +18,6 @@ if ( DAGUE_WITH_SPARSE )
   
   #add_subdirectory(include)
   #add_subdirectory(lib)
-  #add_subdirectory(testing)
+  add_subdirectory(testing)
 
 endif()

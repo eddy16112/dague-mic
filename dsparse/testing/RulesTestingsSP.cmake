@@ -8,21 +8,21 @@ macro(testingssp_addexec OUTPUTLIST PRECISIONS ZSOURCES)
     set(testingssp_addexec_CFLAGS "${testingssp_addexec_CFLAGS} ${arg}")
   endforeach(arg ${PLASMA_CFLAGS})
 
-  set(testingssp_addexec_LDFLAGS "${LOCAL_FORTRAN_LINK_FLAGS}")
+  set(testingssp_addexec_LDFLAGS "${LOCAL_FORTRAN_LINK_FLAGS} -L${PASTIX_DIR} -L${SCOTCH_DIR}/lib")
   set(testingssp_addexec_LIBS    "${EXTRA_LIBS}")
-  set(testingssp_addexec_LIBS    "${PASTIX_LIBS}")
-  set(testingssp_addexec_LIBS    "${SCOTCH_LIBS}")
+  list(APPEND testingssp_addexec_LIBS "${PASTIX_LIBRARIES}")
+  list(APPEND testingssp_addexec_LIBS "${SCOTCH_LIBRARIES}")
   # Set flags for compilation
   if( MPI_FOUND )
 #    set(testingssp_addexec_CFLAGS  "${MPI_COMPILE_FLAGS} ${testingssp_addexec_CFLAGS} -DUSE_MPI")
 #    set(testingssp_addexec_LDFLAGS "${MPI_LINK_FLAGS} ${testingssp_addexec_LDFLAGS}")
 #    set(testingssp_addexec_LIBS   
-#      common-mpi dplasma-mpi dplasma_cores dague-mpi dague_distribution_matrix-mpi 
+#      commonsp-mpi dplasma-mpi dplasma_cores dague-mpi dague_distribution_sparse_matrix-mpi 
 #      ${testingssp_addexec_LIBS} ${MPI_LIBRARIES} 
 #      )
   else ( MPI_FOUND )
     set(testingssp_addexec_LIBS   
-      common dplasma dplasma_cores dague dague_distribution_matrix 
+      commonsp dplasma dplasma_cores dague dague_distribution_sparse_matrix 
       ${testingssp_addexec_LIBS}
       )
   endif()

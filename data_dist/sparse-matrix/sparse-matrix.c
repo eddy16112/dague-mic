@@ -144,3 +144,8 @@ void sparse_matrix_init( sparse_matrix_desc_t *desc,
            desc->super.super.cores,
            desc->super.super.myrank));
 }
+
+void sparse_matrix_destroy( sparse_matrix_desc_t *desc )
+{
+
+}

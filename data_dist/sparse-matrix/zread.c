@@ -91,7 +91,7 @@ int sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
     dague_int_t cblknbr, bloknbr, cblknum, bloknum;
     FILE *stream;
     int verbosemode = 3;
-    int iparm[IPARM_SIZE];
+    dague_int_t iparm[IPARM_SIZE];
     DagDouble_t dparm[DPARM_SIZE];
     pastix_data_t *pastix_data = NULL; /* Pointer to a storage structure needed by pastix */
 
@@ -152,10 +152,10 @@ int sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
     iparm[IPARM_SYM] = (MTX_ISSYM(dspctxt->type) ? API_SYM_YES : API_SYM_NO);
     iparm[IPARM_FACTORIZATION] = dspctxt->factotype;
     iparm[IPARM_MATRIX_VERIFICATION] = API_NO;
-    iparm[IPARM_VERBOSE]             = 1;         /* UPDATE !!! */
+    iparm[IPARM_VERBOSE]             = 4;         /* UPDATE !!! */
     iparm[IPARM_RHS_MAKING]          = API_RHS_1; /* UPDATE !!! */
     iparm[IPARM_START_TASK]          = API_TASK_ORDERING;
-    iparm[IPARM_END_TASK]            = API_TASK_ANALYSE;
+    iparm[IPARM_END_TASK]            = API_TASK_CLEAN;
 
     /*******************************************/
     /*           Call pastix                   */

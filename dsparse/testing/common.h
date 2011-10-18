@@ -27,7 +27,7 @@
 #include "dague.h"
 #include "scheduling.h"
 #include "profiling.h"
-#include "dsparse.h"
+/*#include "dsparse.h"*/
 /* timings */
 #include "common_timing.h"
 #ifdef DAGUE_VTRACE
@@ -108,8 +108,9 @@ extern MPI_Datatype SYNCHRO;
 
 void print_usage(void);
 
-dague_context_t *setup_dague(int argc, char* argv[], int *iparam);
-void cleanup_dague(dague_context_t* dague, int *iparam);
+dague_context_t *setup_dague(int argc, char* argv[], int *iparam, char **sparam);
+void cleanup_dague(dague_context_t* dague, int *iparam, char **sparam);
+void param_default(int* iparam, char **sparam);
 
 /**
  * No macro with the name max or min is acceptable as there is
@@ -167,6 +168,5 @@ static inline int min(int a, int b) { return a < b ? a : b; }
     _dspctxt.rhs        = NULL; /* Right Hand Side                            */    \
     _dspctxt.permtab    = NULL; /* vector of permutation                      */    \
     _dspctxt.peritab    = NULL; /* vector of inverse permutation              */    \
-    _dspctxt.symbmtx    = NULL; /* Pointer to symbol matrix structure, filled in by zrdmtx  */
 
 #endif /* _TESTSCOMMON_H */
