@@ -55,9 +55,10 @@ typedef struct dague_symbol_matrix {
 
 typedef struct sparse_matrix_desc_t {
     dague_ddesc_t         super;
-    enum spmtx_type       mtype;   /* precision of the matrix             */
+    enum spmtx_type       mtype;   /* Precision of the matrix             */
     int                   typesze; /* Type size                           */
-    dague_symbol_matrix_t symbmtx; /* Pointer to symbol matrix structure  */
+    //    dague_symbol_matrix_t symbmtx; /* Pointer to symbol matrix structure  */
+    pastix_data_t        *pastix_data;
 } sparse_matrix_desc_t;
 
 typedef struct sparse_context_s {
@@ -77,6 +78,7 @@ typedef struct sparse_context_s {
     dague_int_t *permtab;    /* vector of permutation                      */
     dague_int_t *peritab;    /* vector of inverse permutation              */
     sparse_matrix_desc_t *desc; /* Pointer to symbol matrix structure */
+    
 } sparse_context_t;
 
 #endif /* _SPARSE_MATRIX_H_ */

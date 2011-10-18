@@ -2,8 +2,9 @@
  *
  * @file sparse-matrix.c
  *
- * @author Mathieu Faverge
- * @date 2011-03-01
+ * @author Mathieu Faverge 
+ * @author Pierre Ramet
+ * @date 2011-10-17
  * @precisions normal z -> c d s
  *
  **/
@@ -23,6 +24,9 @@
 #include "dague_config.h"
 #include "dague.h"
 #include "data_dist/matrix/precision.h"
+
+//typedef void FLOAT;
+#include "pastix_internal.h"
 #include "data_dist/sparse-matrix/sparse-matrix.h"
 
 static int sparse_matrix_size_of(enum spmtx_type type)
@@ -55,10 +59,10 @@ void *sparse_matrix_data_of(struct dague_ddesc *mat, ... )
     va_start(ap, mat);
     cblknum = va_arg(ap, unsigned int);
     va_end(ap);
-    bloknum = spmtx->symbmtx.cblktab[cblknum].bloknum;
+    bloknum = spmtx->pastix_data->solvmatr.symbmtx.cblktab[cblknum].bloknum;
 
-    return (char*)spmtx->symbmtx.cblktab[cblknum].cblkptr 
-      + (size_t)(spmtx->typesze) * (size_t)(spmtx->symbmtx.bloktab[bloknum].coefind);
+    return (char*)(spmtx->pastix_data->solvmatr.coeftab[cblknum])
+      + (size_t)(spmtx->typesze) * (size_t)(spmtx->pastix_data->solvmatr.bloktab[bloknum].coefind);
 }
 
 #ifdef DAGUE_PROF_TRACE
@@ -70,7 +74,8 @@ uint32_t sparse_matrix_data_key(struct dague_ddesc *mat, ... )
     va_start(ap, mat);
     cblknum = va_arg(ap, unsigned int);
     va_end(ap);
-    bloknum = spmtx->symbmtx.cblktab[cblknum].bloknum;
+    bloknum = spmtx->pastix_data->solvmatr.symbmtx.cblktab[cblknum].bloknum;
+
     return (uint32_t)bloknum;
 }
 
@@ -78,17 +83,18 @@ int sparse_matrix_key_to_string(struct dague_ddesc *mat, uint32_t datakey, char 
 {
     sparse_matrix_desc_t *spmtx = (sparse_matrix_desc_t*)mat;
     dague_int_t bloknum, cblknum;
+
     dague_int_t first, last, middle;
     
     first   = 0;
-    last    = spmtx.symbmtx.cblknbr;
+    last    = spmtx->pastix_data->solvmatr.symbmtx.cblknbr;
     middle  = (last+first) / 2;
     bloknum = (dague_int_t)datakey;
     cblknum = -1;
 
     while( last - first > 0 ) {
-        if ( bloknum >= spmtx.symbmtx.cblktab[middle].bloknum ) {
-            if ( bloknum < spmtx.symbmtx.cblktab[middle+1].bloknum ) {
+        if ( bloknum >= spmtx->pastix_data->solvmatr.symbmtx.cblktab[middle].bloknum ) {
+            if ( bloknum < spmtx->pastix_data->solvmatr.symbmtx.cblktab[middle+1].bloknum ) {
                 cblknum = middle;
                 break;
             }

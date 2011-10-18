@@ -76,6 +76,7 @@ subs = {
     ('twoDBC_s',            'twoDBC_d',            'twoDBC_c',            'twoDBC_z'            ),
     ('stwoDBC',             'dtwoDBC',             'ctwoDBC',             'ztwoDBC'             ),
     ('cimagf',              'cimag',               'cimagf',              'cimag'               ),
+    ('S_Csc',               'D_Csc',               'C_Csc',               'Z_Csc'               ),
     ('workspace_s','workspace_d','workspace_c','workspace_z'),
     ('cblas_sasum','cblas_dasum','cblas_scasum','cblas_dzasum'),
     ('CORE_sasum','CORE_dasum','CORE_scasum','CORE_dzasum'),

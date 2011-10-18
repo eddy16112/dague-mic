@@ -14,7 +14,7 @@ set( precision_files
   )
 precisions_rules(generated_files
                  "${precision_files}"
-                 PRECISIONS "+;${DPLASMA_PRECISIONS}")
+                 PRECISIONS "+;s;d;c;z;")
 
 set( dague_sparse_SRC
   sparse-matrix.c 

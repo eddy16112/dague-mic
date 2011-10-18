@@ -1,6 +1,7 @@
 #ifndef CSC_H
 #define CSC_H
-#include "common_pastix.h"
+
+/*#include "common_pastix.h"*/
 
 /* Section: Macros */
 /*

@@ -13,14 +13,24 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <pastix.h>
-#include <read_matrix.h>
-
 #include "data_dist/matrix/precision.h"
-#include "sparse-matrix.h"
-#include "pastix_internal.h"
 
-#define FOPEN(stream, filename, mode)					\
+#if defined(PRECISION_z) || defined(PRECISION_c)
+#define FORCE_COMPLEX
+#define TYPE_COMPLEX
+#endif
+
+#if defined(PRECISION_z) || defined(PRECISION_d)
+#define FORCE_DOUBLE 
+#define PREC_DOUBLE
+#endif
+
+#include "pastix_internal.h"
+#include <read_matrix.h>
+#include "sparse-matrix.h"
+
+#if 0
+#define DAGUE_FOPEN(stream, filename, mode)					\
   {									\
     stream = NULL;							\
     if (NULL == (stream = fopen(filename, mode)))			\
@@ -43,11 +53,12 @@ typedef struct CscMatrix_ {
     INT               *rowtab;
     Dague_Complex64_t *valtab;
 } CscMatrix;
+#endif
 
-void dague_sparse_zcsc2pack(sparse_context_t  *dspctxt, 
+void sparse_matrix_zcsc2pack(sparse_context_t  *dspctxt, 
                             const CscMatrix   *cscmtx, 
                             Dague_Complex64_t *transcsc);
-void dague_sparse_zcsc2cblk(sparse_context_t  *dspctxt,
+void sparse_matrix_zcsc2cblk(sparse_context_t  *dspctxt,
                             const CscMatrix   *cscmtx,   
                             Dague_Complex64_t *transcsc, 
                             dague_int_t        itercblk);
@@ -67,7 +78,109 @@ void Z_CscOrdistrib(CscMatrix          *thecsc,
                     dague_int_t         procnum,
                     dague_int_t         dof);
 
-int dague_sparse_zrdmtx( sparse_context_t *dspctxt )
+
+
+int sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
+{
+    dague_symbol_matrix_t *symbptr;
+    SymbolMatrix       tmpsymbol;
+    Order              tmporder;
+    dague_int_t        forcetr  = 0;
+    Dague_Complex64_t *transcsc = NULL;
+    CscMatrix          cscmtx;
+    dague_int_t cblknbr, bloknbr, cblknum, bloknum;
+    FILE *stream;
+    int verbosemode = 3;
+    int iparm[IPARM_SIZE];
+    DagDouble_t dparm[DPARM_SIZE];
+    pastix_data_t *pastix_data = NULL; /* Pointer to a storage structure needed by pastix */
+
+    /*
+     * Read the matrix to get the csc format 
+     */
+    z_read_matrix(dspctxt->matrixname, 
+                  &(dspctxt->n), 
+                  &(dspctxt->colptr), 
+                  &(dspctxt->rows), 
+                  (Dague_Complex64_t**)&(dspctxt->values), 
+                  (Dague_Complex64_t**)&(dspctxt->rhs), 
+                  &(dspctxt->type), 
+                  &(dspctxt->rhstype), 
+                  (driver_type_t)(dspctxt->format), 
+                  0);                  /* MPI communicator */
+
+    dspctxt->nnz = dspctxt->colptr[dspctxt->n]-1;
+
+    /*
+     *    Check Matrix format because matrix needs :
+     *    - to be in fortran numbering
+     *    - to have only the lower triangular part in symmetric case
+     *    - to have a graph with a symmetric structure in unsymmetric case
+     */
+    z_pastix_checkMatrix(0,                              /* MPI communicator */
+                         verbosemode, 
+                         (MTX_ISSYM(dspctxt->type) ? API_SYM_YES : API_SYM_NO), 
+                         API_YES,                        /* Fix the csc if there is problem */
+                         dspctxt->n, 
+                         &(dspctxt->colptr), 
+                         &(dspctxt->rows), 
+                         (Dague_Complex64_t**)&(dspctxt->values), 
+                         NULL,                           /* Pointer for distributed case */
+                         1);                             /* Number of degree of freedom  */
+
+    /*******************************************/
+    /* Initialize parameters to default values */
+    /*******************************************/
+    iparm[IPARM_MODIFY_PARAMETER] = API_NO;
+    z_pastix(&pastix_data, MPI_COMM_WORLD, 
+	     dspctxt->n, 
+	     dspctxt->colptr, 
+	     dspctxt->rows, 
+	     dspctxt->values,
+	     NULL,
+	     NULL,
+	     dspctxt->rhs,
+	     1, 
+	     iparm, 
+	     dparm);
+
+    /*******************************************/
+    /*       Customize some parameters         */
+    /*******************************************/
+
+    iparm[IPARM_THREAD_NBR] = 1; /* WARNING : update with nbr thread for BLEND splitting !!! */
+    iparm[IPARM_SYM] = (MTX_ISSYM(dspctxt->type) ? API_SYM_YES : API_SYM_NO);
+    iparm[IPARM_FACTORIZATION] = dspctxt->factotype;
+    iparm[IPARM_MATRIX_VERIFICATION] = API_NO;
+    iparm[IPARM_VERBOSE]             = 1;         /* UPDATE !!! */
+    iparm[IPARM_RHS_MAKING]          = API_RHS_1; /* UPDATE !!! */
+    iparm[IPARM_START_TASK]          = API_TASK_ORDERING;
+    iparm[IPARM_END_TASK]            = API_TASK_ANALYSE;
+
+    /*******************************************/
+    /*           Call pastix                   */
+    /*******************************************/
+    dspctxt->permtab = malloc(dspctxt->n*sizeof(dague_int_t));
+    dspctxt->peritab = malloc(dspctxt->n*sizeof(dague_int_t));
+
+    z_pastix(&pastix_data, MPI_COMM_WORLD, 
+	     dspctxt->n, 
+	     dspctxt->colptr, 
+	     dspctxt->rows, 
+	     dspctxt->values,
+	     dspctxt->permtab,
+	     dspctxt->peritab,
+	     dspctxt->rhs,
+	     1, 
+	     iparm, 
+	     dparm);
+
+    dspctxt->desc->pastix_data = pastix_data;
+    return 0;
+}
+
+#if 0
+int sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
 { 
     dague_symbol_matrix_t *symbptr;
     SymbolMatrix       tmpsymbol;
@@ -116,14 +229,14 @@ int dague_sparse_zrdmtx( sparse_context_t *dspctxt )
      * Load ordering
      */
     memset(&tmporder, 0, sizeof (Order));
-    FOPEN( stream, dspctxt->ordername, "r" );
+    DAGUE_FOPEN( stream, dspctxt->ordername, "r" );
     orderLoad( &tmporder, stream );
     fclose(stream);
 
     /*
      * Load symbmtx
      */
-    FOPEN( stream, dspctxt->symbname, "r" );
+    DAGUE_FOPEN( stream, dspctxt->symbname, "r" );
     symbolInit(&tmpsymbol);           /* Initialize structure */
     symbolLoad(&tmpsymbol, stream);   /* Load data from file  */
     symbolBase(&tmpsymbol, 0);        /* Base everything to 0 if needed */
@@ -217,12 +330,12 @@ int dague_sparse_zrdmtx( sparse_context_t *dspctxt )
     free(tmpsymbol.bloktab);
 
     /* Allocate and fill-in the coeftab */
-    dague_sparse_zcsc2pack(dspctxt, &cscmtx, transcsc);
+    sparse_matrix_zcsc2pack(dspctxt, &cscmtx, transcsc);
 
     return 0;
 }
 
-void dague_sparse_zcsc2pack(sparse_context_t     *dspctxt, 
+void sparse_matrix_zcsc2pack(sparse_context_t     *dspctxt, 
                             const CscMatrix   *cscmtx, 
                             Dague_Complex64_t *transcsc)
 {   
@@ -245,11 +358,11 @@ void dague_sparse_zcsc2pack(sparse_context_t     *dspctxt,
             memset( symbptr->cblktab[icblk].ucblkptr, 0, coefnbr * sizeof(Dague_Complex64_t));
         }
 
-        dague_sparse_zcsc2cblk(dspctxt, cscmtx, transcsc, icblk);
+        sparse_matrix_zcsc2cblk(dspctxt, cscmtx, transcsc, icblk);
     }
 }
 
-void dague_sparse_zcsc2cblk(sparse_context_t  *dspctxt,
+void sparse_matrix_zcsc2cblk(sparse_context_t  *dspctxt,
                             const CscMatrix   *cscmtx, 
                             Dague_Complex64_t *transcsc, 
                             dague_int_t        itercblk)
@@ -318,3 +431,4 @@ void dague_sparse_zcsc2cblk(sparse_context_t  *dspctxt,
         }
     }
 }
+#endif

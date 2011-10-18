@@ -7,7 +7,7 @@
    Structure used to store datas for a step by step execution.
 */
 
-struct pastix_data_t {
+typedef struct pastix_data_t {
   SolverMatrix     solvmatr;         /*+ Matrix informations                                                 +*/
   SopalinParam     sopar;            /*+ Sopalin parameters                                                  +*/
   Order            ordemesh;         /*+ Order                                                               +*/
@@ -61,6 +61,6 @@ struct pastix_data_t {
   FLOAT           *iscalerowtab;
   FLOAT           *scalecoltab;
   FLOAT           *iscalecoltab;
-};
+} pastix_data_t;
 
 #endif /* PASTIX_STR_H */

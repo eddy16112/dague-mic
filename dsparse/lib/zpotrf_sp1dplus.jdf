@@ -25,6 +25,7 @@ extern "C" %{
 #include "cuda_zgemm.h"
 extern int *gpu_counter;
 #endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
+
 %}
 
 /* Globals

@@ -1,14 +1,22 @@
 #ifndef _DAGUE_PASTIX_INTERNAL_H_
 #define _DAGUE_PASTIX_INTERNAL_H_
 
+/*#include <pastix.h>*/
+
+#define NUMA_ALLOC
+#define FORCE_NOMPI
+#define MEMORY_USAGE
+#define WITH_SCOTCH
+#define FORCE_INT64
+#define INTSSIZE64
+
 #include "common_pastix.h"
+#include "sopalin_define.h"
 
-#if 0
-#include <ptscotch.h>
-#else
+#include "nompi.h"
 #include <scotch.h>
-#endif
 
+#include "graph.h"
 #include "dof.h"
 #include "ftgt.h"
 #include "symbol.h"
@@ -33,7 +41,11 @@
 #include "csc_intern_build.h"
 #include "coefinit.h"
 #include "out.h"
-#include <pastix.h>
 #include "pastixstr.h"
+
+#define pastix_int_t     int64_t
+#define pastix_uint_t    u_int64_t
+
+typedef double DagDouble_t;
 
 #endif /* _DAGUE_PASTIX_INTERNAL_H_ */
