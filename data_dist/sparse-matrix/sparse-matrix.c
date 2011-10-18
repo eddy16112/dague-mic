@@ -45,6 +45,46 @@ static int sparse_matrix_size_of(enum spmtx_type type)
     }
 }
 
+dague_int_t sparse_matrix_get_lcblknum(sparse_matrix_desc_t *spmtx, dague_int_t bloknum )
+{
+    dague_int_t cblknum;
+    dague_int_t first, last, middle;
+    
+    first   = 0;
+    last    = spmtx->pastix_data->solvmatr.symbmtx.cblknbr;
+    middle  = (last+first) / 2;
+    cblknum = -1;
+
+    while( last - first > 0 ) {
+        if ( bloknum >= spmtx->pastix_data->solvmatr.symbmtx.cblktab[middle].bloknum ) {
+            if ( bloknum < spmtx->pastix_data->solvmatr.symbmtx.cblktab[middle+1].bloknum ) {
+                cblknum = middle;
+                break;
+            }
+            first = middle;
+        }
+        else {
+            last = middle;
+        }
+        middle = (last+first) / 2;
+    }
+    assert( spmtx->pastix_data->solvmatr.symbmtx.cblktab[cblknum].bloknum <= bloknum 
+	    && spmtx->pastix_data->solvmatr.symbmtx.cblktab[cblknum+1].bloknum > bloknum);
+    return cblknum;
+}
+
+dague_int_t sparse_matrix_get_listptr_prev(sparse_matrix_desc_t *mat, dague_int_t bloknum, dague_int_t fcblknum ) 
+{
+  // TODO
+  return 0;
+}
+
+dague_int_t sparse_matrix_get_listptr_next(sparse_matrix_desc_t *mat, dague_int_t bloknum, dague_int_t fcblknum )
+{
+  // TODO
+  return 0;
+}
+
 uint32_t sparse_matrix_rank_of(struct dague_ddesc *mat, ... )
 {
     return 0;

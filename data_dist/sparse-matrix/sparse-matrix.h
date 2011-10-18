@@ -87,6 +87,10 @@ void sparse_matrix_init( sparse_matrix_desc_t *desc,
                          int nodes, int cores, int myrank);
 void sparse_matrix_destroy( sparse_matrix_desc_t *desc );
 
+dague_int_t sparse_matrix_get_lcblknum(sparse_matrix_desc_t *mat, dague_int_t bloknum );
+dague_int_t sparse_matrix_get_listptr_prev(sparse_matrix_desc_t *mat, dague_int_t bloknum, dague_int_t fcblknum );
+dague_int_t sparse_matrix_get_listptr_next(sparse_matrix_desc_t *mat, dague_int_t bloknum, dague_int_t fcblknum );
+
 int sparse_matrix_zrdmtx( sparse_context_t *dspctxt );
 int sparse_matrix_crdmtx( sparse_context_t *dspctxt );
 int sparse_matrix_drdmtx( sparse_context_t *dspctxt );
