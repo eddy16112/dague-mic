@@ -11,20 +11,11 @@ extern "C" %{
 #include "dague.h"
 #include "data_distribution.h"
 #include "dplasmajdf.h"
+#include "data_dist/sparse_matrix/sparse_matrix.h"
 
 #include "sopalin_acces.h"
 
 #define PRECISION_z
-
-#if defined(HAVE_CUDA)
-#undef HAVE_CUDA
-#endif
-
-#if defined(HAVE_CUDA) && defined(PRECISION_s)
-#include "gpu_data.h"
-#include "cuda_zgemm.h"
-extern int *gpu_counter;
-#endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
 
 %}
 
@@ -33,6 +24,9 @@ extern int *gpu_counter;
 descA    [type = "sparse_matrix_desc_t *"]
 A        [type = "dague_ddesc_t *"]
 datacode [type = "SolverMatrix*"]
+cblknbr  [type = "dague_int_t" default="SYMB_CBLKNBR" hidden=on]
+bloknbr  [type = "dague_int_t" default="SYMB_BLOKNBR" hidden=on]
+
 
 /**************************************************
  *                POTRF_TRSM                      *
@@ -40,14 +34,19 @@ datacode [type = "SolverMatrix*"]
 POTRF_TRSM(k) [high_priority = on]
 
 // Execution space
-cblknum = 0..SYMB_CBLKNBR-1
-
+k = 0..cblknbr-1
+browk  = inline_c %{ return UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( k ))   ); %}
+browk1 = inline_c %{ return UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( k ))+1 ); %}
+bloknum= inline_c %{ return UPDOWN_LISTBLOK(browk1-1); %}
+firstblok = inline_c %{ return SYMB_BLOKNUM(k); %}
+lastblok  = inline_c %{ return SYMB_BLOKNUM(k+1); %}
 // Parallel partitioning
 :A(k) // Should match SOLV_COEFTAB(k)
 
 // Parameters
-RW C <- (UPDOWN_LISTPTR(UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(k)))==UPDOWN_LISTPTR(UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(k)+1))) ? A(k) : C GEMM(UPDOWN_LISTBLOK(UPDOWN_LISTPTR(UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(k)+1))-1))
-     -> C GEMM(SYMB_BLOKNUM(k)..SYMB_BLOKNUM(k+1)-1)
+/* C is A(k) if it's a leaf or get the cblk from the last update */
+RW C <- ( browk == browk1 ) ? A(k) : C GEMM( bloknum )
+     -> C GEMM(firstblok..lastblok-1)
      -> A(k)
 
 BODY
@@ -66,17 +65,21 @@ END
 GEMM(k)
 
 // Execution space
-k = 0..SYMB_BLOKNBR-1
-fcblk = SYMB_CBLKNUM(k)
-cblk  = SYMB_LCBLKNUM(k) // TODO
+k = 0..bloknbr-1
+fcblk  = inline_c %{ return SYMB_CBLKNUM(k); %}
+cblk   = inline_c %{ return sparse_matrix_get_lcblknum( descA, k ); %}// TODO: store cblknum in symbblok
+browk  = inline_c %{ return UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( fcblk ))   ); %}
+browk1 = inline_c %{ return UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( fcblk ))+1 ); %}
+prev   = inline_c %{ return sparse_matrix_get_listptr_prev( k, fcblk ); %}
+next   = inline_c %{ return sparse_matrix_get_listptr_next( k, fcblk ); %}
 
 // Parallel partitioning
 :A(fcblk)
 
 // Parameters
 READ  A <- C POTRF_TRSM(cblk)
-RW    C <- (k==UPDOWN_LISTPTR(UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblk)))) ? A(fcblk): C GEMM(UPDOWN_LISTPTR_PREVIOUS(k,fcblk))
-        -> (k==UPDOWN_LISTPTR(UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblk)+1))-1) ? C POTRF_TRSM(fcblk): C GEMM(UPDOWN_LISTPTR_NEXT(k,fcblk))
+RW    C <- (k == browk)    ? A(fcblk): C GEMM( prev )
+        -> (k == browk1-1) ? C POTRF_TRSM(fcblk): C GEMM( next)
 
 BODY
       DRYRUN(
