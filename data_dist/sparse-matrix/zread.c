@@ -79,8 +79,7 @@ void Z_CscOrdistrib(CscMatrix          *thecsc,
                     dague_int_t         dof);
 
 
-
-int sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
+DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
 {
     dague_symbol_matrix_t *symbptr;
     SymbolMatrix       tmpsymbol;
@@ -155,7 +154,7 @@ int sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
     iparm[IPARM_VERBOSE]             = 4;         /* UPDATE !!! */
     iparm[IPARM_RHS_MAKING]          = API_RHS_1; /* UPDATE !!! */
     iparm[IPARM_START_TASK]          = API_TASK_ORDERING;
-    iparm[IPARM_END_TASK]            = API_TASK_CLEAN;
+    iparm[IPARM_END_TASK]            = API_TASK_ANALYSE;
 
     /*******************************************/
     /*           Call pastix                   */
@@ -175,8 +174,26 @@ int sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
 	     iparm, 
 	     dparm);
 
+    pastix_data->solvmatr.coeftab = (Dague_Complex64_t **)malloc( pastix_data->solvmatr.symbmtx.cblknbr * sizeof(Dague_Complex64_t*));
+    memset( pastix_data->solvmatr.coeftab, 0, pastix_data->solvmatr.symbmtx.cblknbr * sizeof(Dague_Complex64_t*) );
+
+
+    {
+      SymbolMatrix *symbptr = &(pastix_data->solvmatr.symbmtx);
+      dague_int_t icblk;
+    
+      /* Allocate array of values in packed format  */
+      for (icblk=0; icblk < symbptr->cblknbr; icblk++)
+        {
+          /* Could be done in parallel */
+          pastix_data->solvmatr.coeftab[icblk] = (void *) malloc (1 * sizeof(Dague_Complex64_t));
+          memset( pastix_data->solvmatr.coeftab[icblk], 0, 1 * sizeof(Dague_Complex64_t));
+        }
+    }
+
     dspctxt->desc->pastix_data = pastix_data;
-    return 0;
+    
+    return dparm[DPARM_FACT_FLOPS];
 }
 
 #if 0
