@@ -17,6 +17,8 @@
 #include "data_dist/matrix/precision.h"
 
 typedef int64_t dague_int_t;
+struct pastix_data_t;
+typedef struct pastix_data_t pastix_data_t;
 
 /* WARNING: Has to follow Pastix enum API_FACT */
 #define DSPARSE_LLT   0
@@ -91,9 +93,9 @@ dague_int_t sparse_matrix_get_lcblknum(sparse_matrix_desc_t *mat, dague_int_t bl
 dague_int_t sparse_matrix_get_listptr_prev(sparse_matrix_desc_t *mat, dague_int_t bloknum, dague_int_t fcblknum );
 dague_int_t sparse_matrix_get_listptr_next(sparse_matrix_desc_t *mat, dague_int_t bloknum, dague_int_t fcblknum );
 
-int sparse_matrix_zrdmtx( sparse_context_t *dspctxt );
-int sparse_matrix_crdmtx( sparse_context_t *dspctxt );
-int sparse_matrix_drdmtx( sparse_context_t *dspctxt );
-int sparse_matrix_srdmtx( sparse_context_t *dspctxt );
+double sparse_matrix_zrdmtx( sparse_context_t *dspctxt );
+double sparse_matrix_crdmtx( sparse_context_t *dspctxt );
+double sparse_matrix_drdmtx( sparse_context_t *dspctxt );
+double sparse_matrix_srdmtx( sparse_context_t *dspctxt );
 
 #endif /* _SPARSE_MATRIX_H_ */

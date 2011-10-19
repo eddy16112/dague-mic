@@ -75,26 +75,38 @@ dague_int_t sparse_matrix_get_lcblknum(sparse_matrix_desc_t *spmtx, dague_int_t 
 
 dague_int_t sparse_matrix_get_listptr_prev(sparse_matrix_desc_t *spmtx, dague_int_t bloknum, dague_int_t fcblknum ) 
 {
-  dague_int_t count;
-  SolverMatrix *datacode=&(spmtx->pastix_data->solvmatr);
-  for (count=UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblknum))); 
-       count<UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblknum))+1)-1; 
-       count++)
-    if (bloknum==UPDOWN_LISTBLOK(count+1)) return UPDOWN_LISTBLOK(count);
-  assert(0);
-  return -1;
+    dague_int_t count, browfirst, browlast;
+    SolverMatrix *datacode=&(spmtx->pastix_data->solvmatr);
+    
+    /* fprintf(stderr, "TOTO cblknum=%d, browfirst=%d, browlast=%d\n", */
+    /*         cblknum,  */
+    /*         UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(cblknum))  ),  */
+    /*         UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(cblknum))+1)); */
+
+    browfirst = UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblknum))  );
+    browlast  = UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblknum))+1);
+    if ( bloknum == UPDOWN_LISTBLOK( browfirst ) )
+        return 0; 
+    for (count=browfirst; count<browlast-1; count++)
+        if (bloknum==UPDOWN_LISTBLOK(count+1)) return UPDOWN_LISTBLOK(count);
+    assert(0);
+    return -1;
 }
 
 dague_int_t sparse_matrix_get_listptr_next(sparse_matrix_desc_t *spmtx, dague_int_t bloknum, dague_int_t fcblknum )
 {
-  dague_int_t count;
-  SolverMatrix *datacode=&(spmtx->pastix_data->solvmatr);
-  for (count=UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblknum)))+1; 
-       count<UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblknum))+1); 
-       count++)
-    if (bloknum==UPDOWN_LISTBLOK(count-1)) return UPDOWN_LISTBLOK(count);
-  assert(0);
-  return -1;
+    dague_int_t count, browfirst, browlast;
+    SolverMatrix *datacode=&(spmtx->pastix_data->solvmatr);
+    
+    browfirst = UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblknum))   );
+    browlast  = UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblknum))+1 );
+    
+    if ( bloknum == UPDOWN_LISTBLOK( browlast-1 ) )
+        return 0; 
+    for (count=browlast-1; count>browfirst; count--)
+        if (bloknum==UPDOWN_LISTBLOK(count-1)) return UPDOWN_LISTBLOK(count);
+    assert(0);
+    return -1;
 }
 
 uint32_t sparse_matrix_rank_of(struct dague_ddesc *mat, ... )
