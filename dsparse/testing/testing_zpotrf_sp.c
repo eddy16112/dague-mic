@@ -16,7 +16,7 @@ int main(int argc, char ** argv)
     sparse_context_t dspctxt;
     int   iparam[IPARAM_SIZEOF];
     char *sparam[SPARAM_SIZEOF];
-    double flops;
+    DagDouble_t flops, gflops;
     struct timeval start, bench, realend, realtime, benchtime;
 
     /* Set defaults for non argv iparams/sparam */
@@ -35,28 +35,27 @@ int main(int argc, char ** argv)
     PASTE_CODE_IPARAM_LOCALS(iparam);
 
     /* initializing matrix structure */
-    //int info = 0;
     PASTE_CODE_INIT_CONTEXT( dspctxt, DSPARSE_LDLT );
 
     /* Initialize the descriptor */
     sparse_matrix_desc_t ddescA;
     sparse_matrix_init( &ddescA, spmtx_ComplexDouble, nodes, cores, rank );
+    dspctxt.desc = &ddescA;
 
     /* Read the matrix files */
-    sparse_matrix_zrdmtx( &dspctxt );
+    flops = sparse_matrix_zrdmtx( &dspctxt );
 
-    /* compute the number of flops */
-    /* flops = dsparse_zpotrf_sp_flops_count( &ddescA ); */
-    /* if ( loud && rank == 0 ) */
-    /*   printf("Number of floating points operations: %g GFLOPs\n", flops/1.e9); */
-        
-    /* if(loud > 2) printf("+++ Computing potrf ... "); */
-    /* PASTE_CODE_ENQUEUE_KERNEL(dague, zpotrf_sp,  */
-    /*                           ((sparse_matrix_desc_t*)&ddescA)); */
-    /* PASTE_CODE_PROGRESS_KERNEL(dague, zpotrf_sp); */
+    if ( loud && rank == 0 ) {
+      printf("Number of floating points operations: %g GFLOPs\n", flops/1.e9);
+    }
 
-    /* dsparse_zpotrf_sp_Destruct( DAGUE_zpotrf_sp ); */
-    /* if(loud > 2) printf("Done.\n"); */
+    if(loud > 2) printf("+++ Computing potrf ... ");
+    PASTE_CODE_ENQUEUE_KERNEL( dague, zpotrf_sp,
+                               ((sparse_matrix_desc_t*)&ddescA) );
+    PASTE_CODE_PROGRESS_KERNEL( dague, zpotrf_sp );
+
+    dsparse_zpotrf_sp_Destruct( DAGUE_zpotrf_sp );
+    if(loud > 2) printf("Done.\n");
 
     cleanup_dague(dague, iparam, sparam);
 
