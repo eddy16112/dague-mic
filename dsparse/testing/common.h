@@ -27,7 +27,7 @@
 #include "dague.h"
 #include "scheduling.h"
 #include "profiling.h"
-/*#include "dsparse.h"*/
+#include "dsparse.h"
 /* timings */
 #include "common_timing.h"
 #ifdef DAGUE_VTRACE
@@ -43,26 +43,8 @@ enum iparam_t {
   IPARAM_SCHEDULER,    /* What scheduler do we choose */
   IPARAM_NGPUS,        /* Number of GPUs                    */
   IPARAM_PRIO,         /* Switchpoint for priority DAG      */
-//  IPARAM_P,            /* Rows in the process grid          */
-//  IPARAM_Q,            /* Columns in the process grid       */
-//  IPARAM_M,            /* Number of rows of the matrix      */
-//  IPARAM_N,            /* Number of columns of the matrix   */
-//  IPARAM_K,            /* RHS or K                          */
-//  IPARAM_LDA,          /* Leading dimension of A            */
-//  IPARAM_LDB,          /* Leading dimension of B            */
-//  IPARAM_LDC,          /* Leading dimension of C            */
-//  IPARAM_IB,           /* Inner-blocking size               */
-//  IPARAM_NB,           /* Number of columns in a tile       */
-//  IPARAM_MB,           /* Number of rows in a tile          */
-//  IPARAM_SNB,          /* Number of columns in a super-tile */
-//  IPARAM_SMB,          /* Number of rows in a super-tile    */
   IPARAM_CHECK,        /* Checking activated or not         */
   IPARAM_VERBOSE,      /* How much noise do we want?        */
-//  IPARAM_LOWLVL_TREE,  /* Tree used for reduction inside nodes  (specific to xgeqrf_param) */
-//  IPARAM_HIGHLVL_TREE, /* Tree used for reduction between nodes (specific to xgeqrf_param) */
-//  IPARAM_QR_TS_SZE,    /* Size of TS domain                     (specific to xgeqrf_param) */
-//  IPARAM_QR_HLVL_SZE,  /* Size of the high level tree           (specific to xgeqrf_param) */
-//  IPARAM_QR_DOMINO,    /* Enable/disable the domino between the upper and the lower tree (specific to xgeqrf_param) */
   IPARAM_DOT,          /* Do we require to output the DOT file? */
   IPARAM_SIZEOF
 };
@@ -146,7 +128,7 @@ static inline int min(int a, int b) { return a < b ? a : b; }
   if(loud) TIME_PRINT(rank, (#KERNEL " computed %u tasks,\trate %f task/s\n", \
               DAGUE_##KERNEL->nb_local_tasks, \
               DAGUE_##KERNEL->nb_local_tasks/time_elapsed)); \
-  SYNC_TIME_PRINT(rank, (#KERNEL " computation N= %d NB= %d : %f gflops\n", N, NB, \
+  SYNC_TIME_PRINT(rank, (#KERNEL " computation : %f gflops\n", \
                    gflops = (flops/1e9)/(sync_time_elapsed))); \
   (void)gflops;
 
@@ -167,6 +149,7 @@ static inline int min(int a, int b) { return a < b ? a : b; }
     _dspctxt.values     = NULL; /* Values of the matrix                       */    \
     _dspctxt.rhs        = NULL; /* Right Hand Side                            */    \
     _dspctxt.permtab    = NULL; /* vector of permutation                      */    \
-    _dspctxt.peritab    = NULL; /* vector of inverse permutation              */    \
+    _dspctxt.peritab    = NULL; /* vector of inverse permutation              */
+
 
 #endif /* _TESTSCOMMON_H */
