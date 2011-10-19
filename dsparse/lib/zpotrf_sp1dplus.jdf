@@ -75,7 +75,7 @@ next   = inline_c %{ if (phony) return 0; else return sparse_matrix_get_listptr_
 :A(fcblk)
 
 // Parameters
-READ  A <- phony ? A(cblknbr-1) : A POTRF_TRSM(cblk)
+READ  A <- phony ? A(fcblk) : A POTRF_TRSM(cblk)
 RW    C <- ( prev == 0 ) ? A(fcblk) : C GEMM( prev )
         -> phony ? A(fcblk)
         -> ((!phony) && (next == 0)) ? A POTRF_TRSM( fcblk )
