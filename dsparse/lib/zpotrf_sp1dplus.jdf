@@ -10,10 +10,10 @@ extern "C" %{
 
 #include "dague.h"
 #include "data_distribution.h"
-#include "dplasmajdf.h"
-#include "data_dist/sparse_matrix/sparse_matrix.h"
+#include "dplasma/lib/dplasmajdf.h"
+#include "data_dist/sparse-matrix/sparse-matrix.h"
 
-#include "sopalin_acces.h"
+#include "data_dist/sparse-matrix/pastix_internal/pastix_internal.h"
 
 #define PRECISION_z
 
@@ -23,10 +23,9 @@ extern "C" %{
  */
 descA    [type = "sparse_matrix_desc_t *"]
 A        [type = "dague_ddesc_t *"]
-datacode [type = "SolverMatrix*"]
-cblknbr  [type = "dague_int_t" default="SYMB_CBLKNBR" hidden=on]
-bloknbr  [type = "dague_int_t" default="SYMB_BLOKNBR" hidden=on]
-
+datacode [type = "SolverMatrix*" default="&(descA->pastix_data->solvmatr)" hidden=on]
+cblknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.cblknbr" hidden=on]
+bloknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.bloknbr" hidden=on]
 
 /**************************************************
  *                POTRF_TRSM                      *
@@ -35,9 +34,9 @@ POTRF_TRSM(k) [high_priority = on]
 
 // Execution space
 k = 0..cblknbr-1
-browk  = inline_c %{ return UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( k ))   ); %}
-browk1 = inline_c %{ return UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( k ))+1 ); %}
-bloknum= inline_c %{ return UPDOWN_LISTBLOK(browk1-1); %}
+browk     = inline_c %{ return UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( k ))   ); %}
+browk1    = inline_c %{ return UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( k ))+1 ); %}
+lastbrow  = inline_c %{ if (browk1 > 0) return UPDOWN_LISTBLOK(browk1-1); else return 0; %}
 firstblok = inline_c %{ return SYMB_BLOKNUM(k); %}
 lastblok  = inline_c %{ return SYMB_BLOKNUM(k+1); %}
 // Parallel partitioning
@@ -45,8 +44,8 @@ lastblok  = inline_c %{ return SYMB_BLOKNUM(k+1); %}
 
 // Parameters
 /* C is A(k) if it's a leaf or get the cblk from the last update */
-RW C <- ( browk == browk1 ) ? A(k) : C GEMM( bloknum )
-     -> C GEMM(firstblok..lastblok-1)
+RW A <- ( browk == browk1 ) ? A(k) : C GEMM( lastbrow )
+     -> A GEMM(firstblok+1..lastblok-1)
      -> A(k)
 
 BODY
@@ -54,8 +53,8 @@ BODY
 	     /* compute_1dplus */
 	     );
       printlog(
-               "thread %d compute_1dplus( %d )\n",
-               context->eu_id, k);
+               "thread %d compute_1dplus( cblknum=%d, browk=%d, browk1=%d, lastbrow=%d, firstblok=%d, lastblok=%d )\n",
+               context->eu_id, k, browk, browk1, lastbrow, firstblok, lastblok);
 END
 
 /**************************************************
@@ -65,27 +64,35 @@ END
 GEMM(k)
 
 // Execution space
-k = 0..bloknbr-1
+k = 0..bloknbr-2
 fcblk  = inline_c %{ return SYMB_CBLKNUM(k); %}
-cblk   = inline_c %{ return sparse_matrix_get_lcblknum( descA, k ); %}// TODO: store cblknum in symbblok
-browk  = inline_c %{ return UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( fcblk ))   ); %}
-browk1 = inline_c %{ return UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( fcblk ))+1 ); %}
-prev   = inline_c %{ return sparse_matrix_get_listptr_prev( k, fcblk ); %}
-next   = inline_c %{ return sparse_matrix_get_listptr_next( k, fcblk ); %}
+cblk   = inline_c %{ return sparse_matrix_get_lcblknum( descA, (dague_int_t)k ); %}// TODO: store cblknum in symbblok
+phony  = inline_c %{ return k == SYMB_BLOKNUM( cblk ); %}
+prev   = inline_c %{ if (phony) return 0; else return sparse_matrix_get_listptr_prev( descA, (dague_int_t)k, (dague_int_t)fcblk ); %}
+next   = inline_c %{ if (phony) return 0; else return sparse_matrix_get_listptr_next( descA, (dague_int_t)k, (dague_int_t)fcblk ); %}
 
 // Parallel partitioning
 :A(fcblk)
 
 // Parameters
-READ  A <- C POTRF_TRSM(cblk)
-RW    C <- (k == browk)    ? A(fcblk): C GEMM( prev )
-        -> (k == browk1-1) ? C POTRF_TRSM(fcblk): C GEMM( next)
+READ  A <- phony ? A(cblknbr-1) : A POTRF_TRSM(cblk)
+RW    C <- ( prev == 0 ) ? A(fcblk) : C GEMM( prev )
+        -> phony ? A(fcblk)
+        -> ((!phony) && (next == 0)) ? A POTRF_TRSM( fcblk )
+        -> ((!phony) && (next != 0)) ? C GEMM( next )
 
 BODY
+      if (!phony) {
       DRYRUN(
 	     /* compute_1dgemm */
           );
       printlog(
-               "thread %d compute_1dgemm( %d , %d )\n",
-               context->eu_id, k, fcblk);
+               "thread %d compute_1dgemm( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
+               context->eu_id, k, fcblk, cblk, prev, next);
+      } else {
+      printlog(
+               "thread %d phony_gemm( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
+               context->eu_id, k, fcblk, cblk, prev, next);
+      }
+
 END
