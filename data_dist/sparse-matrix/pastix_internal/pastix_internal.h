@@ -42,6 +42,7 @@
 #include "coefinit.h"
 #include "out.h"
 #include "pastixstr.h"
+#include "sopalin_acces.h"
 
 #define pastix_int_t     int64_t
 #define pastix_uint_t    u_int64_t
