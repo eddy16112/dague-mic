@@ -1,7 +1,7 @@
 if ( DAGUE_WITH_SPARSE )
 
   if(NOT DSPARSE_PRECISIONS)
-    set(DSPARSE_PRECISIONS "s;d;c;z" CACHE STRING "The precisions to compile in dsparse (accepts a colon separated list of s;d;c;z)" FORCE)
+    set(DSPARSE_PRECISIONS "z;c;d;s" CACHE STRING "The precisions to compile in dsparse (accepts a colon separated list of z;c;d;s)" FORCE)
   endif()
 
   include_directories(${PLASMA_INCLUDE_DIRS})
@@ -16,7 +16,7 @@ if ( DAGUE_WITH_SPARSE )
     include_directories(${CMAKE_CURRENT_BINARY_DIR}/include)
   endif( ${CMAKE_CURRENT_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR} )
   
-  #add_subdirectory(include)
+  add_subdirectory(include)
   add_subdirectory(lib)
   add_subdirectory(testing)
 
