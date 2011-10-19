@@ -73,16 +73,28 @@ dague_int_t sparse_matrix_get_lcblknum(sparse_matrix_desc_t *spmtx, dague_int_t 
     return cblknum;
 }
 
-dague_int_t sparse_matrix_get_listptr_prev(sparse_matrix_desc_t *mat, dague_int_t bloknum, dague_int_t fcblknum ) 
+dague_int_t sparse_matrix_get_listptr_prev(sparse_matrix_desc_t *spmtx, dague_int_t bloknum, dague_int_t fcblknum ) 
 {
-  // TODO
-  return 0;
+  dague_int_t count;
+  SolverMatrix *datacode=&(spmtx->pastix_data->solvmatr);
+  for (count=UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblknum))); 
+       count<UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblknum))+1)-1; 
+       count++)
+    if (bloknum==UPDOWN_LISTBLOK(count+1)) return UPDOWN_LISTBLOK(count);
+  assert(0);
+  return -1;
 }
 
-dague_int_t sparse_matrix_get_listptr_next(sparse_matrix_desc_t *mat, dague_int_t bloknum, dague_int_t fcblknum )
+dague_int_t sparse_matrix_get_listptr_next(sparse_matrix_desc_t *spmtx, dague_int_t bloknum, dague_int_t fcblknum )
 {
-  // TODO
-  return 0;
+  dague_int_t count;
+  SolverMatrix *datacode=&(spmtx->pastix_data->solvmatr);
+  for (count=UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblknum)))+1; 
+       count<UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblknum))+1); 
+       count++)
+    if (bloknum==UPDOWN_LISTBLOK(count-1)) return UPDOWN_LISTBLOK(count);
+  assert(0);
+  return -1;
 }
 
 uint32_t sparse_matrix_rank_of(struct dague_ddesc *mat, ... )
