@@ -18,7 +18,11 @@ elif [ "x$USER" = "xherault" ]; then
   DAGUE_Q2J="-DDAGUE_Q2J=ON -DDAGUE_OMEGA_DIR=/home/adanalis/pub/Omega/"
 elif [ "x$USER" = "xmfaverge" ]; then
   HWLOC="/opt/hwloc"
-  PLASMADIR="/home/mfaverge/opt/plasma-intel/"
+  if [ "x$1" = "xgcc" ]; then
+      PLASMADIR="/home/mfaverge/opt/plasma"
+  else
+      PLASMADIR="/home/mfaverge/opt/plasma-intel"
+  fi
   #CUDA="/opt/cuda"
   #MPI="-DMPI_COMPILER=/usr/bin/mpicc -DDAGUE_GPU_WITH_CUDA=OFF"
   MPI="-DDAGUE_DIST_WITH_MPI=OFF -DDAGUE_GPU_WITH_CUDA=OFF"
@@ -51,8 +55,8 @@ PLASMA="-DPLASMA_DIR=${PLASMADIR}"
 
 if [ "x$1" = "xgcc" ]; then
   # to compile with gcc and plasma-2.1
-  echo cmake -G "Unix Makefiles" ${PLASMA} -DCUDA_DIR=/opt/cuda -DHWLOC_DIR=${HWLOC} ${DAGUE_Q2J} ${LOCATION} ${DSPARSE}
-  cmake -G "Unix Makefiles" ${PLASMA} -DCUDA_DIR=/opt/cuda -DHWLOC_DIR=${HWLOC} ${DAGUE_Q2J} ${LOCATION} ${DSPARSE}
+  echo cmake -G "Unix Makefiles" ${MPI} ${PLASMA} -DCUDA_DIR=/opt/cuda -DHWLOC_DIR=${HWLOC} ${DAGUE_Q2J} ${LOCATION} ${DSPARSE}
+  cmake -G "Unix Makefiles" ${MPI} ${PLASMA} -DCUDA_DIR=/opt/cuda -DHWLOC_DIR=${HWLOC} ${DAGUE_Q2J} ${LOCATION} ${DSPARSE}
 else
   # Compile with icc, ifort, plasma 2.2
   /opt/intel/Compiler/11.1/072/bin/iccvars.sh intel64
