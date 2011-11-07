@@ -11,9 +11,9 @@ extern "C" %{
 #include "dague.h"
 #include "data_distribution.h"
 #include "dplasma/lib/dplasmajdf.h"
-#include "data_dist/sparse-matrix/sparse-matrix.h"
 
 #include "data_dist/sparse-matrix/pastix_internal/pastix_internal.h"
+#include "data_dist/sparse-matrix/sparse-matrix.h"
 
 #define PRECISION_z
 

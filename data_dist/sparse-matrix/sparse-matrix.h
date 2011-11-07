@@ -18,7 +18,7 @@
 
 typedef int64_t dague_int_t;
 
-#ifndef PASTIX_STR_H
+#if !defined(PASTIX_STR_H) && !defined(_PASTIX_H_)
 struct pastix_data_t;
 typedef struct pastix_data_t pastix_data_t;
 #endif
