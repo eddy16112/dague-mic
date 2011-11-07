@@ -8,6 +8,9 @@ include(RulesPrecisions)
 set(generated_files "")
 
 include_directories(".")
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/pastix_internal)
+include_directories(${PASTIX_INCLUDE_DIRS}) 
+include_directories(${SCOTCH_INCLUDE_DIRS}) 
 
 set( precision_files
   zread.c
@@ -20,10 +23,6 @@ set( dague_sparse_SRC
   sparse-matrix.c 
   ${generated_files}
   )
-
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/pastix_internal)
-include_directories(${PASTIX_INCLUDE_DIRS}) 
-include_directories(${SCOTCH_INCLUDE_DIRS}) 
 
 if (MPI_FOUND)
   add_library(dague_distribution_sparse_matrix-mpi STATIC
