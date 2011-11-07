@@ -20,15 +20,17 @@ elif [ "x$USER" = "xmfaverge" ]; then
   HWLOC="/opt/hwloc"
   if [ "x$1" = "xgcc" ]; then
       PLASMADIR="/home/mfaverge/opt/plasma"
+      DSPARSE="-DDAGUE_WITH_SPARSE=ON -DPASTIX_DIR=/home/mfaverge/opt/pastix -DSCOTCH_DIR=/opt/scotch-gf"
   else
       PLASMADIR="/home/mfaverge/opt/plasma-intel"
+      DSPARSE="-DDAGUE_WITH_SPARSE=ON -DPASTIX_DIR=/home/mfaverge/opt/pastix-intel -DSCOTCH_DIR=/opt/scotch"
   fi
   #CUDA="/opt/cuda"
   #MPI="-DMPI_COMPILER=/usr/bin/mpicc -DDAGUE_GPU_WITH_CUDA=OFF"
   MPI="-DDAGUE_DIST_WITH_MPI=OFF -DDAGUE_GPU_WITH_CUDA=OFF"
   DAGUE_Q2J="-DDAGUE_Q2J=ON -DDAGUE_OMEGA_DIR=/home/adanalis/pub/Omega/"
 
-  DSPARSE="-DDAGUE_WITH_SPARSE=ON -DPASTIX_DIR=/home/mfaverge/opt/pastix -DSCOTCH_DIR=/opt/scotch"
+
 elif [ "x$USER" = "xYOURSELF" ]; then
   HWLOC=SOMEWHERE
   PLASMADIR=SOMEWHERE
