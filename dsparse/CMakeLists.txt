@@ -10,6 +10,9 @@ if ( DAGUE_WITH_SPARSE )
   include_directories(${CMAKE_CURRENT_SOURCE_DIR})
   include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
+  link_directories(${PASTIX_LIBRARY_DIRS})
+  link_directories(${SCOTCH_LIBRARY_DIRS})
+
   if( ${CMAKE_CURRENT_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR} )
   else( ${CMAKE_CURRENT_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR} )
     include_directories(${CMAKE_CURRENT_BINARY_DIR})
