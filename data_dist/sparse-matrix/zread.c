@@ -29,6 +29,31 @@
 #include <read_matrix.h>
 #include "sparse-matrix.h"
 
+
+void z_pastix(pastix_data_t **pastix_data, 
+              MPI_Comm pastix_comm, 
+              dague_int_t n, 
+              dague_int_t *colptr, 
+              dague_int_t *row, 
+              Dague_Complex64_t *avals, 
+              dague_int_t *perm, 
+              dague_int_t *invp, 
+              Dague_Complex64_t *b, 
+              dague_int_t rhs, 
+              dague_int_t *iparm, 
+              DagDouble_t *dparm);
+
+int z_pastix_checkMatrix(MPI_Comm pastix_comm, 
+                         int verb, 
+                         int flagsym, 
+                         int flagcor,
+                         dague_int_t n, 
+                         dague_int_t **colptr, 
+                         dague_int_t **row, 
+                         Dague_Complex64_t **avals, 
+                         dague_int_t **loc2glob, 
+                         int dof);
+
 #if 0
 #define DAGUE_FOPEN(stream, filename, mode)					\
   {									\
