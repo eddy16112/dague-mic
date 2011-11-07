@@ -81,14 +81,6 @@ void Z_CscOrdistrib(CscMatrix          *thecsc,
 
 DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
 {
-    dague_symbol_matrix_t *symbptr;
-    SymbolMatrix       tmpsymbol;
-    Order              tmporder;
-    dague_int_t        forcetr  = 0;
-    Dague_Complex64_t *transcsc = NULL;
-    CscMatrix          cscmtx;
-    dague_int_t cblknbr, bloknbr, cblknum, bloknum;
-    FILE *stream;
     int verbosemode = 3;
     dague_int_t iparm[IPARM_SIZE];
     DagDouble_t dparm[DPARM_SIZE];

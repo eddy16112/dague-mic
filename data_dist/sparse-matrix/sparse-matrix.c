@@ -111,6 +111,7 @@ dague_int_t sparse_matrix_get_listptr_next(sparse_matrix_desc_t *spmtx, dague_in
 
 uint32_t sparse_matrix_rank_of(struct dague_ddesc *mat, ... )
 {
+    (void)mat;
     return 0;
 }
 
@@ -211,5 +212,5 @@ void sparse_matrix_init( sparse_matrix_desc_t *desc,
 
 void sparse_matrix_destroy( sparse_matrix_desc_t *desc )
 {
-
+    (void)desc;
 }

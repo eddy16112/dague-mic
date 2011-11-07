@@ -17,8 +17,11 @@
 #include "data_dist/matrix/precision.h"
 
 typedef int64_t dague_int_t;
+
+#ifndef PASTIX_STR_H
 struct pastix_data_t;
 typedef struct pastix_data_t pastix_data_t;
+#endif
 
 /* WARNING: Has to follow Pastix enum API_FACT */
 #define DSPARSE_LLT   0
