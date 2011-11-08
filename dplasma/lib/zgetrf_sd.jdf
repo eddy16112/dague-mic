@@ -11,7 +11,7 @@ extern "C" %{
 
 #include "dague.h"
 #include "data_dist/matrix/matrix.h"
-#include "dplasma/lib/memory_pool.h"
+#include "memory_pool.h"
 #include "dplasma/lib/dplasmajdf.h"
 
 /* Ugly hack to be remove with plasma 2.3 */

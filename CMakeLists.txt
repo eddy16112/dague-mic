@@ -406,7 +406,8 @@ set(SRCS
   src/debug.c 
   src/bindthread.c 
   src/mempool.c 
- ${EXTRA_SOURCES} 
+  src/memory_pool.c 
+  ${EXTRA_SOURCES} 
 )
 
 #
