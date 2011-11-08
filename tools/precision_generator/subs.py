@@ -209,7 +209,6 @@ subs = {
     ('fabsf','fabs','fabsf','fabs'),
     ('fabsf','fabs','cabsf','cabs'),
     ('sqrtf','sqrt','csqrtf','csqrt'),
-    ('fmaxf','fmax','fmaxf','fmax'),
     ('float','double','float _Complex','double _Complex'),
     ('float','double','float','double'),
     ('example_s','example_d','example_c','example_z'),

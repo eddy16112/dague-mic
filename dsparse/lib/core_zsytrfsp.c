@@ -157,7 +157,6 @@ static void core_zsytrfsp(dague_int_t  n,
  * Factorization of diagonal block 
  */
 void core_zsytrfsp1d(Dague_Complex64_t *L,
-                     Dague_Complex64_t *U,
                      Dague_Complex64_t *work,
                      SolverMatrix *datacode, 
                      dague_int_t c)
@@ -177,9 +176,6 @@ void core_zsytrfsp1d(Dague_Complex64_t *L,
 
     /* Factorize diagonal block (two terms version with workspace) */
     core_zsytrfsp(dima, L, stride, &nbpivot, criteria, work);
-
-    /* Copy diagonal for updates (required by ESP or 1d+) */
-    cblas_zcopy(dima, L, stride+1, U, 1);
 
     fblknum = SYMB_BLOKNUM(c);
     lblknum = SYMB_BLOKNUM(c + 1);

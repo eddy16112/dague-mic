@@ -19,7 +19,6 @@ extern "C" %{
 #define PRECISION_z
 
 void core_zsytrfsp1d(Dague_Complex64_t *L,
-                     Dague_Complex64_t *U,
                      Dague_Complex64_t *work,
                      SolverMatrix *datacode,
                      dague_int_t c);
@@ -32,7 +31,7 @@ A        [type = "dague_ddesc_t *"]
 datacode [type = "SolverMatrix*" default="&(descA->pastix_data->solvmatr)" hidden=on]
 cblknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.cblknbr" hidden=on]
 bloknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.bloknbr" hidden=on]
-p_work   [type = "dague_memory_pool_t *" size = "datacode->bpftmax * sizeof(Dague_Complex64_t)"]
+p_work   [type = "dague_memory_pool_t *" size = "datacode->coefmax * sizeof(Dague_Complex64_t)"]
 
 /**************************************************
  *                POTRF_TRSM                      *
@@ -58,9 +57,7 @@ RW A <- ( browk == browk1 ) ? A(k) : C GEMM( lastbrow )
 BODY
       Dague_Complex64_t *work = (Dague_Complex64_t *)dague_private_memory_pop( p_work );
       DRYRUN(
-             
-             dague_int_t szeA = SOLV_STRIDE(k) * (SYMB_LCOLNUM(k)-SYMB_FCOLNUM(k)+1);
-             core_zsytrfsp1d(A, A+szeA, work, datacode, k);
+             core_zsytrfsp1d(A, work, datacode, k);
 	     );
       printlog(
                "thread %d compute_1dplus( cblknum=%d, browk=%d, browk1=%d, lastbrow=%d, firstblok=%d, lastblok=%d )\n",

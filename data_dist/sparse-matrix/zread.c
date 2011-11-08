@@ -198,13 +198,25 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
     {
       SymbolMatrix *symbptr = &(pastix_data->solvmatr.symbmtx);
       dague_int_t icblk;
-    
+      Dague_Complex64_t value = (Dague_Complex64_t)dspctxt->n * dspctxt->n;
+
       /* Allocate array of values in packed format  */
       for (icblk=0; icblk < symbptr->cblknbr; icblk++)
         {
+          dague_int_t fcolnum = pastix_data->solvmatr.symbmtx.cblktab[icblk].fcolnum;
+          dague_int_t lcolnum = pastix_data->solvmatr.symbmtx.cblktab[icblk].lcolnum;
+          dague_int_t stride  = pastix_data->solvmatr.cblktab[icblk].stride;
+          dague_int_t width   = lcolnum - fcolnum + 1;
+          dague_int_t size    = stride * width;
+
           /* Could be done in parallel */
-          pastix_data->solvmatr.coeftab[icblk] = (void *) malloc (1 * sizeof(Dague_Complex64_t));
-          memset( pastix_data->solvmatr.coeftab[icblk], 0, 1 * sizeof(Dague_Complex64_t));
+          pastix_data->solvmatr.coeftab[icblk] = (void *) malloc (size * sizeof(Dague_Complex64_t));
+          memset( pastix_data->solvmatr.coeftab[icblk], 0, size * sizeof(Dague_Complex64_t));
+          
+          for (dague_int_t itercol=0; itercol<width; itercol++)
+            {
+              pastix_data->solvmatr.coeftab[icblk][ itercol*stride+itercol ] = value;
+            }
         }
     }
 
