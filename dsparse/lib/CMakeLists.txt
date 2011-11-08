@@ -9,7 +9,6 @@ set(EXTRA_SOURCES
 
 ### Generate .c files from .jdf for all required precisions
 set(JDF
-  core_zsytrfsp.c
   zpotrf_sp1dplus.jdf
 )
 precisions_rules(generated_jdf
@@ -20,6 +19,7 @@ jdf_rules(generated_files "${generated_jdf}")
 
 ### Generate the dplasma wrappers for all required precisions 
 set(SOURCES
+  core_zsytrfsp.c
   zpotrf_sp1dplus_wrapper.c
 )
 precisions_rules(generated_files
