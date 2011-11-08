@@ -24,6 +24,7 @@
 #include "data_dist/sparse-matrix/pastix_internal/pastix_internal.h"
 #include "data_dist/sparse-matrix/sparse-matrix.h"
 
+#define min( _a, _b ) ( (_a) < (_b) ? (_a) : (_b) )
 
 /*
   Constant: MAXSIZEOFBLOCKS
@@ -47,7 +48,7 @@ static Dague_Complex64_t mzone = -1.;
      n       - Size of A
      stride  - Stide between 2 columns of the matrix
      nbpivot - IN/OUT pivot number.
-     critere - Pivoting threshold.
+     criteria - Pivoting threshold.
 
 */
 static void core_zsytf2sp(dague_int_t  n, 
@@ -57,7 +58,7 @@ static void core_zsytf2sp(dague_int_t  n,
                           double criteria )
 {
     dague_int_t k;
-    Dague_Complex64_t *tmp, *tmp1;
+    Dague_Complex64_t *tmp, *tmp1, alpha;
 
     for (k=0; k<n; k++){
         tmp = A + k*(stride+1);
@@ -71,7 +72,8 @@ static void core_zsytf2sp(dague_int_t  n,
         
         alpha = 1. / (*tmp);
         cblas_zscal(n-k-1, CBLAS_SADDR( alpha ), tmp1, 1 );
-        cblas_zsyr((CBLAS_UPLO)CblasLower, n-k-1, (double)(-(*tmp)), 
+        alpha = -(*tmp);
+        cblas_zher(CblasColMajor, (CBLAS_UPLO)CblasLower, n-k-1, (double)(alpha), 
                    tmp1, 1, tmp1+stride, stride);
     }
 }
@@ -89,7 +91,7 @@ static void core_zsytf2sp(dague_int_t  n,
      n       - Size of A
      stride  - Stide between 2 columns of the matrix
      nbpivot - IN/OUT pivot number.
-     critere - Pivoting threshold.
+     criteria - Pivoting threshold.
 
 */
 static void core_zsytrfsp(dague_int_t  n, 
@@ -113,7 +115,7 @@ static void core_zsytrfsp(dague_int_t  n,
         tmp2 = tmp1 + stride* blocksize;         /* Lk+1,k+1 */
         
         /* Factorize the diagonal block Akk*/
-        core_zsytf2sp(blocksize, tmp, stride, nbpivot, critere);
+        core_zsytf2sp(blocksize, tmp, stride, nbpivot, criteria);
         
         if ((k*MAXSIZEOFBLOCKS+blocksize) < n) {
             
@@ -160,7 +162,8 @@ void core_zsytrfsp1d(Dague_Complex64_t *L,
                      SolverMatrix *datacode, 
                      dague_int_t c)
 {
-    double         criteria = LAPACKE_dlamch_work('e'); /* TODO */ 
+    Dague_Complex64_t *fL;
+    double         criteria = 1e-15;/*LAPACKE_dlamch_work('e'); TODO */
     dague_int_t    dima, dimb, stride;
     dague_int_t    fblknum, lblknum;
     dague_int_t    nbpivot = 0; /* TODO: return to higher level */

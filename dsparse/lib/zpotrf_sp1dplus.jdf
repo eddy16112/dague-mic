@@ -10,6 +10,7 @@ extern "C" %{
 
 #include "dague.h"
 #include "data_distribution.h"
+#include "memory_pool.h"
 #include "dplasma/lib/dplasmajdf.h"
 
 #include "data_dist/sparse-matrix/pastix_internal/pastix_internal.h"
@@ -20,7 +21,7 @@ extern "C" %{
 void core_zsytrfsp1d(Dague_Complex64_t *L,
                      Dague_Complex64_t *U,
                      Dague_Complex64_t *work,
-                     SolverMatrix *datacode, 
+                     SolverMatrix *datacode,
                      dague_int_t c);
 %}
 
