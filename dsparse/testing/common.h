@@ -42,6 +42,8 @@ enum iparam_t {
   IPARAM_NCORES,       /* Number of cores                   */
   IPARAM_SCHEDULER,    /* What scheduler do we choose */
   IPARAM_NGPUS,        /* Number of GPUs                    */
+  IPARAM_FORMAT,       /* Do we require to output the DOT file? */
+  IPARAM_M,            /* Matrix size, used for laplacian   */
   IPARAM_PRIO,         /* Switchpoint for priority DAG      */
   IPARAM_CHECK,        /* Checking activated or not         */
   IPARAM_VERBOSE,      /* How much noise do we want?        */
@@ -134,15 +136,15 @@ static inline int min(int a, int b) { return a < b ? a : b; }
 
 
 #define PASTE_CODE_INIT_CONTEXT( _dspctxt, _factotype)                \
-    _dspctxt.format     = RSA;                     /* Matrix file format                         */ \
+    _dspctxt.format     = iparam[IPARAM_FORMAT];   /* Matrix file format                         */ \
     _dspctxt.factotype  = _factotype;                                                               \
     _dspctxt.matrixname = sparam[SPARAM_MATRIX]  ; /* Filename to get the matrix                 */ \
     _dspctxt.rhsname    = sparam[SPARAM_RHS]     ; /* Filename where the ordering is stored      */ \
     _dspctxt.ordername  = sparam[SPARAM_ORDERING]; /* Filename where the symbol matrix is stored */ \
     _dspctxt.symbname   = sparam[SPARAM_ORDERING]; /* Filename where the symbol matrix is stored */ \
-    _dspctxt.type       = NULL; /* Type of the matrix                         */    \
-    _dspctxt.rhstype    = NULL; /* Type of the RHS                            */    \
-    _dspctxt.n          = 0;    /* Number of unknowns/columns/rows            */    \
+    _dspctxt.type       = NULL;                    /* Type of the matrix                         */ \
+    _dspctxt.rhstype    = NULL;                    /* Type of the RHS                            */ \
+    _dspctxt.n          = iparam[IPARAM_M];        /* Number of unknowns/columns/rows            */ \
     _dspctxt.nnz        = 0;    /* Number of non-zero values in the input matrix */ \
     _dspctxt.colptr     = NULL; /* Vector of size N+1 storing the starting point of each column in the array rows */ \
     _dspctxt.rows       = NULL; /* Indices of the rows present in each column */    \

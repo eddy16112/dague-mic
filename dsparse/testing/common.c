@@ -65,7 +65,18 @@ void print_usage(void)
             " -k --prio-switch  : activate prioritized DAG k steps before the end (default: 0)\n"
             "                   : with no argument, prioritized DAG from the start\n"
             "\n"
-            " -m -M --matrix    : Matrix filename (default: ./rsaname)\n"
+            "Matrix format:\n"
+            " -0 --rsa          :  RSA format (use Fortran)\n" 
+            " -1 --chb          :  CHB format\n"
+            " -2 --ccc          :  CCC format\n"
+            " -3 --rcc          :  RCC format\n"
+            " -4 --olaf         :  OLAF format\n"
+            " -5 --peer         :  PEER format\n"
+            " -6 --hb           :  HB (double) format\n"
+            " -7 --ijv          :  IJV 3files format\n"
+            " -8 --mm           :  Matrix Market format\n"
+            " -9 --lap          :  Generate a random Laplacian of specified size\n"
+            "\n"
             " -n -N --rhs       : Right Hand side filename (default: ./rhsname)\n"
             " -p -P --order     : Ordering filename (default: ./ordername )\n"
             " -s -S --symbol    : Symbol factorization filename (default: ./symbname )\n"
@@ -79,7 +90,7 @@ void print_usage(void)
            );
 }
 
-#define GETOPT_STRING "c:o:g::p:P:q:Q:k::n:N:m:M:o:O:xv::h"
+#define GETOPT_STRING "c:o:g::p:P:q:Q:k::n:N:o:O:xv::h0:1:2:3:4:5:6:7:8:9:"
 
 #if defined(HAVE_GETOPT_LONG)
 static struct option long_options[] =
@@ -93,9 +104,27 @@ static struct option long_options[] =
     {"prio-switch", optional_argument,  0, 'k'},
     {"k",           optional_argument,  0, 'k'},
 
-    {"m",           required_argument,  0, 'm'},
-    {"M",           required_argument,  0, 'm'},
-    {"matrix",      required_argument,  0, 'm'},
+    {"0",           required_argument,  0, '0'},
+    {"rsa",         required_argument,  0, '0'},
+    {"1",           required_argument,  0, '1'},
+    {"chb",         required_argument,  0, '1'},
+    {"2",           required_argument,  0, '2'},
+    {"ccc",         required_argument,  0, '2'},
+    {"3",           required_argument,  0, '3'},
+    {"rcc",         required_argument,  0, '3'},
+    {"4",           required_argument,  0, '4'},
+    {"olaf",        required_argument,  0, '4'},
+    {"5",           required_argument,  0, '5'},
+    {"peer",        required_argument,  0, '5'},
+    {"6",           required_argument,  0, '6'},
+    {"hb",          required_argument,  0, '6'},
+    {"7",           required_argument,  0, '7'},
+    {"ijv",         required_argument,  0, '7'},
+    {"8",           required_argument,  0, '8'},
+    {"mm",          required_argument,  0, '8'},
+    {"9",           required_argument,  0, '9'},
+    {"lap",         required_argument,  0, '9'},
+
     {"n",           required_argument,  0, 'n'},
     {"N",           required_argument,  0, 'n'},
     {"rhs",         required_argument,  0, 'n'},
@@ -167,7 +196,16 @@ static void parse_arguments(int argc, char** argv, int* iparam, char** sparam)
                 else        iparam[IPARAM_PRIO] = INT_MAX;
                 break;
             
-            case 'm': sparam[SPARAM_MATRIX]   = strdup(optarg); break;
+            case '0': iparam[IPARAM_FORMAT] = RSA;        sparam[SPARAM_MATRIX] = strdup(optarg); break;
+            case '1': iparam[IPARAM_FORMAT] = CHB;        sparam[SPARAM_MATRIX] = strdup(optarg); break;
+            case '2': iparam[IPARAM_FORMAT] = CCC;        sparam[SPARAM_MATRIX] = strdup(optarg); break;
+            case '3': iparam[IPARAM_FORMAT] = RCC;        sparam[SPARAM_MATRIX] = strdup(optarg); break;
+            case '4': iparam[IPARAM_FORMAT] = OLAF;       sparam[SPARAM_MATRIX] = strdup(optarg); break;
+            case '5': iparam[IPARAM_FORMAT] = PEER;       sparam[SPARAM_MATRIX] = strdup(optarg); break;
+            case '6': iparam[IPARAM_FORMAT] = HB;         sparam[SPARAM_MATRIX] = strdup(optarg); break;
+            case '7': iparam[IPARAM_FORMAT] = THREEFILES; sparam[SPARAM_MATRIX] = strdup(optarg); break;
+            case '8': iparam[IPARAM_FORMAT] = MM;         sparam[SPARAM_MATRIX] = strdup(optarg); break;
+            case '9': iparam[IPARAM_FORMAT] = LAPLACIAN;  iparam[IPARAM_M] = atoi(optarg); break;
             case 'n': sparam[SPARAM_RHS]      = strdup(optarg); break;
             case 'p': sparam[SPARAM_ORDERING] = strdup(optarg); break;
             case 's': sparam[SPARAM_SYMBOL]   = strdup(optarg); break;
@@ -246,7 +284,8 @@ void param_default(int* iparam, char **sparam)
     memset(iparam, 0, IPARAM_SIZEOF * sizeof(int)); 
     memset(sparam, 0, SPARAM_SIZEOF * sizeof(char*)); 
     iparam[IPARAM_NNODES] = 1;
-    iparam[IPARAM_NGPUS] = -1;
+    iparam[IPARAM_NGPUS]  = -1;
+    iparam[IPARAM_FORMAT] = RSA;
 }
 
 #ifdef DAGUE_PROF_TRACE
