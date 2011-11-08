@@ -17,6 +17,11 @@ extern "C" %{
 
 #define PRECISION_z
 
+void core_zsytrfsp1d(Dague_Complex64_t *L,
+                     Dague_Complex64_t *U,
+                     Dague_Complex64_t *work,
+                     SolverMatrix *datacode, 
+                     dague_int_t c);
 %}
 
 /* Globals
@@ -49,12 +54,17 @@ RW A <- ( browk == browk1 ) ? A(k) : C GEMM( lastbrow )
      -> A(k)
 
 BODY
+      Dague_Complex64_t *work = (Dague_complex64_t *)dague_private_memory_pop( p_work );
       DRYRUN(
-	     /* compute_1dplus */
+             
+             dague_int_t szeA = SOLV_STRIDE(k) * (SYMB_LCOLNUM(k)-SYMB_FCOLNUM(k)+1);
+             core_zsytrfsp1d(A, A+szeA, work, datacode, k);
 	     );
       printlog(
                "thread %d compute_1dplus( cblknum=%d, browk=%d, browk1=%d, lastbrow=%d, firstblok=%d, lastblok=%d )\n",
                context->eu_id, k, browk, browk1, lastbrow, firstblok, lastblok);
+
+      dague_private_memory_push( p_work, (void *)work );
 END
 
 /**************************************************
