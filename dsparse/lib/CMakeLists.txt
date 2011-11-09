@@ -9,6 +9,7 @@ set(EXTRA_SOURCES
 
 ### Generate .c files from .jdf for all required precisions
 set(JDF
+  zcsc2cblk.jdf
   zpotrf_sp1dplus.jdf
 )
 precisions_rules(generated_jdf

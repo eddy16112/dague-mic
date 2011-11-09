@@ -1,0 +1,58 @@
+extern "C" %{
+  /**
+   * PLASMA include for defined and constants.
+   *
+   * @precisions normal z -> s d c
+   *
+   */
+#include <plasma.h>
+#include <core_blas.h>
+
+#include "dague.h"
+#include "data_distribution.h"
+#include "memory_pool.h"
+#include "dplasma/lib/dplasmajdf.h"
+
+#include "data_dist/sparse-matrix/pastix_internal/pastix_internal.h"
+#include "data_dist/sparse-matrix/sparse-matrix.h"
+
+#define PRECISION_z
+
+void sparse_matrix_zcsc2cblk(const SolverMatrix *solvmatr,
+                             Dague_Complex64_t  *transcsc, 
+                             dague_int_t         itercblk);
+
+%}
+
+/* Globals
+ */
+descA    [type = "sparse_matrix_desc_t *"]
+A        [type = "dague_ddesc_t *"]
+datacode [type = "SolverMatrix*" default="&(descA->pastix_data->solvmatr)" hidden=on]
+cblknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.cblknbr-1" hidden=on]
+
+/**************************************************
+ *                CSC2CBLK                        *
+ **************************************************/
+CSC2CBLK(k)
+
+// Execution space
+k = 0..cblknbr
+
+// Parallel partitioning
+: A(k) // Should match SOLV_COEFTAB(k)
+
+// Parameters
+RW A <- A(k)
+     -> A(k)
+
+BODY
+      DRYRUN(
+             sparse_matrix_zcsc2cblk( datacode, desc->pastix_data->sopar.transcsc, k);
+	     );
+      printlog(
+               "thread %d csc2cblk( cblknum=%d, browk=%d, browk1=%d, lastbrow=%d, firstblok=%d, lastblok=%d )\n",
+               context->eu_id, k, browk, browk1, lastbrow, firstblok, lastblok);
+
+END
+
