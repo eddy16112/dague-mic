@@ -13,6 +13,7 @@ add_custom_target(dsparse_includes ALL DEPENDS dsparse.h SOURCES
 ### install the dsparse headers
 install(FILES 
   dsparse.h 
+  ${generated_headers}
   DESTINATION include)
 foreach(generated_header ${generated_headers})
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${generated_header} DESTINATION include)

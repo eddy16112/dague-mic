@@ -48,7 +48,7 @@ RW A <- A(k)
 
 BODY
       DRYRUN(
-             sparse_matrix_zcsc2cblk( datacode, desc->pastix_data->sopar.transcsc, k);
+             sparse_matrix_zcsc2cblk( datacode, (Dague_Complex64_t*)(descA->pastix_data->sopar.transcsc), k);
 	     );
       printlog(
                "thread %d csc2cblk( cblknum=%d, browk=%d, browk1=%d, lastbrow=%d, firstblok=%d, lastblok=%d )\n",

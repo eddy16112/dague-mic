@@ -44,6 +44,9 @@ int main(int argc, char ** argv)
 
     /* Read the matrix files */
     flops = sparse_matrix_zrdmtx( &dspctxt );
+    
+    /* Initialize the matrix */
+    dsparse_zcsc2cblk( dague, &ddescA );
 
     if ( loud && rank == 0 ) {
       printf("Number of floating points operations: %g GFLOPs\n", flops/1.e9);
@@ -58,6 +61,9 @@ int main(int argc, char ** argv)
     if(loud > 2) printf("Done.\n");
 
     cleanup_dague(dague, iparam, sparam);
+
+    sparse_matrix_zcheck( &dspctxt );
+    sparse_matrix_zclean( &dspctxt );
 
     sparse_matrix_destroy( (sparse_matrix_desc_t*)&ddescA );
 
