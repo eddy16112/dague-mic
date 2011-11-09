@@ -85,6 +85,7 @@ subs = {
     ('sread', 'dread', 'cread', 'zread'),
     ('s_read', 'd_read', 'c_read', 'z_read'),
     ('s_pastix', 'd_pastix', 'c_pastix', 'z_pastix'),
+    ('S_pastix', 'D_pastix', 'C_pastix', 'Z_pastix'),
     ('strdv', 'dtrdv', 'ctrdv', 'ztrdv'),
     ('sytra1','sytra1','hetra1','hetra1'),
     ('ssygst','dsygst','chegst','zhegst'),
