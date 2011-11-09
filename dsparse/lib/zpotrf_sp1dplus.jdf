@@ -38,8 +38,8 @@ void core_zsytrfsp1d_gemm(dague_int_t cblknum,
 descA    [type = "sparse_matrix_desc_t *"]
 A        [type = "dague_ddesc_t *"]
 datacode [type = "SolverMatrix*" default="&(descA->pastix_data->solvmatr)" hidden=on]
-cblknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.cblknbr" hidden=on]
-bloknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.bloknbr" hidden=on]
+cblknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.cblknbr - 1" hidden=on] 
+bloknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.bloknbr - 2" hidden=on] /* -2 to avoid last diagonal block */
 p_work1  [type = "dague_memory_pool_t *" size = "datacode->coefmax * sizeof(Dague_Complex64_t)"]
 p_work2  [type = "dague_memory_pool_t *" size = "datacode->coefmax * sizeof(Dague_Complex64_t)"]
 
@@ -49,7 +49,7 @@ p_work2  [type = "dague_memory_pool_t *" size = "datacode->coefmax * sizeof(Dagu
 POTRF_TRSM(k) [high_priority = on]
 
 // Execution space
-k = 0..cblknbr-1
+k = 0..cblknbr
 browk     = inline_c %{ return UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( k ))   ); %}
 browk1    = inline_c %{ return UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( k ))+1 ); %}
 lastbrow  = inline_c %{ if (browk1 > 0) return UPDOWN_LISTBLOK(browk1-1); else return 0; %}
@@ -83,7 +83,7 @@ END
 GEMM(k)
 
 // Execution space
-k = 0..bloknbr-2
+k = 0..bloknbr
 fcblk  = inline_c %{ return SYMB_CBLKNUM(k); %}
 cblk   = inline_c %{ return sparse_matrix_get_lcblknum( descA, (dague_int_t)k ); %}// TODO: store cblknum in symbblok
 phony  = inline_c %{ return k == SYMB_BLOKNUM( cblk ); %}
