@@ -36,6 +36,14 @@ static Dague_Complex64_t zone  = 1.;
 static Dague_Complex64_t mzone = -1.;
 
 
+int CORE_zgemdm(int transA, int transB,
+                int M, int N, int K,
+                PLASMA_Complex64_t alpha, PLASMA_Complex64_t *A, int LDA,
+                PLASMA_Complex64_t *B, int LDB,
+                PLASMA_Complex64_t beta, PLASMA_Complex64_t *C, int LDC,
+                PLASMA_Complex64_t *D, int incD,
+                PLASMA_Complex64_t *WORK, int LWORK);
+
 /* 
    Function: FactorizationLDLT
    
@@ -199,3 +207,87 @@ void core_zsytrfsp1d(Dague_Complex64_t *L,
     }
 }
 
+
+void core_zsytrfsp1d_gemm(dague_int_t cblknum,
+                          dague_int_t bloknum,
+                          dague_int_t fcblknum,
+                          Dague_Complex64_t *L,
+                          Dague_Complex64_t *C,
+                          Dague_Complex64_t *work1,
+                          Dague_Complex64_t *work2,
+                          SolverMatrix *datacode)
+{
+    Dague_Complex64_t *Aik, *Aij;
+    dague_int_t fblknum, lblknum, frownum;
+    dague_int_t stride, stridefc, indblok;
+    dague_int_t n, b, j;
+    dague_int_t dimi, dimj, dima, dimb;
+    dague_int_t ldw = SOLV_COEFMAX;
+
+    fblknum = SYMB_BLOKNUM(cblknum);
+    lblknum = SYMB_BLOKNUM(cblknum + 1);
+
+    n = bloknum - fblknum;
+    n = (n * (n - 1)) / 2;
+    n = (bloknum - fblknum - 1) * (lblknum - fblknum) - n;
+
+    indblok = SOLV_COEFIND(bloknum);
+    stride  = SOLV_STRIDE(cblknum);
+    dimi = stride - indblok;
+    dimj = SYMB_LROWNUM(bloknum) - SYMB_FROWNUM(bloknum) + 1;
+    dima = SYMB_LCOLNUM(cblknum) - SYMB_FCOLNUM(cblknum) + 1;  
+
+    /* Matrix A = Aik */
+    Aik = L + indblok;
+
+    /* Compute the contribution */
+    CORE_zgemdm( PlasmaNoTrans, PlasmaTrans, 
+                 dimi, dimj, dima,
+                 1.,  Aik,   stride, 
+                      Aik,   stride,
+                 0.,  work1, dimi,
+                      L,     stride, 
+                      work2, ldw );
+  
+    /*
+     * Add contribution to facing cblk
+     */
+    b = SYMB_BLOKNUM( fcblknum );
+    stridefc = SOLV_STRIDE(fcblknum);
+    C = C + (SYMB_FROWNUM(bloknum) - SYMB_FCOLNUM(fcblknum)) * stridefc;
+        
+    /* for all following blocks in block column */
+    for (j=bloknum; j<lblknum; j++) {
+        frownum = SYMB_FROWNUM(j);
+
+        /* Find facing bloknum */
+#ifdef NAPA_SOPALIN /* ILU(k) */
+        while (!(((SYMB_FROWNUM(j)>=SYMB_FROWNUM(b)) && 
+                  (SYMB_LROWNUM(j)<=SYMB_LROWNUM(b))) ||
+                 ((SYMB_FROWNUM(j)<=SYMB_FROWNUM(b)) && 
+                  (SYMB_LROWNUM(j)>=SYMB_LROWNUM(b))) ||
+                 ((SYMB_FROWNUM(j)<=SYMB_FROWNUM(b)) && 
+                  (SYMB_LROWNUM(j)>=SYMB_FROWNUM(b))) ||
+                 ((SYMB_FROWNUM(j)<=SYMB_LROWNUM(b)) && 
+                  (SYMB_LROWNUM(j)>=SYMB_LROWNUM(b)))))
+#else
+        while (!((SYMB_FROWNUM(j)>=SYMB_FROWNUM(b)) && 
+                 (SYMB_LROWNUM(j)<=SYMB_LROWNUM(b))))
+#endif
+            {
+                b++;
+                assert( b < SYMB_BLOKNUM( fcblknum+1 ) );
+            }
+        
+
+        Aij = C + SOLV_COEFIND(b) + frownum - SYMB_FROWNUM(b);
+        dimb = SYMB_LROWNUM(j) - frownum + 1;
+
+        CORE_zaxpy( dimb, dimj, -1.0,
+                    work1, dimi,
+                    Aij,   stridefc );
+
+        /* Displacement to next block */
+        work1 += dimb;
+    }
+}
