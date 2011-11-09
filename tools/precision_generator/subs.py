@@ -185,6 +185,7 @@ subs = {
     ('strtri','dtrtri','ctrtri','ztrtri'),
     ('strsmpl','dtrsmpl','ctrsmpl','ztrsmpl'),
     ('STRSMPL','DTRSMPL','CTRSMPL','ZTRSMPL'),
+    ('scsc2cblk','dcsc2cblk','ccsc2cblk','zcsc2cblk'),
     ('ger','ger','gerc','gerc'),
     ('ger','ger','geru','geru'),
     ('symm','symm','hemm','hemm'),
