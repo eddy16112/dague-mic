@@ -19,6 +19,7 @@ jdf_rules(generated_files "${generated_jdf}")
 
 ### Generate the dplasma wrappers for all required precisions 
 set(SOURCES
+  core_zgemdm.c
   core_zsytrfsp.c
   zpotrf_sp1dplus_wrapper.c
 )
