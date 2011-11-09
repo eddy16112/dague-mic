@@ -22,6 +22,7 @@ jdf_rules(generated_files "${generated_jdf}")
 set(SOURCES
   core_zgemdm.c
   core_zsytrfsp.c
+  zcsc2cblk_wrapper.c
   zpotrf_sp1dplus_wrapper.c
 )
 precisions_rules(generated_files
