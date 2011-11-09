@@ -84,9 +84,8 @@ void sparse_matrix_zcsc2pack(sparse_context_t  *dspctxt,
                             const CscMatrix   *cscmtx, 
                             Dague_Complex64_t *transcsc);
 void sparse_matrix_zcsc2cblk(sparse_context_t  *dspctxt,
-                            const CscMatrix   *cscmtx,   
-                            Dague_Complex64_t *transcsc, 
-                            dague_int_t        itercblk);
+                             Dague_Complex64_t *transcsc, 
+                             dague_int_t        itercblk);
 
 void Z_CscOrdistrib(CscMatrix          *thecsc,
                     char               *Type,
@@ -211,7 +210,7 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
 
           /* Could be done in parallel */
           pastix_data->solvmatr.coeftab[icblk] = (void *) malloc (size * sizeof(Dague_Complex64_t));
-          memset( pastix_data->solvmatr.coeftab[icblk], 0, size * sizeof(Dague_Complex64_t));
+          /*memset( pastix_data->solvmatr.coeftab[icblk], 0, size * sizeof(Dague_Complex64_t));*/
           
           for (dague_int_t itercol=0; itercol<width; itercol++)
             {
@@ -223,6 +222,83 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
     dspctxt->desc->pastix_data = pastix_data;
     
     return dparm[DPARM_FACT_FLOPS];
+}
+
+void sparse_matrix_zcsc2cblk(sparse_context_t  *dspctxt,
+                             Dague_Complex64_t *transcsc, 
+                             dague_int_t        itercblk)
+{
+    const CscMatrix *cscmtx;
+    SolverBlok *solvbloktab;
+    SymbolBlok *symbbloktab;
+    Dague_Complex64_t *coeftab;
+    Dague_Complex64_t *ucoeftab;
+    dague_int_t itercoltab;
+    dague_int_t iterbloc;
+    dague_int_t coefindx;
+    dague_int_t iterval;
+    dague_int_t stride, fcolnum, fbloknum, lbloknum;
+
+    cscmtx      = &(dspctxt->desc->pastix_data->solvmatr.cscmtx);
+    solvbloktab = dspctxt->desc->pastix_data->solvmatr.bloktab;
+    symbbloktab = dspctxt->desc->pastix_data->solvmatr.symbmtx.bloktab;
+
+    if (itercblk < CSC_FNBR(cscmtx)){
+        stride  = dspctxt->desc->pastix_data->solvmatr.cblktab[itercblk].stride;
+        fcolnum = dspctxt->desc->pastix_data->solvmatr.symbmtx.cblktab[itercblk].fcolnum;
+        fbloknum= dspctxt->desc->pastix_data->solvmatr.symbmtx.cblktab[itercblk].bloknum;
+        lbloknum= dspctxt->desc->pastix_data->solvmatr.symbmtx.cblktab[itercblk+1].bloknum;
+
+        coeftab  = (Dague_Complex64_t*)(dspctxt->desc->pastix_data->solvmatr.coeftab[itercblk]);
+        ucoeftab = (Dague_Complex64_t*)(dspctxt->desc->pastix_data->solvmatr.ucoeftab[itercblk]);
+
+        for (itercoltab=0;
+             itercoltab < CSC_COLNBR(cscmtx,itercblk);
+             itercoltab++)
+        {
+            for (iterval = CSC_COL(cscmtx,itercblk,itercoltab);
+                 iterval < CSC_COL(cscmtx,itercblk,itercoltab+1);
+                 iterval++)
+            {
+                /* We skip upper part of the csc, 
+                 * the csc has normally at this point a symmetric structure,
+                 * so there is no need to go through it twice
+                 */
+                if ( CSC_ROW(cscmtx,iterval) >= fcolnum )
+                {
+                    iterbloc = fbloknum;
+                    
+                    /* in which block are we ? */
+                    while ( (iterbloc < lbloknum) &&
+                            (( symbbloktab[iterbloc].lrownum < CSC_ROW(cscmtx,iterval)) ||
+                             ( symbbloktab[iterbloc].frownum > CSC_ROW(cscmtx,iterval)) ) )
+                    {
+                        iterbloc++;
+                    }
+                    
+                    /* Let's check that we are still in the same cblk */
+                    if ( iterbloc < lbloknum )
+                    {
+                        /* Starting point of the block */
+                        coefindx  = solvbloktab[iterbloc].coefind;
+                        /* Row of the value */
+                        coefindx += CSC_ROW(cscmtx,iterval) - symbbloktab[iterbloc].frownum;
+                        /* displacement for the column of the value */
+                        coefindx += stride * itercoltab;
+                        
+                        coeftab[coefindx] = CSC_VAL(cscmtx,iterval);
+                        if (transcsc != NULL) 
+                        {
+                            ucoeftab[coefindx] = transcsc[iterval];
+                        }
+                    }
+                    else {
+                        fprintf(stderr, "One coefficient is out of the structure\n" );
+                    }
+                }
+            }
+        }
+    }
 }
 
 #if 0
@@ -381,7 +457,7 @@ int sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
     return 0;
 }
 
-void sparse_matrix_zcsc2pack(sparse_context_t     *dspctxt, 
+void sparse_matrix_zcsc2pack(sparse_context_t *dspctxt, 
                             const CscMatrix   *cscmtx, 
                             Dague_Complex64_t *transcsc)
 {   
@@ -408,73 +484,4 @@ void sparse_matrix_zcsc2pack(sparse_context_t     *dspctxt,
     }
 }
 
-void sparse_matrix_zcsc2cblk(sparse_context_t  *dspctxt,
-                            const CscMatrix   *cscmtx, 
-                            Dague_Complex64_t *transcsc, 
-                            dague_int_t        itercblk)
-{
-    dague_symbol_cblk_t * cblktab;
-    dague_symbol_blok_t * bloktab;
-    Dague_Complex64_t *coeftab;
-    Dague_Complex64_t *ucoeftab;
-    dague_int_t itercoltab;
-    dague_int_t iterbloc;
-    dague_int_t coefindx;
-    dague_int_t iterval;
-    
-    cblktab = dspctxt->desc->symbmtx.cblktab;
-    bloktab = dspctxt->desc->symbmtx.bloktab;
-    
-    if (itercblk < CSC_FNBR(cscmtx)){
-        coeftab  = (Dague_Complex64_t*)(dspctxt->desc->symbmtx.cblktab[itercblk].cblkptr);
-        ucoeftab = (Dague_Complex64_t*)(dspctxt->desc->symbmtx.cblktab[itercblk].ucblkptr);
-
-        for (itercoltab=0;
-             itercoltab < CSC_COLNBR(cscmtx,itercblk);
-             itercoltab++)
-        {
-            for (iterval = CSC_COL(cscmtx,itercblk,itercoltab);
-                 iterval < CSC_COL(cscmtx,itercblk,itercoltab+1);
-                 iterval++)
-            {
-                /* We skip upper part of the csc, 
-                 * the csc has normally at this point a symmetric structure,
-                 * so there is no need to go through it twice
-                 */
-                if (CSC_ROW(cscmtx,iterval) >= cblktab[itercblk].fcolnum)
-                {
-                    iterbloc = cblktab[itercblk].bloknum;
-                    
-                    /* in which block are we ? */
-                    while ( (iterbloc < cblktab[itercblk+1].bloknum) &&
-                            (( bloktab[iterbloc].lrownum < CSC_ROW(cscmtx,iterval)) ||
-                             ( bloktab[iterbloc].frownum > CSC_ROW(cscmtx,iterval)) ) )
-                    {
-                        iterbloc++;
-                    }
-                    
-                    /* Let's check that we are still in the same cblk */
-                    if ( iterbloc < cblktab[itercblk+1].bloknum )
-                    {
-                        /* Starting point of the block */
-                        coefindx  = bloktab[iterbloc].coefind;
-                        /* Row of the value */
-                        coefindx += CSC_ROW(cscmtx,iterval) - bloktab[iterbloc].frownum;
-                        /* displacement for the column of the value */
-                        coefindx += cblktab[itercblk].stride * itercoltab;
-                        
-                        coeftab[coefindx] = CSC_VAL(cscmtx,iterval);
-                        if (transcsc != NULL) 
-                        {
-                          ucoeftab[coefindx] = transcsc[iterval];
-                        }
-                    }
-                    else {
-                        fprintf(stderr, "One coefficient is out of the structure\n" );
-                    }
-                }
-            }
-        }
-    }
-}
 #endif
