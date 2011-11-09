@@ -30,6 +30,15 @@
 #include "sparse-matrix.h"
 
 
+int Z_pastix_fillin_csc( pastix_data_t     *pastix_data,
+                         MPI_Comm           pastix_comm,
+                         dague_int_t        n,
+                         dague_int_t       *colptr,
+                         dague_int_t       *row,
+                         Dague_Complex64_t *avals,
+                         Dague_Complex64_t *b,
+                         dague_int_t       *loc2glob);
+  
 void z_pastix(pastix_data_t **pastix_data, 
               MPI_Comm pastix_comm, 
               dague_int_t n, 
@@ -103,8 +112,8 @@ void Z_CscOrdistrib(CscMatrix          *thecsc,
 DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
 {
     int verbosemode = 3;
-    dague_int_t iparm[IPARM_SIZE];
-    DagDouble_t dparm[DPARM_SIZE];
+    dague_int_t *iparm = dspctxt->iparm;
+    DagDouble_t *dparm = dspctxt->dparm;
     pastix_data_t *pastix_data = NULL; /* Pointer to a storage structure needed by pastix */
 
     /*
@@ -187,6 +196,20 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
 	     iparm, 
 	     dparm);
 
+    if (pastix_data->cscInternFilled == API_NO)
+      {
+        Z_pastix_fillin_csc(pastix_data, 
+                            pastix_data->pastix_comm, 
+                            dspctxt->n,
+                            dspctxt->colptr, 
+                            dspctxt->rows, 
+                            dspctxt->values, 
+                            dspctxt->rhs, 
+                            NULL);
+        pastix_data->cscInternFilled = API_YES;
+      }
+    
+
     pastix_data->solvmatr.coeftab = (Dague_Complex64_t **)malloc( pastix_data->solvmatr.symbmtx.cblknbr * sizeof(Dague_Complex64_t*));
     memset( pastix_data->solvmatr.coeftab, 0, pastix_data->solvmatr.symbmtx.cblknbr * sizeof(Dague_Complex64_t*) );
 
@@ -221,6 +244,7 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
     return dparm[DPARM_FACT_FLOPS];
 }
 
+
 void sparse_matrix_zcsc2cblk(const SolverMatrix *solvmatr,
                              Dague_Complex64_t  *transcsc, 
                              dague_int_t         itercblk)
@@ -233,8 +257,8 @@ void sparse_matrix_zcsc2cblk(const SolverMatrix *solvmatr,
     dague_int_t itercoltab;
     dague_int_t iterbloc;
     dague_int_t coefindx;
-    dague_int_t iterval;
-    dague_int_t stride, fcolnum, fbloknum, lbloknum;
+    dague_int_t iterval, stride;
+    dague_int_t fcolnum, lcolnum, fbloknum, lbloknum;
 
     cscmtx      = &(solvmatr->cscmtx);
     solvbloktab = solvmatr->bloktab;
@@ -243,11 +267,16 @@ void sparse_matrix_zcsc2cblk(const SolverMatrix *solvmatr,
     if (itercblk < CSC_FNBR(cscmtx)){
         stride  = solvmatr->cblktab[itercblk].stride;
         fcolnum = solvmatr->symbmtx.cblktab[itercblk].fcolnum;
+        lcolnum = solvmatr->symbmtx.cblktab[itercblk].lcolnum;
         fbloknum= solvmatr->symbmtx.cblktab[itercblk].bloknum;
         lbloknum= solvmatr->symbmtx.cblktab[itercblk+1].bloknum;
 
         coeftab  = (Dague_Complex64_t*)(solvmatr->coeftab[itercblk]);
-        ucoeftab = (Dague_Complex64_t*)(solvmatr->ucoeftab[itercblk]);
+        memset(coeftab, 0, stride * (lcolnum - fcolnum + 1) * sizeof(Dague_Complex64_t));
+        if ( transcsc != NULL ){
+          ucoeftab = (Dague_Complex64_t*)(solvmatr->ucoeftab[itercblk]);
+          memset(ucoeftab, 0, stride * (lcolnum - fcolnum + 1) * sizeof(Dague_Complex64_t));
+        }
 
         for (itercoltab=0;
              itercoltab < CSC_COLNBR(cscmtx,itercblk);
@@ -297,6 +326,63 @@ void sparse_matrix_zcsc2cblk(const SolverMatrix *solvmatr,
         }
     }
 }
+
+
+
+void sparse_matrix_zcheck( sparse_context_t *dspctxt )
+{
+    dague_int_t *iparm = dspctxt->iparm;
+    DagDouble_t *dparm = dspctxt->dparm;
+    pastix_data_t *pastix_data = dspctxt->desc->pastix_data; /* Pointer to a storage structure needed by pastix */
+
+    iparm[IPARM_START_TASK]          = API_TASK_SOLVE;
+    iparm[IPARM_END_TASK]            = API_TASK_REFINE;
+
+    /*******************************************/
+    /*           Call pastix                   */
+    /*******************************************/
+    z_pastix(&pastix_data, MPI_COMM_WORLD, 
+	     dspctxt->n, 
+	     dspctxt->colptr, 
+	     dspctxt->rows, 
+	     dspctxt->values,
+	     dspctxt->permtab,
+	     dspctxt->peritab,
+	     dspctxt->rhs,
+	     1, 
+	     iparm, 
+	     dparm);
+
+    return;
+}
+
+void sparse_matrix_zclean( sparse_context_t *dspctxt )
+{
+    dague_int_t *iparm = dspctxt->iparm;
+    DagDouble_t *dparm = dspctxt->dparm;
+    pastix_data_t *pastix_data = dspctxt->desc->pastix_data; /* Pointer to a storage structure needed by pastix */
+
+    iparm[IPARM_START_TASK] = API_TASK_CLEAN;
+    iparm[IPARM_END_TASK]   = API_TASK_CLEAN;
+
+    /*******************************************/
+    /*           Call pastix                   */
+    /*******************************************/
+    z_pastix(&pastix_data, MPI_COMM_WORLD, 
+	     dspctxt->n, 
+	     dspctxt->colptr, 
+	     dspctxt->rows, 
+	     dspctxt->values,
+	     dspctxt->permtab,
+	     dspctxt->peritab,
+	     dspctxt->rhs,
+	     1, 
+	     iparm, 
+	     dparm);
+
+    return;
+}
+
 
 #if 0
 int sparse_matrix_zrdmtx( sparse_context_t *dspctxt )

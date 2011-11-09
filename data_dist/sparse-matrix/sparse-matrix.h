@@ -83,8 +83,9 @@ typedef struct sparse_context_s {
     void        *rhs;        /* Right Hand Side                            */ 
     dague_int_t *permtab;    /* vector of permutation                      */
     dague_int_t *peritab;    /* vector of inverse permutation              */
-    sparse_matrix_desc_t *desc; /* Pointer to symbol matrix structure */
-    
+    dague_int_t iparm[IPARM_SIZE];
+    double      dparm[DPARM_SIZE];
+    sparse_matrix_desc_t *desc; /* Pointer to symbol matrix structure */    
 } sparse_context_t;
 
 void sparse_matrix_init( sparse_matrix_desc_t *desc, 
@@ -100,5 +101,15 @@ double sparse_matrix_zrdmtx( sparse_context_t *dspctxt );
 double sparse_matrix_crdmtx( sparse_context_t *dspctxt );
 double sparse_matrix_drdmtx( sparse_context_t *dspctxt );
 double sparse_matrix_srdmtx( sparse_context_t *dspctxt );
+
+void sparse_matrix_zcheck( sparse_context_t *dspctxt );
+void sparse_matrix_ccheck( sparse_context_t *dspctxt );
+void sparse_matrix_dcheck( sparse_context_t *dspctxt );
+void sparse_matrix_scheck( sparse_context_t *dspctxt );
+
+void sparse_matrix_zclean( sparse_context_t *dspctxt );
+void sparse_matrix_cclean( sparse_context_t *dspctxt );
+void sparse_matrix_dclean( sparse_context_t *dspctxt );
+void sparse_matrix_sclean( sparse_context_t *dspctxt );
 
 #endif /* _SPARSE_MATRIX_H_ */
