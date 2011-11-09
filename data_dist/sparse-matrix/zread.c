@@ -83,9 +83,6 @@ typedef struct CscMatrix_ {
 void sparse_matrix_zcsc2pack(sparse_context_t  *dspctxt, 
                             const CscMatrix   *cscmtx, 
                             Dague_Complex64_t *transcsc);
-void sparse_matrix_zcsc2cblk(sparse_context_t  *dspctxt,
-                             Dague_Complex64_t *transcsc, 
-                             dague_int_t        itercblk);
 
 void Z_CscOrdistrib(CscMatrix          *thecsc,
                     char               *Type,
@@ -224,9 +221,9 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
     return dparm[DPARM_FACT_FLOPS];
 }
 
-void sparse_matrix_zcsc2cblk(sparse_context_t  *dspctxt,
-                             Dague_Complex64_t *transcsc, 
-                             dague_int_t        itercblk)
+void sparse_matrix_zcsc2cblk(const SolverMatrix *solvmatr,
+                             Dague_Complex64_t  *transcsc, 
+                             dague_int_t         itercblk)
 {
     const CscMatrix *cscmtx;
     SolverBlok *solvbloktab;
@@ -239,18 +236,18 @@ void sparse_matrix_zcsc2cblk(sparse_context_t  *dspctxt,
     dague_int_t iterval;
     dague_int_t stride, fcolnum, fbloknum, lbloknum;
 
-    cscmtx      = &(dspctxt->desc->pastix_data->solvmatr.cscmtx);
-    solvbloktab = dspctxt->desc->pastix_data->solvmatr.bloktab;
-    symbbloktab = dspctxt->desc->pastix_data->solvmatr.symbmtx.bloktab;
+    cscmtx      = &(solvmatr->cscmtx);
+    solvbloktab = solvmatr->bloktab;
+    symbbloktab = solvmatr->symbmtx.bloktab;
 
     if (itercblk < CSC_FNBR(cscmtx)){
-        stride  = dspctxt->desc->pastix_data->solvmatr.cblktab[itercblk].stride;
-        fcolnum = dspctxt->desc->pastix_data->solvmatr.symbmtx.cblktab[itercblk].fcolnum;
-        fbloknum= dspctxt->desc->pastix_data->solvmatr.symbmtx.cblktab[itercblk].bloknum;
-        lbloknum= dspctxt->desc->pastix_data->solvmatr.symbmtx.cblktab[itercblk+1].bloknum;
+        stride  = solvmatr->cblktab[itercblk].stride;
+        fcolnum = solvmatr->symbmtx.cblktab[itercblk].fcolnum;
+        fbloknum= solvmatr->symbmtx.cblktab[itercblk].bloknum;
+        lbloknum= solvmatr->symbmtx.cblktab[itercblk+1].bloknum;
 
-        coeftab  = (Dague_Complex64_t*)(dspctxt->desc->pastix_data->solvmatr.coeftab[itercblk]);
-        ucoeftab = (Dague_Complex64_t*)(dspctxt->desc->pastix_data->solvmatr.ucoeftab[itercblk]);
+        coeftab  = (Dague_Complex64_t*)(solvmatr->coeftab[itercblk]);
+        ucoeftab = (Dague_Complex64_t*)(solvmatr->ucoeftab[itercblk]);
 
         for (itercoltab=0;
              itercoltab < CSC_COLNBR(cscmtx,itercblk);
