@@ -62,7 +62,8 @@ int main(int argc, char ** argv)
 
     cleanup_dague(dague, iparam, sparam);
 
-    sparse_matrix_zcheck( &dspctxt );
+    if( check )
+      sparse_matrix_zcheck( &dspctxt );
     sparse_matrix_zclean( &dspctxt );
 
     sparse_matrix_destroy( (sparse_matrix_desc_t*)&ddescA );
