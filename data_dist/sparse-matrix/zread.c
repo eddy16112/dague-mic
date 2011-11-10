@@ -115,6 +115,7 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
     dague_int_t *iparm = dspctxt->iparm;
     DagDouble_t *dparm = dspctxt->dparm;
     pastix_data_t *pastix_data = NULL; /* Pointer to a storage structure needed by pastix */
+    DagDouble_t criteria;
 
     /*
      * Read the matrix to get the csc format 
@@ -174,7 +175,8 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
     iparm[IPARM_FACTORIZATION] = dspctxt->factotype;
     iparm[IPARM_MATRIX_VERIFICATION] = API_NO;
     iparm[IPARM_VERBOSE]             = 4;         /* UPDATE !!! */
-    iparm[IPARM_RHS_MAKING]          = API_RHS_1; /* UPDATE !!! */
+    iparm[IPARM_ITERMAX]             = 2;         /* UPDATE !!! */
+    iparm[IPARM_RHS_MAKING]          = API_RHS_B; /* UPDATE !!! */
     iparm[IPARM_START_TASK]          = API_TASK_ORDERING;
     iparm[IPARM_END_TASK]            = API_TASK_ANALYSE;
 
@@ -271,8 +273,36 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
 
     pastix_data->sopar.transcsc = NULL; /* Attention: avoid allocation of ucoeftab */
 
-    dspctxt->desc->pastix_data = pastix_data;
+    /* Compute criteria for static pivoting */
+    criteria = pastix_data->sopar.espilondiag;
+    if ( criteria < 0.0 )
+    {
+      /* Absolute criteria */
+      criteria = -criteria;
+    }
+    else
+      {
+        if (pastix_data->sopar.usenocsc != 1)
+          {
+            if (pastix_data->sopar.fakefact == 1)
+              {
+                printf("WARNING: Fake factorization means absolute criteria: %e\n", criteria );  
+              }
+            else
+              {
+                criteria = Z_CscNorm1(&(pastix_data->solvmatr.cscmtx), pastix_data->pastix_comm)
+                  *        sqrt( criteria );
+              }
+          }
+      }
+    if (verbosemode > 3)
+      printf(" - criteria = %g\n", criteria);  
+    pastix_data->sopar.espilondiag = criteria;
     
+    dspctxt->desc->pastix_data = pastix_data;
+
+    /*D_Ddump_all(&(pastix_data->solvmatr), DUMP_CSC);*/
+
     return dparm[DPARM_FACT_FLOPS];
 }
 
