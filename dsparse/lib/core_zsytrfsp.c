@@ -81,6 +81,8 @@ static void core_zsytf2sp(dague_int_t  n,
         alpha = 1. / (*tmp);
         cblas_zscal(n-k-1, CBLAS_SADDR( alpha ), tmp1, 1 );
         alpha = -(*tmp);
+
+        /* TODO: replace by SYR but [cz]syr exists only in LAPACK */
         cblas_zher(CblasColMajor, (CBLAS_UPLO)CblasLower, n-k-1, (double)(alpha), 
                    tmp1, 1, tmp1+stride, stride);
     }
@@ -130,7 +132,7 @@ static void core_zsytrfsp(dague_int_t  n,
             matrixsize = n-(k*MAXSIZEOFBLOCKS+blocksize);
             
             /* Compute the column Lk+1k */
-            /** Compute Dk,k*Lk+1,k      */
+            /** Compute Lk+1,k*Dk,k      */
             cblas_ztrsm(CblasColMajor,
                         (CBLAS_SIDE)CblasRight, (CBLAS_UPLO)CblasLower,
                         (CBLAS_TRANSPOSE)CblasTrans, (CBLAS_DIAG)CblasUnit,
@@ -139,7 +141,7 @@ static void core_zsytrfsp(dague_int_t  n,
                                            tmp1, stride);
 
             for(col = 0; col < blocksize; col++) {
-                /** Copy Dk,k*Lk+1,k and compute Lk+1,k */
+                /** Copy Lk+1,k*Dk,k and compute Lk+1,k */
                 cblas_zcopy(matrixsize, tmp1+col*stride,     1, 
                                         work+col*matrixsize, 1);
 
@@ -149,7 +151,7 @@ static void core_zsytrfsp(dague_int_t  n,
                             tmp1+col*stride, 1);
             }
             
-            /* Update Ak+1k+1 = Ak+1k+1 - Lk+1k*Dk,k*Lk+1kT */
+            /* Update Ak+1k+1 = Ak+1k+1 - (Lk+1k*Dk,k)*Lk+1kT */
             cblas_zgemm(CblasColMajor,
                         (CBLAS_TRANSPOSE)CblasNoTrans, (CBLAS_TRANSPOSE)CblasTrans,
                         matrixsize, matrixsize, blocksize,
@@ -167,10 +169,10 @@ static void core_zsytrfsp(dague_int_t  n,
 void core_zsytrfsp1d(Dague_Complex64_t *L,
                      Dague_Complex64_t *work,
                      SolverMatrix *datacode, 
-                     dague_int_t c)
+                     dague_int_t c,
+                     double criteria)
 {
     Dague_Complex64_t *fL;
-    double         criteria = 0.002395;/*LAPACKE_dlamch_work('e'); TODO */
     dague_int_t    dima, dimb, stride;
     dague_int_t    fblknum, lblknum;
     dague_int_t    nbpivot = 0; /* TODO: return to higher level */
@@ -200,10 +202,17 @@ void core_zsytrfsp1d(Dague_Complex64_t *L,
         /* Three terms version, no need to keep L and L*D */
         cblas_ztrsm(CblasColMajor,
                     (CBLAS_SIDE)CblasRight, (CBLAS_UPLO)CblasLower,
-                    (CBLAS_TRANSPOSE)CblasTrans, (CBLAS_DIAG)CblasNonUnit,
+                    (CBLAS_TRANSPOSE)CblasTrans, (CBLAS_DIAG)CblasUnit,
                     dimb, dima,
                     CBLAS_SADDR(zone), L,  stride,
                                        fL, stride);
+        
+        for (dague_int_t k=0; k<dima; k++)
+        {
+          Dague_Complex64_t alpha;
+          alpha = 1. / L[k+k*stride];
+          cblas_zscal(dimb, CBLAS_SADDR(alpha), &(fL[k*stride]), 1);
+        }
     }
 }
 
@@ -220,19 +229,16 @@ void core_zsytrfsp1d_gemm(dague_int_t cblknum,
     Dague_Complex64_t *Aik, *Aij;
     dague_int_t fblknum, lblknum, frownum;
     dague_int_t stride, stridefc, indblok;
-    dague_int_t n, b, j;
+    dague_int_t b, j;
     dague_int_t dimi, dimj, dima, dimb;
     dague_int_t ldw = SOLV_COEFMAX;
 
     fblknum = SYMB_BLOKNUM(cblknum);
     lblknum = SYMB_BLOKNUM(cblknum + 1);
 
-    n = bloknum - fblknum;
-    n = (n * (n - 1)) / 2;
-    n = (bloknum - fblknum - 1) * (lblknum - fblknum) - n;
-
     indblok = SOLV_COEFIND(bloknum);
     stride  = SOLV_STRIDE(cblknum);
+
     dimi = stride - indblok;
     dimj = SYMB_LROWNUM(bloknum) - SYMB_FROWNUM(bloknum) + 1;
     dima = SYMB_LCOLNUM(cblknum) - SYMB_FCOLNUM(cblknum) + 1;  
@@ -246,7 +252,7 @@ void core_zsytrfsp1d_gemm(dague_int_t cblknum,
                  1.,  Aik,   stride, 
                       Aik,   stride,
                  0.,  work1, dimi,
-                      L,     stride, 
+                      L,     stride+1, 
                       work2, ldw );
   
     /*
