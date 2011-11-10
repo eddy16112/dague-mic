@@ -245,6 +245,29 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
     /* Tell PaStiX that the coeftab are allocated */
     pastix_data->malcof = 1;
 
+    /* Initialize PaStiX sopar structure */
+    pastix_data->sopar.itermax     = iparm[IPARM_ITERMAX];
+    pastix_data->sopar.diagchange  = 0;
+    pastix_data->sopar.epsilonraff = dparm[DPARM_EPSILON_REFINEMENT];
+    pastix_data->sopar.rberror     = 0;
+    pastix_data->sopar.espilondiag = dparm[DPARM_EPSILON_MAGN_CTRL];
+    pastix_data->sopar.fakefact    = (iparm[IPARM_FILL_MATRIX] == API_YES) ? API_YES : API_NO;
+    pastix_data->sopar.usenocsc    = 0;
+    pastix_data->sopar.factotype   = iparm[IPARM_FACTORIZATION];
+    pastix_data->sopar.symmetric   = iparm[IPARM_SYM];
+    pastix_data->sopar.pastix_comm = 0 ; /* Attention: set PaStiX MPI communicator */
+    pastix_data->sopar.iparm       = iparm;
+    pastix_data->sopar.dparm       = dparm;
+    pastix_data->sopar.schur       = iparm[IPARM_SCHUR];
+    pastix_data->sopar.n           = dspctxt->n;
+    pastix_data->sopar.gN          = dspctxt->n;
+    /*
+    if (pastix_data->sopar.b != NULL)
+      free(pastix_data->sopar.b);
+    pastix->sopar.bindtab     = pastix_data->bindtab;
+    */
+    pastix_data->sopar.transcsc = NULL; /* Attention: avoid allocation of ucoeftab */
+
     dspctxt->desc->pastix_data = pastix_data;
     
     return dparm[DPARM_FACT_FLOPS];
@@ -377,15 +400,15 @@ void sparse_matrix_zclean( sparse_context_t *dspctxt )
         dague_int_t cblknbr = pastix_data->solvmatr.symbmtx.cblknbr;
 
         for(itercblk=0; itercblk<cblknbr; itercblk++) {
-            free( solvmatr->coeftab[itercblk] );
+            free( pastix_data->solvmatr.coeftab[itercblk] );
         }
-        free( solvmatr->coeftab );
+        free( pastix_data->solvmatr.coeftab );
 
-        if ( solvmatr->ucoeftab != NULL ) {
+        if ( pastix_data->sopar.transcsc != NULL ) {
             for(itercblk=0; itercblk<cblknbr; itercblk++) {
-                free( solvmatr->ucoeftab[itercblk] );
+                free( pastix_data->solvmatr.ucoeftab[itercblk] );
             }
-            free( solvmatr->ucoeftab );
+            free( pastix_data->solvmatr.ucoeftab );
         }
     }
     pastix_data->malcof = 0;
