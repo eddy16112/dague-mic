@@ -170,15 +170,15 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
     /*       Customize some parameters         */
     /*******************************************/
 
-    iparm[IPARM_THREAD_NBR] = 1; /* WARNING : update with nbr thread for BLEND splitting !!! */
-    iparm[IPARM_SYM] = (MTX_ISSYM(dspctxt->type) ? API_SYM_YES : API_SYM_NO);
+    iparm[IPARM_THREAD_NBR]    = dspctxt->coresnbr;
     iparm[IPARM_FACTORIZATION] = dspctxt->factotype;
+    iparm[IPARM_VERBOSE]       = dspctxt->verbose;
+    iparm[IPARM_RHS_MAKING]    = API_RHS_B; /* RHS initialize to rhs[i] = i by read_matrix */
+    iparm[IPARM_START_TASK]    = API_TASK_ORDERING;
+    iparm[IPARM_END_TASK]      = API_TASK_ANALYSE;
+
+    iparm[IPARM_SYM] = (MTX_ISSYM(dspctxt->type) ? API_SYM_YES : API_SYM_NO);
     iparm[IPARM_MATRIX_VERIFICATION] = API_NO;
-    iparm[IPARM_VERBOSE]             = 4;         /* UPDATE !!! */
-    iparm[IPARM_ITERMAX]             = 2;         /* UPDATE !!! */
-    iparm[IPARM_RHS_MAKING]          = API_RHS_B; /* UPDATE !!! */
-    iparm[IPARM_START_TASK]          = API_TASK_ORDERING;
-    iparm[IPARM_END_TASK]            = API_TASK_ANALYSE;
 
     /*******************************************/
     /*           Call pastix                   */

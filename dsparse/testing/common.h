@@ -18,7 +18,6 @@
 #include <math.h>
 #include <cblas.h>
 #include <plasma.h>
-#include <lapacke.h>
 #include <core_blas.h>
 /* PaStiX lib */ 
 #include <pastix.h>
@@ -137,7 +136,9 @@ static inline int min(int a, int b) { return a < b ? a : b; }
 
 #define PASTE_CODE_INIT_CONTEXT( _dspctxt, _factotype)                \
     _dspctxt.format     = iparam[IPARAM_FORMAT];   /* Matrix file format                         */ \
-    _dspctxt.factotype  = _factotype;                                                               \
+    _dspctxt.factotype  = _factotype;                                   \
+    _dspctxt.coresnbr   = iparam[IPARAM_NCORES];                        \
+    _dspctxt.verbose    = iparam[IPARAM_VERBOSE];                       \
     _dspctxt.matrixname = sparam[SPARAM_MATRIX]  ; /* Filename to get the matrix                 */ \
     _dspctxt.rhsname    = sparam[SPARAM_RHS]     ; /* Filename where the ordering is stored      */ \
     _dspctxt.ordername  = sparam[SPARAM_ORDERING]; /* Filename where the symbol matrix is stored */ \
@@ -147,10 +148,10 @@ static inline int min(int a, int b) { return a < b ? a : b; }
     _dspctxt.n          = iparam[IPARAM_M];        /* Number of unknowns/columns/rows            */ \
     _dspctxt.nnz        = 0;    /* Number of non-zero values in the input matrix */ \
     _dspctxt.colptr     = NULL; /* Vector of size N+1 storing the starting point of each column in the array rows */ \
-    _dspctxt.rows       = NULL; /* Indices of the rows present in each column */    \
-    _dspctxt.values     = NULL; /* Values of the matrix                       */    \
-    _dspctxt.rhs        = NULL; /* Right Hand Side                            */    \
-    _dspctxt.permtab    = NULL; /* vector of permutation                      */    \
+    _dspctxt.rows       = NULL; /* Indices of the rows present in each column */ \
+    _dspctxt.values     = NULL; /* Values of the matrix                       */ \
+    _dspctxt.rhs        = NULL; /* Right Hand Side                            */ \
+    _dspctxt.permtab    = NULL; /* vector of permutation                      */ \
     _dspctxt.peritab    = NULL; /* vector of inverse permutation              */
 
 

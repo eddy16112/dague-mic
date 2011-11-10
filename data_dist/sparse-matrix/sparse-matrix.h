@@ -69,6 +69,8 @@ typedef struct sparse_matrix_desc_t {
 typedef struct sparse_context_s {
     int          format;     /* Matrix file format                         */
     int          factotype;
+    int          coresnbr;   /* Number of cores to use for Pastix          */
+    int          verbose;    /* Level of verbose                           */
     char        *matrixname; /* Filename to get the matrix                 */
     char        *rhsname;    /* Filename to get the matrix                 */
     char        *ordername;  /* Filename where the ordering is stored      */
