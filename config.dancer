@@ -20,7 +20,7 @@ elif [ "x$USER" = "xmfaverge" ]; then
   HWLOC="/opt/hwloc"
   if [ "x$1" = "xgcc" ]; then
       PLASMADIR="/home/mfaverge/opt/plasma"
-      DSPARSE="-DDAGUE_WITH_SPARSE=ON -DPASTIX_DIR=/home/mfaverge/opt/pastix -DSCOTCH_DIR=/opt/scotch-gf"
+      DSPARSE="-DDAGUE_WITH_SPARSE=ON -DPASTIX_DIR=/home/mfaverge/opt/pastix-dbg -DSCOTCH_DIR=/opt/scotch-gf"
   else
       PLASMADIR="/home/mfaverge/opt/plasma-intel"
       DSPARSE="-DDAGUE_WITH_SPARSE=ON -DPASTIX_DIR=/home/mfaverge/opt/pastix-intel -DSCOTCH_DIR=/opt/scotch"

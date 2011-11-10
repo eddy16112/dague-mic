@@ -50,8 +50,9 @@ POTRF_TRSM(k) [high_priority = on]
 
 // Execution space
 k = 0..cblknbr
-browk     = inline_c %{ return UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( k ))   ); %}
-browk1    = inline_c %{ return UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( k ))+1 ); %}
+gcblk2list= inline_c %{ return UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( k )); %}
+browk     = inline_c %{ if ( gcblk2list != -1 ) return UPDOWN_LISTPTR( gcblk2list   ); else return -1; %}
+browk1    = inline_c %{ if ( gcblk2list != -1 ) return UPDOWN_LISTPTR( gcblk2list+1 ); else return -1; %}
 lastbrow  = inline_c %{ if (browk1 > 0) return UPDOWN_LISTBLOK(browk1-1); else return 0; %}
 firstblok = inline_c %{ return SYMB_BLOKNUM(k); %}
 lastblok  = inline_c %{ return SYMB_BLOKNUM(k+1); %}
