@@ -217,7 +217,7 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
     {
       SymbolMatrix *symbptr = &(pastix_data->solvmatr.symbmtx);
       dague_int_t icblk;
-      Dague_Complex64_t value = (Dague_Complex64_t)dspctxt->n * dspctxt->n;
+      /*      Dague_Complex64_t value = (Dague_Complex64_t)dspctxt->n * dspctxt->n;*/
 
       /* Allocate array of values in packed format  */
       for (icblk=0; icblk < symbptr->cblknbr; icblk++)
@@ -230,12 +230,15 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
 
           /* Could be done in parallel */
           pastix_data->solvmatr.coeftab[icblk] = (void *) malloc (size * sizeof(Dague_Complex64_t));
-          /*memset( pastix_data->solvmatr.coeftab[icblk], 0, size * sizeof(Dague_Complex64_t));*/
+
+#if 0
+          memset( pastix_data->solvmatr.coeftab[icblk], 0, size * sizeof(Dague_Complex64_t));
           
           for (dague_int_t itercol=0; itercol<width; itercol++)
             {
               pastix_data->solvmatr.coeftab[icblk][ itercol*stride+itercol ] = value;
             }
+#endif
         }
     }
 
@@ -252,8 +255,8 @@ void sparse_matrix_zcsc2cblk(const SolverMatrix *solvmatr,
     const CscMatrix *cscmtx;
     SolverBlok *solvbloktab;
     SymbolBlok *symbbloktab;
-    Dague_Complex64_t *coeftab;
-    Dague_Complex64_t *ucoeftab;
+    Dague_Complex64_t *coeftab  = NULL;
+    Dague_Complex64_t *ucoeftab = NULL;
     dague_int_t itercoltab;
     dague_int_t iterbloc;
     dague_int_t coefindx;
