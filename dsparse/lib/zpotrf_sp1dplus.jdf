@@ -21,7 +21,8 @@ extern "C" %{
 void core_zsytrfsp1d(Dague_Complex64_t *L,
                      Dague_Complex64_t *work,
                      SolverMatrix *datacode,
-                     dague_int_t c);
+                     dague_int_t c,
+                     double criteria);
 
 void core_zsytrfsp1d_gemm(dague_int_t cblknum,
                           dague_int_t bloknum,
@@ -68,7 +69,7 @@ RW A <- ( browk == browk1 ) ? A(k) : C GEMM( lastbrow )
 BODY
       Dague_Complex64_t *work = (Dague_Complex64_t *)dague_private_memory_pop( p_work1 );
       DRYRUN(
-             core_zsytrfsp1d(A, work, datacode, k);
+             core_zsytrfsp1d(A, work, datacode, k, descA->pastix_data->sopar.espilondiag );
 	     );
       printlog(
                "thread %d compute_1dplus( cblknum=%d, browk=%d, browk1=%d, lastbrow=%d, firstblok=%d, lastblok=%d )\n",
@@ -106,16 +107,16 @@ BODY
       Dague_Complex64_t *work2 = (Dague_Complex64_t *)dague_private_memory_pop( p_work2 );
 
       if (!phony) {
-      DRYRUN(
-             core_zsytrfsp1d_gemm(cblk, k, fcblk, A, C, work1, work2, datacode);
-          );
-      printlog(
-               "thread %d compute_1dgemm( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
-               context->eu_id, k, fcblk, cblk, prev, next);
+        DRYRUN(
+               core_zsytrfsp1d_gemm(cblk, k, fcblk, A, C, work1, work2, datacode);
+               );
+        printlog(
+                 "thread %d compute_1dgemm( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
+                 context->eu_id, k, fcblk, cblk, prev, next);
       } else {
-      printlog(
-               "thread %d phony_gemm( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
-               context->eu_id, k, fcblk, cblk, prev, next);
+        printlog(
+                 "thread %d phony_gemm( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
+                 context->eu_id, k, fcblk, cblk, prev, next);
       }
 
       dague_private_memory_push( p_work1, (void *)work1 );
