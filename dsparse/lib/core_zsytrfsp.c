@@ -170,7 +170,7 @@ void core_zsytrfsp1d(Dague_Complex64_t *L,
                      dague_int_t c)
 {
     Dague_Complex64_t *fL;
-    double         criteria = 1e-15;/*LAPACKE_dlamch_work('e'); TODO */
+    double         criteria = 0.002395;/*LAPACKE_dlamch_work('e'); TODO */
     dague_int_t    dima, dimb, stride;
     dague_int_t    fblknum, lblknum;
     dague_int_t    nbpivot = 0; /* TODO: return to higher level */
