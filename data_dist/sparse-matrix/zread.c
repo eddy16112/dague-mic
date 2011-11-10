@@ -242,6 +242,9 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
         }
     }
 
+    /* Tell PaStiX that the coeftab are allocated */
+    pastix_data->malcof = 1;
+
     dspctxt->desc->pastix_data = pastix_data;
     
     return dparm[DPARM_FACT_FLOPS];
@@ -368,6 +371,25 @@ void sparse_matrix_zclean( sparse_context_t *dspctxt )
     iparm[IPARM_START_TASK] = API_TASK_CLEAN;
     iparm[IPARM_END_TASK]   = API_TASK_CLEAN;
 
+    /* Dsparse free the coeftab itself */
+    {
+        dague_int_t itercblk;
+        dague_int_t cblknbr = pastix_data->solvmatr.symbmtx.cblknbr;
+
+        for(itercblk=0; itercblk<cblknbr; itercblk++) {
+            free( solvmatr->coeftab[itercblk] );
+        }
+        free( solvmatr->coeftab );
+
+        if ( solvmatr->ucoeftab != NULL ) {
+            for(itercblk=0; itercblk<cblknbr; itercblk++) {
+                free( solvmatr->ucoeftab[itercblk] );
+            }
+            free( solvmatr->ucoeftab );
+        }
+    }
+    pastix_data->malcof = 0;
+
     /*******************************************/
     /*           Call pastix                   */
     /*******************************************/
@@ -383,6 +405,7 @@ void sparse_matrix_zclean( sparse_context_t *dspctxt )
 	     iparm, 
 	     dparm);
 
+    
     return;
 }
 
