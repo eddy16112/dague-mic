@@ -255,17 +255,20 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
     pastix_data->sopar.usenocsc    = 0;
     pastix_data->sopar.factotype   = iparm[IPARM_FACTORIZATION];
     pastix_data->sopar.symmetric   = iparm[IPARM_SYM];
-    pastix_data->sopar.pastix_comm = 0 ; /* Attention: set PaStiX MPI communicator */
+    pastix_data->sopar.pastix_comm = pastix_data->pastix_comm;
     pastix_data->sopar.iparm       = iparm;
     pastix_data->sopar.dparm       = dparm;
     pastix_data->sopar.schur       = iparm[IPARM_SCHUR];
     pastix_data->sopar.n           = dspctxt->n;
     pastix_data->sopar.gN          = dspctxt->n;
-    /*
+
     if (pastix_data->sopar.b != NULL)
       free(pastix_data->sopar.b);
-    pastix->sopar.bindtab     = pastix_data->bindtab;
-    */
+    pastix_data->sopar.bindtab     = pastix_data->bindtab;
+
+    pastix_data->sopar.type_comm   = iparm[IPARM_THREAD_COMM_MODE];
+    pastix_data->sopar.nbthrdcomm  = iparm[IPARM_NB_THREAD_COMM];
+
     pastix_data->sopar.transcsc = NULL; /* Attention: avoid allocation of ucoeftab */
 
     dspctxt->desc->pastix_data = pastix_data;
