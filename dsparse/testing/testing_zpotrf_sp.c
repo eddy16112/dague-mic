@@ -50,7 +50,7 @@ int main(int argc, char ** argv)
     
     /* Initialize the matrix */
     dsparse_zcsc2cblk( dague, &ddescA );
-    D_Udump_all( &(ddescA.pastix_data->solvmatr), DUMP_SOLV );
+/*     D_Udump_all( &(ddescA.pastix_data->solvmatr), DUMP_SOLV ); */
 
     if ( loud && rank == 0 ) {
       printf("Number of floating points operations: %g GFLOPs\n", flops/1.e9);
@@ -81,7 +81,7 @@ int main(int argc, char ** argv)
         
     cleanup_dague(dague, iparam, sparam);
     
-    D_Udump_all( &(ddescA.pastix_data->solvmatr), DUMP_SOLV );
+/*     D_Udump_all( &(ddescA.pastix_data->solvmatr), DUMP_SOLV ); */
     if( check )
         sparse_matrix_zcheck( &dspctxt );
     sparse_matrix_zclean( &dspctxt );
