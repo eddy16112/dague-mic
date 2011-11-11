@@ -176,6 +176,7 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
     iparm[IPARM_RHS_MAKING]    = API_RHS_B; /* RHS initialize to rhs[i] = i by read_matrix */
     iparm[IPARM_START_TASK]    = API_TASK_ORDERING;
     iparm[IPARM_END_TASK]      = API_TASK_ANALYSE;
+    iparm[IPARM_ITERMAX] = 2;
 
     iparm[IPARM_SYM] = (MTX_ISSYM(dspctxt->type) ? API_SYM_YES : API_SYM_NO);
     iparm[IPARM_MATRIX_VERIFICATION] = API_NO;
@@ -197,56 +198,8 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
 	     1, 
 	     iparm, 
 	     dparm);
-
-    if (pastix_data->cscInternFilled == API_NO)
-      {
-        Z_pastix_fillin_csc(pastix_data, 
-                            pastix_data->pastix_comm, 
-                            dspctxt->n,
-                            dspctxt->colptr, 
-                            dspctxt->rows, 
-                            dspctxt->values, 
-                            dspctxt->rhs, 
-                            NULL);
-        pastix_data->cscInternFilled = API_YES;
-      }
     
-
-    pastix_data->solvmatr.coeftab = (Dague_Complex64_t **)malloc( pastix_data->solvmatr.symbmtx.cblknbr * sizeof(Dague_Complex64_t*));
-    memset( pastix_data->solvmatr.coeftab, 0, pastix_data->solvmatr.symbmtx.cblknbr * sizeof(Dague_Complex64_t*) );
-
-
-    {
-      SymbolMatrix *symbptr = &(pastix_data->solvmatr.symbmtx);
-      dague_int_t icblk;
-      /*      Dague_Complex64_t value = (Dague_Complex64_t)dspctxt->n * dspctxt->n;*/
-
-      /* Allocate array of values in packed format  */
-      for (icblk=0; icblk < symbptr->cblknbr; icblk++)
-        {
-          dague_int_t fcolnum = pastix_data->solvmatr.symbmtx.cblktab[icblk].fcolnum;
-          dague_int_t lcolnum = pastix_data->solvmatr.symbmtx.cblktab[icblk].lcolnum;
-          dague_int_t stride  = pastix_data->solvmatr.cblktab[icblk].stride;
-          dague_int_t width   = lcolnum - fcolnum + 1;
-          dague_int_t size    = stride * width;
-
-          /* Could be done in parallel */
-          pastix_data->solvmatr.coeftab[icblk] = (void *) malloc (size * sizeof(Dague_Complex64_t));
-
-#if 0
-          memset( pastix_data->solvmatr.coeftab[icblk], 0, size * sizeof(Dague_Complex64_t));
-          
-          for (dague_int_t itercol=0; itercol<width; itercol++)
-            {
-              pastix_data->solvmatr.coeftab[icblk][ itercol*stride+itercol ] = value;
-            }
-#endif
-        }
-    }
-
-    /* Tell PaStiX that the coeftab are allocated */
-    pastix_data->malcof = 1;
-
+    /* Part of pastix_task_sopalin required by dague */
     /* Initialize PaStiX sopar structure */
     pastix_data->sopar.itermax     = iparm[IPARM_ITERMAX];
     pastix_data->sopar.diagchange  = 0;
@@ -271,7 +224,51 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
     pastix_data->sopar.type_comm   = iparm[IPARM_THREAD_COMM_MODE];
     pastix_data->sopar.nbthrdcomm  = iparm[IPARM_NB_THREAD_COMM];
 
-    pastix_data->sopar.transcsc = NULL; /* Attention: avoid allocation of ucoeftab */
+    if (pastix_data->cscInternFilled == API_NO)
+      {
+        Z_pastix_fillin_csc(pastix_data, 
+                            pastix_data->pastix_comm, 
+                            dspctxt->n,
+                            dspctxt->colptr, 
+                            dspctxt->rows, 
+                            dspctxt->values, 
+                            dspctxt->rhs, 
+                            NULL);
+        pastix_data->cscInternFilled = API_YES;
+      }
+
+    pastix_data->solvmatr.coeftab = (Dague_Complex64_t **)malloc( pastix_data->solvmatr.symbmtx.cblknbr * sizeof(Dague_Complex64_t*));
+    memset( pastix_data->solvmatr.coeftab, 0, pastix_data->solvmatr.symbmtx.cblknbr * sizeof(Dague_Complex64_t*) );
+
+    if ( pastix_data->sopar.transcsc != NULL ) {
+      pastix_data->solvmatr.ucoeftab = (Dague_Complex64_t **)malloc( pastix_data->solvmatr.symbmtx.cblknbr * sizeof(Dague_Complex64_t*));
+      memset( pastix_data->solvmatr.ucoeftab, 0, pastix_data->solvmatr.symbmtx.cblknbr * sizeof(Dague_Complex64_t*) );
+    }
+
+    {
+      SymbolMatrix *symbptr = &(pastix_data->solvmatr.symbmtx);
+      dague_int_t icblk;
+      /*      Dague_Complex64_t value = (Dague_Complex64_t)dspctxt->n * dspctxt->n;*/
+
+      /* Allocate array of values in packed format  */
+      for (icblk=0; icblk < symbptr->cblknbr; icblk++)
+      {
+          dague_int_t fcolnum = pastix_data->solvmatr.symbmtx.cblktab[icblk].fcolnum;
+          dague_int_t lcolnum = pastix_data->solvmatr.symbmtx.cblktab[icblk].lcolnum;
+          dague_int_t stride  = pastix_data->solvmatr.cblktab[icblk].stride;
+          dague_int_t width   = lcolnum - fcolnum + 1;
+          dague_int_t size    = stride * width;
+
+          /* Could be done in parallel */
+          pastix_data->solvmatr.coeftab[icblk] = (void *) malloc (size * sizeof(Dague_Complex64_t));
+          if ( pastix_data->sopar.transcsc != NULL ) {
+              pastix_data->solvmatr.ucoeftab[icblk] = (void *) malloc (size * sizeof(Dague_Complex64_t));
+          }
+      }
+    }
+
+    /* Tell PaStiX that the coeftab are allocated */
+    pastix_data->malcof = 1;
 
     /* Compute criteria for static pivoting */
     criteria = pastix_data->sopar.espilondiag;
@@ -395,10 +392,10 @@ void sparse_matrix_zcheck( sparse_context_t *dspctxt )
 {
     dague_int_t *iparm = dspctxt->iparm;
     DagDouble_t *dparm = dspctxt->dparm;
-    pastix_data_t *pastix_data = dspctxt->desc->pastix_data; /* Pointer to a storage structure needed by pastix */
+    pastix_data_t *pastix_data = dspctxt->desc->pastix_data;
 
-    iparm[IPARM_START_TASK]          = API_TASK_SOLVE;
-    iparm[IPARM_END_TASK]            = API_TASK_REFINE;
+    iparm[IPARM_START_TASK] = API_TASK_SOLVE;
+    iparm[IPARM_END_TASK]   = API_TASK_REFINE;
 
     /*******************************************/
     /*           Call pastix                   */
@@ -422,7 +419,7 @@ void sparse_matrix_zclean( sparse_context_t *dspctxt )
 {
     dague_int_t *iparm = dspctxt->iparm;
     DagDouble_t *dparm = dspctxt->dparm;
-    pastix_data_t *pastix_data = dspctxt->desc->pastix_data; /* Pointer to a storage structure needed by pastix */
+    pastix_data_t *pastix_data = dspctxt->desc->pastix_data;
 
     iparm[IPARM_START_TASK] = API_TASK_CLEAN;
     iparm[IPARM_END_TASK]   = API_TASK_CLEAN;

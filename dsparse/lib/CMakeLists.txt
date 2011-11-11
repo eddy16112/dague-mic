@@ -11,6 +11,7 @@ set(EXTRA_SOURCES
 set(JDF
   zcsc2cblk.jdf
   zpotrf_sp1dplus.jdf
+  zgetrf_sp1dplus.jdf
 )
 precisions_rules(generated_jdf
                  "${JDF}"
@@ -21,9 +22,12 @@ jdf_rules(generated_files "${generated_jdf}")
 ### Generate the dplasma wrappers for all required precisions 
 set(SOURCES
   core_zgemdm.c
+  core_zgetro.c
   core_zsytrfsp.c
+  core_zgetrfsp.c
   zcsc2cblk_wrapper.c
   zpotrf_sp1dplus_wrapper.c
+  zgetrf_sp1dplus_wrapper.c
 )
 precisions_rules(generated_files
                  "${SOURCES}"

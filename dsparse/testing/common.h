@@ -20,7 +20,8 @@
 #include <plasma.h>
 #include <core_blas.h>
 /* PaStiX lib */ 
-#include <pastix.h>
+/*#include <pastix.h>*/
+#include "data_dist/sparse-matrix/pastix_internal/pastix_internal.h"
 #include <read_matrix.h>
 /* dague things */
 #include "dague.h"
@@ -71,7 +72,7 @@ enum sparam_t {
   (void)rank;(void)nodes;(void)cores;(void)gpus;(void)prio;(void)check;(void)loud;
 
 /* Define a double type which not pass through the precision generation process */
-typedef double DagDouble_t;
+//typedef double DagDouble_t;
 #define PASTE_CODE_FLOPS( FORMULA, PARAMS ) \
   double gflops, flops = FORMULA PARAMS;
   

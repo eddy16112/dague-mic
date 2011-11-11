@@ -81,6 +81,9 @@ void print_usage(void)
             " -p -P --order     : Ordering filename (default: ./ordername )\n"
             " -s -S --symbol    : Symbol factorization filename (default: ./symbname )\n"
             "\n"
+            "Factorization:\n"
+            " -f --facto        :  LL^t = 0, LDL^t = 1 and LU = 2 (default: LU)\n" 
+            "\n"
             " -x --check        : verify the results\n"
             "\n"
             "    --dot          : create a dot output file (default: don't)\n"
@@ -90,7 +93,7 @@ void print_usage(void)
            );
 }
 
-#define GETOPT_STRING "c:o:g::p:P:q:Q:k::n:N:o:O:xv::h0:1:2:3:4:5:6:7:8:9:"
+#define GETOPT_STRING "c:o:g::p:P:q:Q:k::n:N:o:O:xv::h0:1:2:3:4:5:6:7:8:9:f:"
 
 #if defined(HAVE_GETOPT_LONG)
 static struct option long_options[] =
@@ -124,6 +127,9 @@ static struct option long_options[] =
     {"mm",          required_argument,  0, '8'},
     {"9",           required_argument,  0, '9'},
     {"lap",         required_argument,  0, '9'},
+
+    {"f",           required_argument,  0, 'f'},
+    {"facto",       required_argument,  0, 'f'},
 
     {"n",           required_argument,  0, 'n'},
     {"N",           required_argument,  0, 'n'},
@@ -212,6 +218,8 @@ static void parse_arguments(int argc, char** argv, int* iparam, char** sparam)
             case 'x': iparam[IPARAM_CHECK] = 1; iparam[IPARAM_VERBOSE] = max(2, iparam[IPARAM_VERBOSE]); break; 
             case '.': iparam[IPARAM_DOT] = 1; dot_filename = strdup(optarg); break;
 
+            case 'f': iparam[IPARAM_FACTORIZATION] = atoi(optarg); break;
+
             case 'v': 
                 if(optarg)  iparam[IPARAM_VERBOSE] = atoi(optarg);
                 else        iparam[IPARAM_VERBOSE] = 2;
@@ -286,6 +294,7 @@ void param_default(int* iparam, char **sparam)
     iparam[IPARAM_NNODES] = 1;
     iparam[IPARAM_NGPUS]  = -1;
     iparam[IPARAM_FORMAT] = RSA;
+    iparam[IPARAM_FACTORIZATION] = DSPARSE_LU;
 }
 
 #ifdef DAGUE_PROF_TRACE
