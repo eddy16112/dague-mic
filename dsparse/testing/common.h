@@ -41,7 +41,8 @@ enum iparam_t {
   IPARAM_NCORES,       /* Number of cores                   */
   IPARAM_SCHEDULER,    /* What scheduler do we choose */
   IPARAM_NGPUS,        /* Number of GPUs                    */
-  IPARAM_FORMAT,       /* Do we require to output the DOT file? */
+  IPARAM_FORMAT,       /* Matrix format                     */
+  IPARAM_FACTORIZATION,/* Matrix format                     */
   IPARAM_M,            /* Matrix size, used for laplacian   */
   IPARAM_PRIO,         /* Switchpoint for priority DAG      */
   IPARAM_CHECK,        /* Checking activated or not         */
@@ -66,6 +67,7 @@ enum sparam_t {
   int prio  = iparam[IPARAM_PRIO];\
   int check = iparam[IPARAM_CHECK];\
   int loud  = iparam[IPARAM_VERBOSE];\
+  int factotype = iparam[IPARAM_FACTORIZATION];\
   (void)rank;(void)nodes;(void)cores;(void)gpus;(void)prio;(void)check;(void)loud;
 
 /* Define a double type which not pass through the precision generation process */
