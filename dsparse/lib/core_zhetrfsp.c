@@ -83,7 +83,7 @@ static void core_zhetf2sp(dague_int_t  n,
         alpha = -(*tmp);
 
         cblas_zher(CblasColMajor, (CBLAS_UPLO)CblasLower, 
-                   n-k-1, CBLAS_SADDR(alpha), 
+                   n-k-1, (double)alpha, 
                    tmp1,        1, 
                    tmp1+stride, stride);
     }

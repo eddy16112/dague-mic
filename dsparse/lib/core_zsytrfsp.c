@@ -83,10 +83,10 @@ static void core_zsytf2sp(dague_int_t  n,
         alpha = -(*tmp);
 
         /* TODO: replace by SYR but [cz]syr exists only in LAPACK */
-        LAPACKE_zsyr_work(LAPACK_COL_MAJOR, 'l', 
-                          n-k-1, (double)(alpha), 
-                          tmp1,        1, 
-                          tmp1+stride, stride);
+/*         LAPACKE_zsyr_work(LAPACK_COL_MAJOR, 'l',  */
+/*                           n-k-1, (double)(alpha),  */
+/*                           tmp1,        1,  */
+/*                           tmp1+stride, stride); */
     }
 }
 

@@ -11,7 +11,7 @@
  * @author Pierre Ramet
  * @author Xavier Lacoste
  * @date 2011-11-11
- * @precisions normal z -> c
+ * @precisions normal z -> c d s
  *
  **/
 #include <plasma.h>
@@ -67,7 +67,7 @@ static void core_zpotf2sp(dague_int_t  n,
             (*nbpivot)++;
 	}
 
-        if (*tmp < 0)
+        if ( creal(*tmp) < 0. )
         {
             errorPrint("Negative diagonal term\n");
             EXIT(MOD_SOPALIN, INTERNAL_ERR);
@@ -109,9 +109,8 @@ static void core_zpotrfsp(dague_int_t  n,
                           dague_int_t *nbpivot, 
                           double       criteria)
 {
-    dague_int_t k, blocknbr, blocksize, matrixsize, col;
+    dague_int_t k, blocknbr, blocksize, matrixsize;
     Dague_Complex64_t *tmp,*tmp1,*tmp2;
-    Dague_Complex64_t alpha;
 
     blocknbr = (dague_int_t) ceil( (double)n/(double)MAXSIZEOFBLOCKS );
 
@@ -141,8 +140,8 @@ static void core_zpotrfsp(dague_int_t  n,
             /* Update Ak+1k+1 = Ak+1k+1 - Lk+1k * Lk+1kT */
             cblas_zherk(CblasColMajor, CblasLower, CblasNoTrans,
                         matrixsize, blocksize,
-                        CBLAS_SADDR(mzone), tmp1, stride,
-                        CBLAS_SADDR(zone),  tmp2, stride);
+                        (double)mzone, tmp1, stride,
+                        (double)zone,  tmp2, stride);
 	}
     }
 }
@@ -207,7 +206,6 @@ void core_zpotrfsp1d_gemm(dague_int_t cblknum,
     dague_int_t stride, stridefc, indblok;
     dague_int_t b, j;
     dague_int_t dimi, dimj, dima, dimb;
-    dague_int_t ldw = SOLV_COEFMAX;
 
     fblknum = SYMB_BLOKNUM(cblknum);
     lblknum = SYMB_BLOKNUM(cblknum + 1);
