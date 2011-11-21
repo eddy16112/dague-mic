@@ -171,7 +171,7 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
     /*******************************************/
 
     iparm[IPARM_THREAD_NBR]    = dspctxt->coresnbr;
-    iparm[IPARM_FACTORIZATION] = dspctxt->factotype;
+    iparm[IPARM_FACTORIZATION] = (dspctxt->factotype == DSPARSE_LDLTH) ? API_FACT_LDLT : dspctxt->factotype;
     iparm[IPARM_VERBOSE]       = dspctxt->verbose;
     iparm[IPARM_RHS_MAKING]    = API_RHS_B; /* RHS initialize to rhs[i] = i by read_matrix */
     iparm[IPARM_START_TASK]    = API_TASK_ORDERING;

@@ -27,6 +27,7 @@ typedef struct pastix_data_t pastix_data_t;
 #define DSPARSE_LLT   0
 #define DSPARSE_LDLT  1 
 #define DSPARSE_LU    2
+#define DSPARSE_LDLTH 3
 
 enum spmtx_type {
     spmtx_RealFloat     = 0,  /**< float          */
