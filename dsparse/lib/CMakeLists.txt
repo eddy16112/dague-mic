@@ -12,6 +12,8 @@ set(JDF
   zcsc2cblk.jdf
   zpotrf_sp1dplus.jdf
   zgetrf_sp1dplus.jdf
+  zhetrf_sp1dplus.jdf
+  zsytrf_sp1dplus.jdf
 )
 precisions_rules(generated_jdf
                  "${JDF}"
@@ -21,11 +23,18 @@ jdf_rules(generated_files "${generated_jdf}")
 
 ### Generate the dplasma wrappers for all required precisions 
 set(SOURCES
+  # extra kernel
   core_zgemdm.c
   core_zgetro.c
+  # Kernels
   core_zsytrfsp.c
+  core_zhetrfsp.c
   core_zgetrfsp.c
+  core_zpotrfsp.c
+  # Wrapper
   zcsc2cblk_wrapper.c
+  zsytrf_sp1dplus_wrapper.c
+  zhetrf_sp1dplus_wrapper.c
   zpotrf_sp1dplus_wrapper.c
   zgetrf_sp1dplus_wrapper.c
 )

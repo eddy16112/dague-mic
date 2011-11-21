@@ -1,6 +1,6 @@
 /**
  *
- * @file core_zsytrfsp.c
+ * @file core_zpotrfsp.c
  *
  *  PLASMA core_blas kernel
  *  PLASMA is a software package provided by Univ. of Tennessee,
@@ -35,15 +35,6 @@
 static Dague_Complex64_t zone  = 1.;
 static Dague_Complex64_t mzone = -1.;
 
-
-int CORE_zgemdm(int transA, int transB,
-                int M, int N, int K,
-                PLASMA_Complex64_t alpha, PLASMA_Complex64_t *A, int LDA,
-                PLASMA_Complex64_t *B, int LDB,
-                PLASMA_Complex64_t beta, PLASMA_Complex64_t *C, int LDC,
-                PLASMA_Complex64_t *D, int incD,
-                PLASMA_Complex64_t *WORK, int LWORK);
-
 /* 
    Function: FactorizationLDLT
    
@@ -59,7 +50,7 @@ int CORE_zgemdm(int transA, int transB,
      criteria - Pivoting threshold.
 
 */
-static void core_zsytf2sp(dague_int_t  n, 
+static void core_zpotf2sp(dague_int_t  n, 
                           Dague_Complex64_t * A, 
                           dague_int_t  stride, 
                           dague_int_t *nbpivot, 
@@ -76,17 +67,23 @@ static void core_zsytf2sp(dague_int_t  n,
             (*nbpivot)++;
 	}
 
+        if (*tmp < 0)
+        {
+            errorPrint("Negative diagonal term\n");
+            EXIT(MOD_SOPALIN, INTERNAL_ERR);
+        }
+
+        *tmp = (Dague_Complex64_t)csqrt(*tmp);
         tmp1 = tmp+1;
         
         alpha = 1. / (*tmp);
         cblas_zscal(n-k-1, CBLAS_SADDR( alpha ), tmp1, 1 );
         alpha = -(*tmp);
 
-        /* TODO: replace by SYR but [cz]syr exists only in LAPACK */
-        LAPACKE_zsyr_work(LAPACK_COL_MAJOR, 'l', 
-                          n-k-1, (double)(alpha), 
-                          tmp1,        1, 
-                          tmp1+stride, stride);
+        cblas_zher(CblasColMajor, CblasLower,  
+                   n-k-1, -1., 
+                   tmp1,        1, 
+                   tmp1+stride, stride);
     }
 }
 
@@ -106,12 +103,11 @@ static void core_zsytf2sp(dague_int_t  n,
      criteria - Pivoting threshold.
 
 */
-static void core_zsytrfsp(dague_int_t  n, 
+static void core_zpotrfsp(dague_int_t  n, 
                           Dague_Complex64_t * A, 
                           dague_int_t  stride, 
                           dague_int_t *nbpivot, 
-                          double       criteria,
-                          Dague_Complex64_t *work)
+                          double       criteria)
 {
     dague_int_t k, blocknbr, blocksize, matrixsize, col;
     Dague_Complex64_t *tmp,*tmp1,*tmp2;
@@ -123,11 +119,11 @@ static void core_zsytrfsp(dague_int_t  n,
       
         blocksize = min(MAXSIZEOFBLOCKS, n-k*MAXSIZEOFBLOCKS);
         tmp  = A+(k*MAXSIZEOFBLOCKS)*(stride+1); /* Lk,k     */
-        tmp1 = tmp+ blocksize;                   /* Lk+1,k   */
-        tmp2 = tmp1 + stride* blocksize;         /* Lk+1,k+1 */
+        tmp1 = tmp  + blocksize;                 /* Lk+1,k   */
+        tmp2 = tmp1 + blocksize * stride;        /* Lk+1,k+1 */
         
         /* Factorize the diagonal block Akk*/
-        core_zsytf2sp(blocksize, tmp, stride, nbpivot, criteria);
+        core_zpotf2sp(blocksize, tmp, stride, nbpivot, criteria);
         
         if ((k*MAXSIZEOFBLOCKS+blocksize) < n) {
             
@@ -136,29 +132,16 @@ static void core_zsytrfsp(dague_int_t  n,
             /* Compute the column Lk+1k */
             /** Compute Lk+1,k*Dk,k      */
             cblas_ztrsm(CblasColMajor,
-                        (CBLAS_SIDE)CblasRight, (CBLAS_UPLO)CblasLower,
-                        (CBLAS_TRANSPOSE)CblasTrans, (CBLAS_DIAG)CblasUnit,
+                        CblasRight, CblasLower,
+                        CblasConjTrans, CblasNonUnit,
                         matrixsize, blocksize,
                         CBLAS_SADDR(zone), tmp,  stride,
                                            tmp1, stride);
 
-            for(col = 0; col < blocksize; col++) {
-                /** Copy Lk+1,k*Dk,k and compute Lk+1,k */
-                cblas_zcopy(matrixsize, tmp1+col*stride,     1, 
-                                        work+col*matrixsize, 1);
-
-                alpha = 1. / *(tmp + col*(stride+1));
-                
-                cblas_zscal(matrixsize, CBLAS_SADDR(alpha), 
-                            tmp1+col*stride, 1);
-            }
-            
-            /* Update Ak+1k+1 = Ak+1k+1 - (Lk+1k*Dk,k)*Lk+1kT */
-            cblas_zgemm(CblasColMajor,
-                        (CBLAS_TRANSPOSE)CblasNoTrans, (CBLAS_TRANSPOSE)CblasTrans,
-                        matrixsize, matrixsize, blocksize,
-                        CBLAS_SADDR(mzone), work, matrixsize,
-                                            tmp1, stride,
+            /* Update Ak+1k+1 = Ak+1k+1 - Lk+1k * Lk+1kT */
+            cblas_zherk(CblasColMajor, CblasLower, CblasNoTrans,
+                        matrixsize, blocksize,
+                        CBLAS_SADDR(mzone), tmp1, stride,
                         CBLAS_SADDR(zone),  tmp2, stride);
 	}
     }
@@ -168,8 +151,7 @@ static void core_zsytrfsp(dague_int_t  n,
 /*
  * Factorization of diagonal block 
  */
-void core_zsytrfsp1d(Dague_Complex64_t *L,
-                     Dague_Complex64_t *work,
+void core_zpotrfsp1d(Dague_Complex64_t *L,
                      SolverMatrix *datacode, 
                      dague_int_t c,
                      double criteria)
@@ -187,7 +169,7 @@ void core_zsytrfsp1d(Dague_Complex64_t *L,
     stride = SOLV_STRIDE(c);
 
     /* Factorize diagonal block (two terms version with workspace) */
-    core_zsytrfsp(dima, L, stride, &nbpivot, criteria, work);
+    core_zpotrfsp(dima, L, stride, &nbpivot, criteria );
 
     fblknum = SYMB_BLOKNUM(c);
     lblknum = SYMB_BLOKNUM(c + 1);
@@ -203,29 +185,21 @@ void core_zsytrfsp1d(Dague_Complex64_t *L,
         
         /* Three terms version, no need to keep L and L*D */
         cblas_ztrsm(CblasColMajor,
-                    (CBLAS_SIDE)CblasRight, (CBLAS_UPLO)CblasLower,
-                    (CBLAS_TRANSPOSE)CblasTrans, (CBLAS_DIAG)CblasUnit,
+                    CblasRight, CblasLower,
+                    CblasConjTrans, CblasNonUnit,
                     dimb, dima,
                     CBLAS_SADDR(zone), L,  stride,
                                        fL, stride);
-        
-        for (dague_int_t k=0; k<dima; k++)
-        {
-          Dague_Complex64_t alpha;
-          alpha = 1. / L[k+k*stride];
-          cblas_zscal(dimb, CBLAS_SADDR(alpha), &(fL[k*stride]), 1);
-        }
     }
 }
 
 
-void core_zsytrfsp1d_gemm(dague_int_t cblknum,
+void core_zpotrfsp1d_gemm(dague_int_t cblknum,
                           dague_int_t bloknum,
                           dague_int_t fcblknum,
                           Dague_Complex64_t *L,
                           Dague_Complex64_t *C,
-                          Dague_Complex64_t *work1,
-                          Dague_Complex64_t *work2,
+                          Dague_Complex64_t *work,
                           SolverMatrix *datacode)
 {
     Dague_Complex64_t *Aik, *Aij;
@@ -249,13 +223,11 @@ void core_zsytrfsp1d_gemm(dague_int_t cblknum,
     Aik = L + indblok;
 
     /* Compute the contribution */
-    CORE_zgemdm( PlasmaNoTrans, PlasmaTrans, 
+    CORE_zgemm( PlasmaNoTrans, PlasmaConjTrans, 
                  dimi, dimj, dima,
-                 1.,  Aik,   stride, 
-                      Aik,   stride,
-                 0.,  work1, dimi,
-                      L,     stride+1, 
-                      work2, ldw );
+                 1.,  Aik,  stride, 
+                      Aik,  stride,
+                 0.,  work, dimi );
   
     /*
      * Add contribution to facing cblk
@@ -292,10 +264,10 @@ void core_zsytrfsp1d_gemm(dague_int_t cblknum,
         dimb = SYMB_LROWNUM(j) - frownum + 1;
 
         CORE_zaxpy( dimb, dimj, -1.0,
-                    work1, dimi,
-                    Aij,   stridefc );
+                    work, dimi,
+                    Aij,  stridefc );
 
         /* Displacement to next block */
-        work1 += dimb;
+        work += dimb;
     }
 }

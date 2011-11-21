@@ -28,12 +28,13 @@ A        [type = "dague_ddesc_t *"]
 datacode [type = "SolverMatrix*" default="&(descA->pastix_data->solvmatr)" hidden=on]
 cblknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.cblknbr - 1" hidden=on] 
 bloknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.bloknbr - 2" hidden=on] /* -2 to avoid last diagonal block */
-p_work   [type = "dague_memory_pool_t *" size = "datacode->coefmax * sizeof(Dague_Complex64_t)"]
+p_work1  [type = "dague_memory_pool_t *" size = "datacode->coefmax * sizeof(Dague_Complex64_t)"]
+p_work2  [type = "dague_memory_pool_t *" size = "datacode->coefmax * sizeof(Dague_Complex64_t)"]
 
 /**************************************************
- *                GETRF_TRSM                      *
+ *                SYTRF_TRSM                      *
  **************************************************/
-GETRF_TRSM(k) [high_priority = on]
+SYTRF_TRSM(k) [high_priority = on]
 
 // Execution space
 k = 0..cblknbr
@@ -53,16 +54,15 @@ RW A <- ( browk == browk1 ) ? A(k) : C GEMM( lastbrow )
      -> A(k)
 
 BODY
-      Dague_Complex64_t *U;
-
+      Dague_Complex64_t *work = (Dague_Complex64_t *)dague_private_memory_pop( p_work1 );
       DRYRUN(
-             U  = (Dague_Complex64_t*)datacode->ucoeftab[k];
-             core_zgetrfsp1d(A, U, datacode, k, descA->pastix_data->sopar.espilondiag );
+             core_zsytrfsp1d(A, work, datacode, k, descA->pastix_data->sopar.espilondiag );
 	     );
       printlog(
                "thread %d compute_1dplus( cblknum=%d, browk=%d, browk1=%d, lastbrow=%d, firstblok=%d, lastblok=%d )\n",
                context->eu_id, k, browk, browk1, lastbrow, firstblok, lastblok);
 
+      dague_private_memory_push( p_work1, (void *)work );
 END
 
 /**************************************************
@@ -83,22 +83,19 @@ next   = inline_c %{ if (phony) return 0; else return sparse_matrix_get_listptr_
 :A(fcblk)
 
 // Parameters
-READ  A <- phony ? A(fcblk) : A GETRF_TRSM(cblk)
+READ  A <- phony ? A(fcblk) : A SYTRF_TRSM(cblk)
 RW    C <- ( prev == 0 ) ? A(fcblk) : C GEMM( prev )
         -> phony ? A(fcblk)
-        -> ((!phony) && (next == 0)) ? A GETRF_TRSM( fcblk )
+        -> ((!phony) && (next == 0)) ? A SYTRF_TRSM( fcblk )
         -> ((!phony) && (next != 0)) ? C GEMM( next )
 
 BODY
-      Dague_Complex64_t *work = (Dague_Complex64_t *)dague_private_memory_pop( p_work );
-      Dague_Complex64_t *U, *Cu;
+      Dague_Complex64_t *work1 = (Dague_Complex64_t *)dague_private_memory_pop( p_work1 );
+      Dague_Complex64_t *work2 = (Dague_Complex64_t *)dague_private_memory_pop( p_work2 );
 
       if (!phony) {
-        U  = (Dague_Complex64_t*)datacode->ucoeftab[cblk];
-        Cu = (Dague_Complex64_t*)datacode->ucoeftab[fcblk];
-
         DRYRUN(
-               core_zgetrfsp1d_gemm(cblk, k, fcblk, A, U, C, Cu, work, datacode);
+               core_zsytrfsp1d_gemm(cblk, k, fcblk, A, C, work1, work2, datacode);
                );
         printlog(
                  "thread %d compute_1dgemm( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
@@ -109,5 +106,6 @@ BODY
                  context->eu_id, k, fcblk, cblk, prev, next);
       }
 
-      dague_private_memory_push( p_work, (void *)work );
+      dague_private_memory_push( p_work1, (void *)work1 );
+      dague_private_memory_push( p_work2, (void *)work2 );
 END

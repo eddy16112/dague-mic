@@ -58,8 +58,6 @@ int main(int argc, char ** argv)
 
     switch ( factotype ) {
     case DSPARSE_LLT:
-      break;
-    case DSPARSE_LDLT:
       if(loud > 2) printf("+++ Computing potrf ... ");
       PASTE_CODE_ENQUEUE_KERNEL( dague, zpotrf_sp,
                                  ((sparse_matrix_desc_t*)&ddescA) );
@@ -67,6 +65,25 @@ int main(int argc, char ** argv)
       
       dsparse_zpotrf_sp_Destruct( DAGUE_zpotrf_sp );
       break;
+
+    case DSPARSE_LDLT:
+      if(loud > 2) printf("+++ Computing sytrf ... ");
+      PASTE_CODE_ENQUEUE_KERNEL( dague, zsytrf_sp,
+                                 ((sparse_matrix_desc_t*)&ddescA) );
+      PASTE_CODE_PROGRESS_KERNEL( dague, zsytrf_sp );
+      
+      dsparse_zsytrf_sp_Destruct( DAGUE_zsytrf_sp );
+      break;
+
+    case DSPARSE_LDLTH:
+      if(loud > 2) printf("+++ Computing hetrf ... ");
+      PASTE_CODE_ENQUEUE_KERNEL( dague, zhetrf_sp,
+                                 ((sparse_matrix_desc_t*)&ddescA) );
+      PASTE_CODE_PROGRESS_KERNEL( dague, zhetrf_sp );
+      
+      dsparse_zhetrf_sp_Destruct( DAGUE_zhetrf_sp );
+      break;
+
     case DSPARSE_LU:
     default:
       if(loud > 2) printf("+++ Computing getrf ... ");
