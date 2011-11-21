@@ -7,7 +7,6 @@ if ( DAGUE_WITH_SPARSE )
   include_directories(${PLASMA_INCLUDE_DIRS})
   include_directories(${PASTIX_INCLUDE_DIRS})
   include_directories(${SCOTCH_INCLUDE_DIRS})
-  include_directories(${CMAKE_CURRENT_SOURCE_DIR})
   include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
   link_directories(${PASTIX_LIBRARY_DIRS})

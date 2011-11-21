@@ -3,9 +3,18 @@ include(RulesJDF)
 # reset variables
 set(generated_files "")
 set(generated_jdf "")
+set(generated_headers "")
 
 set(EXTRA_SOURCES 
 )
+
+set(HEADERS
+  core_z.h
+)
+
+precisions_rules(generated_headers
+                 "${HEADERS}"
+                 PRECISIONS "+;z;c;d;s")
 
 ### Generate .c files from .jdf for all required precisions
 set(JDF
@@ -38,6 +47,7 @@ set(SOURCES
   zpotrf_sp1dplus_wrapper.c
   zgetrf_sp1dplus_wrapper.c
 )
+
 precisions_rules(generated_files
                  "${SOURCES}"
                  PRECISIONS "+;${DSPARSE_PRECISIONS}")
@@ -48,13 +58,14 @@ if (MPI_FOUND)
     ${generated_files} 
     ${EXTRA_SOURCES})
   set_target_properties(dsparse-mpi PROPERTIES COMPILE_FLAGS "${MPI_COMPILE_FLAGS}")
-#  add_dependencies(dsparse-mpi dsparse_includes)
+  add_dependencies(dsparse-mpi dsparse_includes)
   install(TARGETS dsparse-mpi ARCHIVE DESTINATION lib)
 else (MPI_FOUND)
   add_library(dsparse 
+    ${generated_headers}
     ${generated_files}
     ${EXTRA_SOURCES})
-#  add_dependencies(dsparse dsparse_includes)
+  add_dependencies(dsparse dsparse_includes)
   install(TARGETS dsparse ARCHIVE DESTINATION lib)
 endif (MPI_FOUND)
 
