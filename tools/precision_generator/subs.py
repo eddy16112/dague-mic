@@ -121,6 +121,8 @@ subs = {
     ('SSYRK','DSYRK','CSYRK','ZSYRK'),
     ('strmm','dtrmm','ctrmm','ztrmm'),
     ('STRMM','DTRMM','CTRMM','ZTRMM'),
+    ('ssytrf','dsytrf','chetrf','zhetrf'),
+    ('ssytrf','dsytrf','csytrf','zsytrf'),
     ('ssyrbt','dsyrbt','cherbt','zherbt'),
     ('SSYRBT','DSYRBT','CHERBT','ZHERBT'),
     ('ssbrdt','dsbrdt','chbrdt','zhbrdt'),
