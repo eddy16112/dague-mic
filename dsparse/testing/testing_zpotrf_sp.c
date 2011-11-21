@@ -9,6 +9,7 @@
 
 #include "common.h"
 #include "data_dist/sparse-matrix/sparse-matrix.h"
+
 //#include "data_dist/sparse-matrix/pastix_internal/pastix_internal.h"
 
 //#define DUMP_SOLV 0x2
@@ -67,6 +68,7 @@ int main(int argc, char ** argv)
       break;
 
     case DSPARSE_LDLT:
+#if defined(PRECISION_z) || defined(PRECISION_c)
       if(loud > 2) printf("+++ Computing sytrf ... ");
       PASTE_CODE_ENQUEUE_KERNEL( dague, zsytrf_sp,
                                  ((sparse_matrix_desc_t*)&ddescA) );
@@ -74,6 +76,7 @@ int main(int argc, char ** argv)
       
       dsparse_zsytrf_sp_Destruct( DAGUE_zsytrf_sp );
       break;
+#endif
 
     case DSPARSE_LDLTH:
       if(loud > 2) printf("+++ Computing hetrf ... ");
