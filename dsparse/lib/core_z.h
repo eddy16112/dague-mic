@@ -41,7 +41,6 @@ void core_zhetrfsp1d_gemm(dague_int_t cblknum,
                           SolverMatrix *datacode);
 
 void core_zpotrfsp1d(Dague_Complex64_t *L,
-                     Dague_Complex64_t *work,
                      SolverMatrix *datacode,
                      dague_int_t c,
                      double criteria);
@@ -51,8 +50,7 @@ void core_zpotrfsp1d_gemm(dague_int_t cblknum,
                           dague_int_t fcblknum,
                           Dague_Complex64_t *L,
                           Dague_Complex64_t *C,
-                          Dague_Complex64_t *work1,
-                          Dague_Complex64_t *work2,
+                          Dague_Complex64_t *work,
                           SolverMatrix *datacode);
 
 void core_zsytrfsp1d(Dague_Complex64_t *L,
