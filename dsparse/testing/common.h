@@ -60,16 +60,18 @@ enum sparam_t {
   SPARAM_SIZEOF
 };
 
-#define PASTE_CODE_IPARAM_LOCALS(iparam) \
-  int rank  = iparam[IPARAM_RANK];\
-  int nodes = iparam[IPARAM_NNODES];\
-  int cores = iparam[IPARAM_NCORES];\
-  int gpus  = iparam[IPARAM_NGPUS];\
-  int prio  = iparam[IPARAM_PRIO];\
-  int check = iparam[IPARAM_CHECK];\
-  int loud  = iparam[IPARAM_VERBOSE];\
-  int factotype = iparam[IPARAM_FACTORIZATION];\
-  (void)rank;(void)nodes;(void)cores;(void)gpus;(void)prio;(void)check;(void)loud;
+#define PASTE_CODE_IPARAM_LOCALS(iparam)                                \
+  int rank  = iparam[IPARAM_RANK];                                      \
+  int nodes = iparam[IPARAM_NNODES];                                    \
+  int cores = iparam[IPARAM_NCORES];                                    \
+  int gpus  = iparam[IPARAM_NGPUS];                                     \
+  int prio  = iparam[IPARAM_PRIO];                                      \
+  int check = iparam[IPARAM_CHECK];                                     \
+  int loud  = iparam[IPARAM_VERBOSE];                                   \
+  int factotype = iparam[IPARAM_FACTORIZATION];                         \
+  int nb_local_tasks = 0;                                               \
+  (void)rank;(void)nodes;(void)cores;(void)gpus;(void)prio;             \
+  (void)check;(void)loud;(void)nb_local_tasks;
 
 /* Define a double type which not pass through the precision generation process */
 typedef double DagDouble_t;
@@ -114,7 +116,7 @@ static inline int min(int a, int b) { return a < b ? a : b; }
         TYPE##_init INIT_PARAMS;                                        \
         DDESC.mat = dague_data_allocate((size_t)DDESC.super.nb_local_tiles * \
                                         (size_t)DDESC.super.bsiz *      \
-                                        (size_t)DDESC.super.mtype);     \
+                                        (size_t)dague_datadist_getsizeoftype(DDESC.super.mtype)); \
         dague_ddesc_set_key((dague_ddesc_t*)&DDESC, #DDESC);            \
     }
 
@@ -122,7 +124,8 @@ static inline int min(int a, int b) { return a < b ? a : b; }
   SYNC_TIME_START(); \
   dague_object_t* DAGUE_##KERNEL = dsparse_##KERNEL##_New PARAMS; \
   dague_enqueue(DAGUE, DAGUE_##KERNEL); \
-  if(loud) SYNC_TIME_PRINT(rank, ( #KERNEL " DAG creation: %u local tasks enqueued\n", DAGUE->taskstodo));
+  nb_local_tasks = DAGUE_##KERNEL->nb_local_tasks;                    \
+  if(loud) SYNC_TIME_PRINT(rank, ( #KERNEL " DAG creation: %u local tasks enqueued\n", nb_local_tasks));
 
 
 #define PASTE_CODE_PROGRESS_KERNEL(DAGUE, KERNEL) \
@@ -130,8 +133,8 @@ static inline int min(int a, int b) { return a < b ? a : b; }
   TIME_START(); \
   dague_progress(DAGUE); \
   if(loud) TIME_PRINT(rank, (#KERNEL " computed %u tasks,\trate %f task/s\n", \
-              DAGUE_##KERNEL->nb_local_tasks, \
-              DAGUE_##KERNEL->nb_local_tasks/time_elapsed)); \
+              nb_local_tasks, \
+              nb_local_tasks/time_elapsed)); \
   SYNC_TIME_PRINT(rank, (#KERNEL " computation : %f gflops\n", \
                    gflops = (flops/1e9)/(sync_time_elapsed))); \
   (void)gflops;
