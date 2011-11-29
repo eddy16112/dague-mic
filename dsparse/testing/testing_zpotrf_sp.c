@@ -21,7 +21,6 @@ int main(int argc, char ** argv)
     int   iparam[IPARAM_SIZEOF];
     char *sparam[SPARAM_SIZEOF];
     DagDouble_t flops, gflops;
-    struct timeval start, bench, realend, realtime, benchtime;
 
     /* Set defaults for non argv iparams/sparam */
     param_default(iparam, sparam);
