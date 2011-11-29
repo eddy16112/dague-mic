@@ -12,6 +12,8 @@ HWLOC_DIR=${HWLOC_DIR:="/opt/hwloc"}
 CUDA_DIR=${CUDA_DIR:="/opt/cuda"}
 PLASMA_DIR=${PLASMA_DIR:="/opt/plasma"}
 OMEGA_DIR=${OMEGA_DIR:="/home/adanalis/pub/Omega/"}
+PASTIX_DIR=${PASTIX_DIR:="/home/mfaverge/opt/pastix-intel"}
+SCOTCH_DIR=${SCOTCH_DIR:="/opt/scotch"}
 
 
 if [ "x$USER" = "xbosilca" ]; then
@@ -30,15 +32,16 @@ elif [ "x$USER" = "xherault" ]; then
 elif [ "x${USER}" = "xmfaverge" ]; then
   if [ "x${CC}" = "xgcc" ]; then
       PLASMA_DIR="/home/mfaverge/opt/plasma"
-      DSPARSE="-DDAGUE_WITH_SPARSE=ON -DPASTIX_DIR=/home/mfaverge/opt/pastix-dbg -DSCOTCH_DIR=/opt/scotch-gf"
+      PASTIX_DIR="/home/mfaverge/opt/pastix-dbg"
+      SCOTCH_DIR="-DSCOTCH_DIR=/opt/scotch-gf"
   else
       PLASMA_DIR="/home/mfaverge/opt/plasma-intel"
-      DSPARSE="-DDAGUE_WITH_SPARSE=ON -DPASTIX_DIR=/home/mfaverge/opt/pastix-intel -DSCOTCH_DIR=/opt/scotch"
   fi
   #USER_OPTIONS+=" -DDAGUE_DIST_WITH_MPI=OFF"
   USER_OPTIONS+=" -DDAGUE_GPU_WITH_CUDA=OFF"
   USER_OPTIONS+=" -DDAGUE_Q2J=ON"
   USER_OPTIONS+=" -DDPLASMA_PRECISIONS=s\;d\;c\;z"
+  USER_OPTIONS+=" -DDAGUE_WITH_SPARSE=ON"
 
 elif [ "x$USER" = "xYOURSELF" ]; then
   PLASMA_DIR="SOMEWHERE"
@@ -68,6 +71,10 @@ if [ -n "${OMEGA_DIR}" -a $(expr "${USER_OPTIONS}" : ".*DAGUE_Q2J=ON.*") -gt 0 ]
   Q2J="-DDAGUE_OMEGA_DIR=${OMEGA_DIR}"
 fi
 
+if [ -n "${PASTIX_DIR}" -a -n "${SCOTCH_DIR}" -a $(expr "${USER_OPTIONS}" : ".*DAGUE_WITH_SPARSE=ON.*") -gt 0 ]; then 
+  SPARSE="-DPASTIX_DIR=${PASTIX_DIR} -DSCOTCH_DIR=${SCOTCH_DIR}"
+fi
+
 if [ "${PLASMA_DIR}" ]; then
   PLASMA="-DPLASMA_DIR=${PLASMA_DIR}"
 # If your system do not provide pkg-config or you don't have
@@ -85,6 +92,6 @@ fi
 LOCATION=`dirname $0`
 export CC CXX FC
 
-echo cmake -G "Unix Makefiles" ${MPI} ${HWLOC} ${CUDA} ${Q2J} ${PLASMA} ${USER_OPTIONS} ${LOCATION}
-cmake -G "Unix Makefiles" ${MPI} ${HWLOC} ${CUDA} ${Q2J} ${PLASMA} ${USER_OPTIONS} ${LOCATION}
+echo cmake -G "Unix Makefiles" ${MPI} ${HWLOC} ${CUDA} ${Q2J} ${PLASMA} ${SPARSE} ${USER_OPTIONS} ${LOCATION}
+cmake -G "Unix Makefiles" ${MPI} ${HWLOC} ${CUDA} ${Q2J} ${PLASMA} ${SPARSE} ${USER_OPTIONS} ${LOCATION}
 
