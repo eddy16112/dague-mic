@@ -33,7 +33,7 @@ elif [ "x${USER}" = "xmfaverge" ]; then
   if [ "x${CC}" = "xgcc" ]; then
       PLASMA_DIR="/home/mfaverge/opt/plasma"
       PASTIX_DIR="/home/mfaverge/opt/pastix-dbg"
-      SCOTCH_DIR="-DSCOTCH_DIR=/opt/scotch-gf"
+      SCOTCH_DIR="/opt/scotch-gf"
   else
       PLASMA_DIR="/home/mfaverge/opt/plasma-intel"
   fi
@@ -73,6 +73,10 @@ fi
 
 if [ -n "${PASTIX_DIR}" -a -n "${SCOTCH_DIR}" -a $(expr "${USER_OPTIONS}" : ".*DAGUE_WITH_SPARSE=ON.*") -gt 0 ]; then 
   SPARSE="-DPASTIX_DIR=${PASTIX_DIR} -DSCOTCH_DIR=${SCOTCH_DIR}"
+
+  if [ $(expr "${USER_OPTIONS}" : ".*DAGUE_DIST_WITH_MPI=OFF.*") -eq 0 ]; then
+      USER_OPTIONS+=" -DDAGUE_DIST_WITH_MPI=OFF";
+  fi
 fi
 
 if [ "${PLASMA_DIR}" ]; then
