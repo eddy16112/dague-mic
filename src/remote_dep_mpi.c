@@ -85,8 +85,9 @@ typedef union dep_cmd_t
         int enable;        
     } ctl;
     struct {
-        dague_arena_chunk_t* source;
-        void *destination;
+        dague_object_t*             dague_object;
+        dague_arena_chunk_t*        source;
+        void*                       destination;
         dague_remote_dep_datatype_t datatype;
     } memcpy;
 } dep_cmd_t;
@@ -143,7 +144,7 @@ dague_fifo_t    dague_put_fifo;          /* ordered non threaded fifo */
 dague_remote_deps_t** dep_pending_recv_array;
 dague_dep_wire_get_fifo_elem_t** dep_pending_put_array;
 volatile int np;
-static int dep_enabled;
+static volatile int dep_enabled;
 
 static void *remote_dep_dequeue_main(dague_context_t* context);
 
@@ -224,6 +225,9 @@ static int remote_dep_dequeue_off(dague_context_t* context)
         DAGUE_LIST_ITEM_SINGLETON(item);
         dague_dequeue_push_back(&dep_cmd_queue, (dague_list_item_t*) item);
     }
+
+    while( dep_enabled ) sched_yield();
+
     return 0;
 }
 
@@ -259,15 +263,20 @@ static int remote_dep_dequeue_send(int rank, dague_remote_deps_t* deps)
     return 1;
 }
 
-void dague_remote_dep_memcpy(dague_execution_unit_t* eu_context, void *dst, dague_arena_chunk_t *src, dague_remote_dep_datatype_t datatype)
+void dague_remote_dep_memcpy(dague_execution_unit_t* eu_context,
+                             dague_object_t* dague_object,
+                             void *dst,
+                             dague_arena_chunk_t *src,
+                             dague_remote_dep_datatype_t datatype)
 {
     dep_cmd_item_t* item = (dep_cmd_item_t*) calloc(1, sizeof(dep_cmd_item_t));
     item->action = DEP_MEMCPY;
-    item->cmd.memcpy.source = src;
-    item->cmd.memcpy.destination = dst;
-    item->cmd.memcpy.datatype = datatype;
+    item->cmd.memcpy.dague_object = dague_object;
+    item->cmd.memcpy.source       = src;
+    item->cmd.memcpy.destination  = dst;
+    item->cmd.memcpy.datatype     = datatype;
     AREF(src);
-    remote_dep_inc_flying_messages(eu_context->master_context);
+    remote_dep_inc_flying_messages(dague_object, eu_context->master_context);
     item->priority = 0;
     DAGUE_LIST_ITEM_SINGLETON(item);
     dague_dequeue_push_back(&dep_cmd_queue, (dague_list_item_t*) item);
@@ -419,7 +428,7 @@ handle_now:
         remote_dep_nothread_memcpy(item->cmd.memcpy.destination, 
                                    item->cmd.memcpy.source,
                                    item->cmd.memcpy.datatype);
-        remote_dep_dec_flying_messages(eu_context->master_context);
+        remote_dep_dec_flying_messages(item->cmd.memcpy.dague_object, eu_context->master_context);
         break;
     default:
         assert(0 && item->action); /* Not a valid action */
@@ -471,7 +480,7 @@ static int remote_dep_nothread_send( dague_execution_unit_t* eu_context,
 
                 DEBUG((" CTL\t%s\tparam%d\tdemoted to be a control\n",remote_dep_cmd_to_string(&deps->msg, tmp, 128), k));
 #endif
-                remote_dep_dec_flying_messages(eu_context->master_context);
+                remote_dep_dec_flying_messages(deps->dague_object, eu_context->master_context);
             }
             msg.which |= (1<<k);
         }
@@ -608,6 +617,7 @@ static remote_dep_wire_get_t dep_get_buff[DEP_NB_CONCURENT];
 #endif
 static int MAX_MPI_TAG;
 static int NEXT_TAG = REMOTE_DEP_MAX_CTRL_TAG+1;
+#if 1
 #define INC_NEXT_TAG(k) do { \
     assert(k < MAX_MPI_TAG); \
     if(NEXT_TAG < (MAX_MPI_TAG - k)) \
@@ -615,6 +625,9 @@ static int NEXT_TAG = REMOTE_DEP_MAX_CTRL_TAG+1;
     else \
         NEXT_TAG = REMOTE_DEP_MAX_CTRL_TAG + k + 1; \
 } while(0)
+#else
+#define INC_NEXT_TAG(k) do {} while(0)
+#endif
 
 static int remote_dep_mpi_init(dague_context_t* context)
 {
@@ -623,10 +636,14 @@ static int remote_dep_mpi_init(dague_context_t* context)
     int *ub;
     MPI_Comm_dup(MPI_COMM_WORLD, &dep_comm);
 
+    /*
+     * Based on MPI 1.1 the MPI_TAG_UB should only be defined
+     * on MPI_COMM_WORLD.
+     */
 #if defined(HAVE_MPI_20)
-    MPI_Comm_get_attr(dep_comm, MPI_TAG_UB, &ub, &mpi_tag_ub_exists);
+    MPI_Comm_get_attr(MPI_COMM_WORLD, MPI_TAG_UB, &ub, &mpi_tag_ub_exists);
 #else
-    MPI_Attr_get(dep_comm, MPI_TAG_UB, &ub, &mpi_tag_ub_exists);
+    MPI_Attr_get(MPI_COMM_WORLD, MPI_TAG_UB, &ub, &mpi_tag_ub_exists);
 #endif  /* defined(HAVE_MPI_20) */
     if( !mpi_tag_ub_exists ) {
         MAX_MPI_TAG = INT_MAX;
@@ -912,7 +929,7 @@ static void remote_dep_mpi_put_eager(dague_execution_unit_t* eu_context, int ran
         DEBUG_MARK_DTA_MSG_START_SEND(rank, data, tag);
 
     }
-    remote_dep_dec_flying_messages(eu_context->master_context);
+    remote_dep_dec_flying_messages(deps->dague_object, eu_context->master_context);
     /* TODO: IMPORT THE CLEANUP CODE FROM PUT_END */
 }
 
@@ -979,7 +996,7 @@ static void remote_dep_mpi_put_end(dague_execution_unit_t* eu_context, int i, in
     TAKE_TIME(MPIsnd_prof[i], MPI_Data_plds_ek, i);
     task->which ^= (1<<k);
     if(0 == task->which) {
-        remote_dep_dec_flying_messages(eu_context->master_context);
+        remote_dep_dec_flying_messages(deps->dague_object, eu_context->master_context);
     }
 
     /* remote_deps cleanup */

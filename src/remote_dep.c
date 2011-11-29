@@ -47,15 +47,16 @@ static inline int remote_dep_is_forwarded( dague_execution_unit_t* eu_context, d
 
 
 /* make sure we don't leave before serving all data deps */
-static inline void remote_dep_inc_flying_messages(dague_context_t* ctx)
+static inline void remote_dep_inc_flying_messages(dague_object_t *dague_object, dague_context_t* ctx)
 {
-    dague_atomic_inc_32b( &ctx->taskstodo );
+    dague_atomic_inc_32b( &(dague_object->nb_local_tasks) );
+    (void)ctx;
 }
 
 /* allow for termination when all deps have been served */
-static inline void remote_dep_dec_flying_messages(dague_context_t* ctx)
+static inline void remote_dep_dec_flying_messages(dague_object_t *dague_object, dague_context_t* ctx)
 {
-    dague_atomic_dec_32b( &ctx->taskstodo );
+    __dague_complete_task(dague_object, ctx);
 }
 
 #endif
@@ -82,6 +83,10 @@ int dague_remote_dep_init(dague_context_t* context)
     int np;
     
     np = (int32_t) remote_dep_init(context);
+    /* Worst case: one of the DAGs is going to use up to 
+     * MAX_PARAM_COUNT times nb_nodes dependencies.
+     */
+    remote_deps_allocation_init(context->nb_nodes, MAX_PARAM_COUNT);
     if(np > 1)
     {
         context->remote_dep_fw_mask_sizeof = ((np + 31) / 32) * sizeof(uint32_t);
@@ -185,7 +190,7 @@ int dague_remote_dep_activate(dague_execution_unit_t* eu_context,
 #endif
 
     remote_dep_reset_forwarded(eu_context, remote_deps);
-    
+    remote_deps->dague_object = exec_context->dague_object;
     remote_deps->output_count = remote_deps_count;
     remote_deps->msg.deps = (uintptr_t) remote_deps;
     remote_deps->msg.object_id   = exec_context->dague_object->object_id;
@@ -245,7 +250,7 @@ int dague_remote_dep_activate(dague_execution_unit_t* eu_context,
                         DEBUG((" RDEP\t%s\toutput=%d, type size=%d, eager=%lx\n",
                                dague_service_to_string(exec_context, tmp, 128), i,
                                (NULL == remote_deps->output[i].type ? 0 : remote_deps->output[i].type->elem_size), RDEP_MSG_EAGER(&remote_deps->msg)));
-                        remote_dep_inc_flying_messages(eu_context->master_context);
+                        remote_dep_inc_flying_messages(exec_context->dague_object, eu_context->master_context);
                         remote_dep_mark_forwarded(eu_context, remote_deps, rank);
                         remote_dep_send(rank, remote_deps);
                     } else {

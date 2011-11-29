@@ -103,6 +103,7 @@ typedef unsigned int (dague_cache_rank_function_t)(dague_execution_context_t *ex
 #if defined(DAGUE_SIM)
 typedef int (dague_sim_cost_fct_t)(const dague_execution_context_t *exec_context);
 #endif
+typedef uint64_t (dague_functionkey_fn_t)(const dague_object_t *dague_object, const assignment_t *assignments);
 
 struct dague_function {
     const char                  *name;
@@ -128,6 +129,7 @@ struct dague_function {
     dague_hook_t                *complete_execution;
     dague_traverse_function_t   *iterate_successors;
     dague_release_deps_t        *release_deps;
+    dague_functionkey_fn_t      *key;
     char                        *body;
 };
 
@@ -175,17 +177,23 @@ extern int schedule_sleep_begin, schedule_sleep_end;
 typedef void (*dague_startup_fn_t)(dague_context_t *context, 
                                    dague_object_t *dague_object,
                                    dague_execution_context_t** startup_list);
+typedef int (*dague_completion_cb_t)(dague_object_t* dague_object, void*);
 
 struct dague_object {
     /** All dague_object_t structures hold these two arrays **/
     uint32_t                   object_id;
-    uint32_t                   nb_local_tasks;
+    volatile uint32_t          nb_local_tasks;
     uint32_t                   nb_functions;
     dague_startup_fn_t         startup_hook;
     const dague_function_t**   functions_array;
 #if defined(DAGUE_PROF_TRACE)
     const int*                 profiling_array;
 #endif  /* defined(DAGUE_PROF_TRACE) */
+    /* Completion callback. Triggered when the all tasks associated with
+     * a particular dague object have been completed.
+     */
+    dague_completion_cb_t      complete_cb;
+    void*                      complete_cb_data;
     dague_dependencies_t**     dependencies_array;
     dague_arena_t**            arenas_array;
 };
@@ -216,7 +224,11 @@ int dague_progress(dague_context_t* context);
 char* dague_service_to_string( const dague_execution_context_t* exec_context,
                                char* tmp,
                                size_t length );
-
+/* Accessors to set and get the completion callback */
+int dague_set_complete_callback( dague_object_t* dague_object,
+                                 dague_completion_cb_t complete_cb, void* complete_data );
+int dague_get_complete_callback( const dague_object_t* dague_object,
+                                 dague_completion_cb_t* complete_cb, void** complete_data );
 /* This must be included here for the DISTRIBUTED macro, and after many constants have been defined */
 #include "remote_dep.h"
 

@@ -33,7 +33,7 @@ const uint32_t MAX_QUEUE = 55;
 #endif
 #include "data_dist/matrix/matrix.h"
 
-static int OHM_N = 2;
+static int OHM_N = 5;
 static int OHM_M = 3;
 
 #define TRACE_WITH_REF(prof, key, eid, refdesc, refdescid) do {         \
@@ -163,7 +163,7 @@ int sgemm_cuda_init( dague_context_t* dague_context, tiled_matrix_desc_t *tileA 
          * It appears that CUDA allocate the memory in chunks of 1MB,
          * so we need to adapt to this.
          */
-        tile_size = tileA->bsiz * tileA->mtype;
+        tile_size = tileA->bsiz * dague_datadist_getsizeoftype(tileA->mtype);
         cuMemGetInfo( &free_mem, &total_mem );
         /* We allocate 9/10 of the total memory */
         thread_gpu_mem = (total_mem - total_mem / 10);
@@ -423,29 +423,6 @@ int sgemm_cuda_fini(dague_context_t* dague_context)
         (OFFSET) += sizeof(float);                                      \
     } while (0)
 
-
-#if defined(DAGUE_PROF_TRACE)
-#include "../lib/generated/spotrf_rl.h"
-/**
- * This function has benn copied by hand from the generated code. It should be
- * kept in sync with the hash function from there.
- */
-static inline int GEMM_hash(const dague_spotrf_rl_object_t* __dague_object, int k, int m, int n)
-{
-    int __h = 0;
-    int k_min = 0;
-    int k_range = (__dague_object->SIZE - 1) - k_min + 1;
-    int m_min = (k + 2);
-    int m_range = (__dague_object->SIZE - 1) - m_min + 1;
-    int n_min = (k + 1);
-    __h += (k - k_min);
-    __h += (m - m_min) * k_range;
-    __h += (n - n_min) * k_range * m_range;
-    /* Ensure we avoid collisions with the GEMM ID on the CPU */
-    return __h + (__dague_object->SIZE * __dague_object->SIZE * __dague_object->SIZE);
-}
-#endif  /* defined(DAGUE_PROF_TRACE) */
-
 #define ddescA(ec) (UGLY_A)
 #define ddescB(ec) ddescA(ec)
 #define ddescC(ec) ddescA(ec)
@@ -486,7 +463,7 @@ gpu_sgemm_internal_push( gpu_device_t* gpu_device,
 #endif  /* defined(DAGUE_PROF_TRACE) */
 
     DEBUG(("Request Data of A(%d, %d) on GPU\n", n, k));
-    tile_size = ddescA(exec_context)->mb * ddescA(exec_context)->nb * ddescA(exec_context)->mtype;
+    tile_size = ddescA(exec_context)->mb * ddescA(exec_context)->nb * dague_datadist_getsizeoftype(ddescA(exec_context)->mtype);
     on_gpu = gpu_data_is_on_gpu(gpu_device, ddescA(exec_context), DAGUE_READ, n, k, &gpu_elem_A);
     gpu_elem_A->memory_elem->memory = A;
     d_A = gpu_elem_A->gpu_mem;
@@ -502,7 +479,7 @@ gpu_sgemm_internal_push( gpu_device_t* gpu_device,
     exec_context->data[0].gpu_data = (struct gpu_elem_t *)gpu_elem_A;
 
     DEBUG(("Request Data of B(%d, %d) on GPU\n", m, k));
-    tile_size = ddescB(exec_context)->mb * ddescB(exec_context)->nb * ddescB(exec_context)->mtype;
+    tile_size = ddescB(exec_context)->mb * ddescB(exec_context)->nb * dague_datadist_getsizeoftype(ddescB(exec_context)->mtype);
     on_gpu = gpu_data_is_on_gpu(gpu_device, ddescB(exec_context), DAGUE_READ, m, k, &gpu_elem_B);
     d_B = gpu_elem_B->gpu_mem;
     gpu_elem_B->memory_elem->memory = B;
@@ -518,7 +495,7 @@ gpu_sgemm_internal_push( gpu_device_t* gpu_device,
     exec_context->data[1].gpu_data = (struct gpu_elem_t *)gpu_elem_B;
 
     DEBUG(("Request Data of C(%d, %d) on GPU\n", m, n));
-    tile_size = ddescC(exec_context)->mb * ddescC(exec_context)->nb * ddescC(exec_context)->mtype;
+    tile_size = ddescC(exec_context)->mb * ddescC(exec_context)->nb * dague_datadist_getsizeoftype(ddescC(exec_context)->mtype);
     on_gpu = gpu_data_is_on_gpu(gpu_device, ddescC(exec_context), DAGUE_READ | DAGUE_WRITE, m, n, &gpu_elem_C);
     d_C = gpu_elem_C->gpu_mem;
     gpu_elem_C->memory_elem->memory = C;
@@ -560,12 +537,14 @@ gpu_sgemm_internal_submit( gpu_device_t* gpu_device,
 
 #if defined(DAGUE_PROF_TRACE)
     if( dague_cuda_trackable_events & DAGUE_PROFILE_CUDA_TRACK_EXEC ) {
-        dague_spotrf_rl_object_t* __dague_object = (dague_spotrf_rl_object_t*)exec_context->dague_object;
+        dague_ddesc_t *ddesca = (dague_ddesc_t *)ddescA(exec_context);
+        int data_id = 
+            ddesca->data_key(ddesca, exec_context->locals[1].value, exec_context->locals[2].value);
+        uint64_t task_id =
+            exec_context->function->key( exec_context->dague_object, exec_context->locals );
         TRACE_WITH_REF(gpu_device->profiling, 
                        DAGUE_PROF_FUNC_KEY_START(exec_context->dague_object,exec_context->function->function_id),
-                       GEMM_hash( __dague_object, exec_context->locals[0].value, exec_context->locals[1].value, exec_context->locals[2].value),
-                       ((dague_ddesc_t*)__dague_object->A),
-                       ((dague_ddesc_t*)__dague_object->A)->data_key((dague_ddesc_t*)__dague_object->A, exec_context->locals[1].value, exec_context->locals[2].value));
+                       task_id, ddesca, data_id);
     }
 #endif  /* defined(DAGUE_PROF_TRACE) */
     offset = 0;
@@ -629,7 +608,7 @@ gpu_sgemm_internal_pop( gpu_device_t* gpu_device,
     d_C = gpu_elem_C->gpu_mem;
     C = ADATA(aC);
 
-    tile_size = ddescC(exec_context)->mb * ddescC(exec_context)->nb * ddescC(exec_context)->mtype;
+    tile_size = ddescC(exec_context)->mb * ddescC(exec_context)->nb * dague_datadist_getsizeoftype(ddescC(exec_context)->mtype);
 
     /* Pop C from the GPU */
     gpu_device->required_data_out += tile_size;
@@ -904,12 +883,14 @@ int gpu_sgemm( dague_execution_unit_t* eu_context,
             exec_context = gpu_device->exec_array[gpu_device->exec_waiting];
 #if defined(DAGUE_PROF_TRACE)
             if( dague_cuda_trackable_events & DAGUE_PROFILE_CUDA_TRACK_EXEC ) {
-                dague_spotrf_rl_object_t* __dague_object = (dague_spotrf_rl_object_t*)exec_context->dague_object;
+                dague_ddesc_t *ddesca = (dague_ddesc_t *)ddescA(exec_context);
+                int data_id = 
+                    ddesca->data_key(ddesca, exec_context->locals[1].value, exec_context->locals[2].value);
+                uint64_t task_id =
+                    exec_context->function->key( exec_context->dague_object, exec_context->locals );
                 TRACE_WITH_REF(gpu_device->profiling, 
                                DAGUE_PROF_FUNC_KEY_END(exec_context->dague_object, exec_context->function->function_id),
-                               GEMM_hash( __dague_object, exec_context->locals[0].value, exec_context->locals[1].value, exec_context->locals[2].value),
-                               (dague_ddesc_t*)__dague_object->A,
-                               ((dague_ddesc_t*)__dague_object->A)->data_key((dague_ddesc_t*)__dague_object->A, exec_context->locals[1].value, exec_context->locals[2].value));
+                               task_id, ddesca, data_id);
             }
 #endif  /* defined(DAGUE_PROF_TRACE) */
             gpu_device->exec_array[gpu_device->exec_waiting] = NULL;

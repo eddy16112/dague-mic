@@ -5,6 +5,7 @@
  */
 
 #include "dague_config.h"
+#include "dague.h"
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -1223,7 +1224,7 @@ static void jdf_generate_dataflow( const jdf_t *jdf, const jdf_def_list_t *conte
     char *sep;
 
     (void)jdf;
-#if defined(DAGUE_USE_COUNTER_FOR_DEPENDENCIES)
+#if !defined(DAGUE_SCHED_DEPS_MASK)
     assert((1<< flow_index) && (((1 << flow_index) & ~DAGUE_DEPENDENCIES_BITMASK) == 0)); 
     (void)flow_index;
 #endif
@@ -1864,7 +1865,7 @@ static void jdf_generate_one_function( const jdf_t *jdf, const jdf_function_entr
                             "  .deps = %d,\n"
                             "  .flags = %s%s,\n"
                             "  .function_id = %d,\n"
-#if defined(DAGUE_USE_COUNTER_FOR_DEPENDENCIES)
+#if !defined(DAGUE_SCHED_DEPS_MASK)
                             "  .dependencies_goal = %d,\n"
 #else
                             "  .dependencies_goal = 0x%x,\n"
@@ -1877,7 +1878,7 @@ static void jdf_generate_one_function( const jdf_t *jdf, const jdf_function_entr
                             (f->flags & JDF_FUNCTION_FLAG_HIGH_PRIORITY) ? "DAGUE_HIGH_PRIORITY_TASK" : "0x0",
                             has_in_in_dep ? " | DAGUE_HAS_IN_IN_DEPENDENCIES" : "",
                             dep_index,
-#if defined(DAGUE_USE_COUNTER_FOR_DEPENDENCIES)
+#if !defined(DAGUE_SCHED_DEPS_MASK)
                             nbinput,
 #else
                             inputmask,
@@ -1947,6 +1948,8 @@ static void jdf_generate_one_function( const jdf_t *jdf, const jdf_function_entr
                                 "  .sim_cost_fct = NULL,\n"
                                 "#endif\n");
     }
+
+    string_arena_add_string(sa, "  .key = (dague_functionkey_fn_t*)%s_hash,\n", f->fname);
 
     sprintf(prefix, "%s_%s_internal_init", jdf_basename, f->fname);
     jdf_generate_internal_init(jdf, f, prefix);
@@ -2072,14 +2075,11 @@ static void jdf_generate_startup_hook( const jdf_t *jdf )
 
     coutput("static void %s_startup(dague_context_t *context, dague_object_t *dague_object, dague_execution_context_t** pready_list)\n"
             "{\n"
-            "%s\n",
+            "%s\n"
+            "}\n",
             jdf_basename, 
             UTIL_DUMP_LIST( sa1, jdf->functions, next, dump_startup_call, sa2,
                             "  ", jdf_basename, "\n  ", "") );
-    coutput("#if defined(DISTRIBUTED)\n"
-            "  remote_deps_allocation_init(context->nb_nodes, MAX_PARAM_COUNT);  /* TODO: a more generic solution */\n"
-            "#endif  /* defined(DISTRIBUTED) */\n"
-            "}\n");
 
     string_arena_free(sa1);
     string_arena_free(sa2);
@@ -2220,9 +2220,9 @@ static void jdf_generate_hashfunction_for(const jdf_t *jdf, const jdf_function_e
 
     (void)jdf;
 
-    coutput("static inline int %s_hash(const __dague_%s_internal_object_t *__dague_object, const assignment_t *assignments)\n"
+    coutput("static inline uint64_t %s_hash(const __dague_%s_internal_object_t *__dague_object, const assignment_t *assignments)\n"
             "{\n"
-            "  int __h = 0;\n"
+            "  uint64_t __h = 0;\n"
             "  (void)__dague_object;\n",
             f->fname, jdf_basename);
 
@@ -2475,7 +2475,7 @@ static void jdf_generate_code_call_final_write(const jdf_t *jdf, const jdf_call_
         UTIL_DUMP_LIST(sa, call->parameters, next,
                        dump_expr, (void**)&info, "", "", ", ", "");
         coutput("%s  if( ADATA(exec_context->data[%d].data) != %s(%s) ) {\n"
-                "%s    dague_remote_dep_memcpy( context, %s(%s), exec_context->data[%d].data, \n"
+                "%s    dague_remote_dep_memcpy( context, exec_context->dague_object, %s(%s), exec_context->data[%d].data, \n"
                 "%s                             __dague_object->super.arenas[DAGUE_%s_%s_ARENA]->opaque_dtt );\n"
                 "%s  }\n",                
                 spaces, dataflow_index, call->func_or_mem, string_arena_get_string(sa),

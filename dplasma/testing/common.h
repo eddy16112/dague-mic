@@ -103,7 +103,7 @@ typedef double DagDouble_t;
 #define PASTE_CODE_FLOPS( FORMULA, PARAMS ) \
   double gflops, flops = FORMULA PARAMS;
   
-#if defined(PRECISIONS_z) || defined(PRECISIONS_c)
+#if defined(PRECISION_z) || defined(PRECISION_c)
 #define PASTE_CODE_FLOPS_COUNT(FADD,FMUL,PARAMS) \
   double gflops, flops = (2. * FADD PARAMS + 6. * FMUL PARAMS);
 #else 
@@ -150,7 +150,7 @@ static inline int min(int a, int b) { return a < b ? a : b; }
         TYPE##_init INIT_PARAMS;                                        \
         DDESC.mat = dague_data_allocate((size_t)DDESC.super.nb_local_tiles * \
                                         (size_t)DDESC.super.bsiz *      \
-                                        (size_t)DDESC.super.mtype);     \
+                                        (size_t)dague_datadist_getsizeoftype(DDESC.super.mtype)); \
         dague_ddesc_set_key((dague_ddesc_t*)&DDESC, #DDESC);            \
     }
 
@@ -158,7 +158,7 @@ static inline int min(int a, int b) { return a < b ? a : b; }
   SYNC_TIME_START(); \
   dague_object_t* DAGUE_##KERNEL = dplasma_##KERNEL##_New PARAMS; \
   dague_enqueue(DAGUE, DAGUE_##KERNEL); \
-  if(loud) SYNC_TIME_PRINT(rank, ( #KERNEL " DAG creation: %u local tasks enqueued\n", DAGUE->taskstodo));
+  if(loud) SYNC_TIME_PRINT(rank, ( #KERNEL " DAG creation: %u local tasks enqueued\n", DAGUE_##KERNEL->nb_local_tasks));
 
 
 #define PASTE_CODE_PROGRESS_KERNEL(DAGUE, KERNEL) \
