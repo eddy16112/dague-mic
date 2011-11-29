@@ -12,9 +12,9 @@ set(HEADERS
   core_z.h
 )
 
-precisions_rules(generated_headers
+precisions_rules_py(generated_headers
                  "${HEADERS}"
-                 PRECISIONS "+;z;c;d;s")
+                 PRECISIONS "z;c;d;s")
 
 ### Generate .c files from .jdf for all required precisions
 set(JDF
@@ -24,9 +24,9 @@ set(JDF
   zhetrf_sp1dplus.jdf
   zsytrf_sp1dplus.jdf
 )
-precisions_rules(generated_jdf
+precisions_rules_py(generated_jdf
                  "${JDF}"
-                 PRECISIONS "+;${DSPARSE_PRECISIONS}")
+                 PRECISIONS "${DSPARSE_PRECISIONS}")
 
 jdf_rules(generated_files "${generated_jdf}")
 
@@ -48,9 +48,9 @@ set(SOURCES
   zgetrf_sp1dplus_wrapper.c
 )
 
-precisions_rules(generated_files
+precisions_rules_py(generated_files
                  "${SOURCES}"
-                 PRECISIONS "+;${DSPARSE_PRECISIONS}")
+                 PRECISIONS "${DSPARSE_PRECISIONS}")
 
 ### Generate the lib 
 if (MPI_FOUND)

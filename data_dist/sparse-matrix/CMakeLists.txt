@@ -15,9 +15,9 @@ include_directories(${SCOTCH_INCLUDE_DIRS})
 set( precision_files
   zread.c
   )
-precisions_rules(generated_files
+precisions_rules_py(generated_files
                  "${precision_files}"
-                 PRECISIONS "+;s;d;c;z;")
+                 PRECISIONS "s;d;c;z")
 
 set( dague_sparse_SRC
   sparse-matrix.c 

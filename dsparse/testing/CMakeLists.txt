@@ -11,4 +11,4 @@ include(RulesTestingsSP.cmake)
 set(TESTS
   testing_zpotrf_sp.c
 )
-testingssp_addexec(targets "+;${DSPARSE_PRECISIONS}" "${TESTS}")
+testingssp_addexec(targets "${DSPARSE_PRECISIONS}" "${TESTS}")
