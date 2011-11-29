@@ -12,7 +12,7 @@ extern "C" %{
 #include "dague.h"
 #include "data_dist/matrix/precision.h"
 #include "data_dist/matrix/matrix.h"
-#include "dplasma/lib/memory_pool.h"
+#include "memory_pool.h"
 #include "dplasma/lib/dplasmajdf.h"
 
 #define getIPIV(__ptr) ((int*)(__ptr))

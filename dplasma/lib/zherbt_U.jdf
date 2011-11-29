@@ -11,7 +11,7 @@ extern "C" %{
 #include "dague.h"
 #include "data_distribution.h"
 #include "data_dist/matrix/precision.h"
-#include "dplasma/lib/memory_pool.h"
+#include "memory_pool.h"
 %}
 
 uplo [type = "PLASMA_enum"]
