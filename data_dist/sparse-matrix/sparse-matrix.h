@@ -86,8 +86,8 @@ typedef struct sparse_context_s {
     void        *rhs;        /* Right Hand Side                            */ 
     dague_int_t *permtab;    /* vector of permutation                      */
     dague_int_t *peritab;    /* vector of inverse permutation              */
-    dague_int_t iparm[IPARM_SIZE];
-    double      dparm[DPARM_SIZE];
+    dague_int_t  iparm[IPARM_SIZE];
+    double       dparm[DPARM_SIZE];
     sparse_matrix_desc_t *desc; /* Pointer to symbol matrix structure */    
 } sparse_context_t;
 
