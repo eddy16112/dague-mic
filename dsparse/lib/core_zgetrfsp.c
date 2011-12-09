@@ -296,7 +296,7 @@ void core_zgetrfsp1d_gemm(dague_int_t cblknum,
         Aij = C + SOLV_COEFIND(b) + frownum - SYMB_FROWNUM(b);
         dimb = SYMB_LROWNUM(j) - frownum + 1;
 
-        CORE_zaxpy( dimb, dimj, -1.0,
+        CORE_zgeadd( dimb, dimj, -1.0,
                     wtmp, dimi,
                     Aij,  stridefc );
 
@@ -390,7 +390,7 @@ void core_zgetrfsp1d_gemm(dague_int_t cblknum,
         dimb = SYMB_LROWNUM(j) - frownum + 1;
         Aij = C + SOLV_COEFIND(b) + frownum - SYMB_FROWNUM(b);
         
-        CORE_zaxpy( dimb, dimj, -1.0,
+        CORE_zgeadd( dimb, dimj, -1.0,
                     wtmp, dimi,
                     Aij,  stridefc );
 
