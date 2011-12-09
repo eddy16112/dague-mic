@@ -90,24 +90,23 @@ RW    C <- ( prev == 0 ) ? A(fcblk) : C GEMM( prev )
         -> ((!phony) && (next != 0)) ? C GEMM( next )
 
 BODY
-      Dague_Complex64_t *work = (Dague_Complex64_t *)dague_private_memory_pop( p_work );
-      Dague_Complex64_t *U, *Cu;
-
       if (!phony) {
-        U  = (Dague_Complex64_t*)datacode->ucoeftab[cblk];
-        Cu = (Dague_Complex64_t*)datacode->ucoeftab[fcblk];
-
-        DRYRUN(
-               core_zgetrfsp1d_gemm(cblk, k, fcblk, A, U, C, Cu, work, datacode);
-               );
-        printlog(
-                 "thread %d compute_1dgemm( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
-                 context->eu_id, k, fcblk, cblk, prev, next);
+          Dague_Complex64_t *work = (Dague_Complex64_t *)dague_private_memory_pop( p_work );
+          Dague_Complex64_t *U, *Cu;
+          
+          U  = (Dague_Complex64_t*)datacode->ucoeftab[cblk];
+          Cu = (Dague_Complex64_t*)datacode->ucoeftab[fcblk];
+          
+          DRYRUN(
+                 core_zgetrfsp1d_gemm(cblk, k, fcblk, A, U, C, Cu, work, datacode);
+                 );
+          printlog(
+                   "thread %d compute_1dgemm( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
+                   context->eu_id, k, fcblk, cblk, prev, next);
+          dague_private_memory_push( p_work, (void *)work );
       } else {
-        printlog(
-                 "thread %d phony_gemm( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
-                 context->eu_id, k, fcblk, cblk, prev, next);
+          printlog(
+                   "thread %d phony_gemm( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
+                   context->eu_id, k, fcblk, cblk, prev, next);
       }
-
-      dague_private_memory_push( p_work, (void *)work );
 END
