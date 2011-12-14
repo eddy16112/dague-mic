@@ -23,6 +23,8 @@ set(JDF
   zgetrf_sp1dplus.jdf
   zhetrf_sp1dplus.jdf
   zsytrf_sp1dplus.jdf
+  # Solvers
+  zpotrs_sp1dplus.jdf
 )
 precisions_rules_py(generated_jdf
                  "${JDF}"
