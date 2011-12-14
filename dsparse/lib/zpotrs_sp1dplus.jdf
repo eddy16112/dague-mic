@@ -1,0 +1,193 @@
+extern "C" %{
+  /**
+   * PLASMA include for defined and constants.
+   *
+   * @precisions normal z -> s d c
+   *
+   */
+#include <plasma.h>
+#include <core_blas.h>
+
+#include "dague.h"
+#include "data_distribution.h"
+#include "memory_pool.h"
+#include "dplasma/lib/dplasmajdf.h"
+
+#include "data_dist/sparse-matrix/pastix_internal/pastix_internal.h"
+#include "data_dist/sparse-matrix/sparse-matrix.h"
+#include "dsparse/lib/core_z.h"
+
+#define PRECISION_z
+
+%}
+
+/* Globals
+ */
+descA    [type = "sparse_matrix_desc_t *"]
+A        [type = "dague_ddesc_t *"]
+descB    [type = "sparse_matrix_desc_t *"]
+B        [type = "dague_ddesc_t *" aligned=A]
+datacode [type = "SolverMatrix*" default="&(descA->pastix_data->solvmatr)" hidden=on]
+cblknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.cblknbr - 1" hidden=on] 
+bloknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.bloknbr - 2" hidden=on] /* -2 to avoid last diagonal block */
+browsize [type = "dague_int_t"   default="_res->super.bloknbr - _res->super.cblknbr - 1" hidden=on]
+p_work   [type = "dague_memory_pool_t *" size = "datacode->coefmax * sizeof(Dague_Complex64_t)"]
+
+/**************************************************
+ *                TRSM_FORWARD                    *
+ **************************************************/
+TRSM_FORWARD(k)
+
+// Execution space
+k = 0..cblknbr
+gcblk2list= inline_c %{ return UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( k )); %}
+/*browk     = inline_c %{ if ( gcblk2list != -1 ) return UPDOWN_LISTPTR( gcblk2list   ); else return -1; %}*/
+browk1    = inline_c %{ if ( gcblk2list != -1 ) return UPDOWN_LISTPTR( gcblk2list+1 ); else return -1; %}
+lastbrow  = inline_c %{ if (browk1 > 0) return UPDOWN_LISTBLOK(browk1-1); else return 0; %}
+firstblok = inline_c %{ return SYMB_BLOKNUM(k); %}
+lastblok  = inline_c %{ return SYMB_BLOKNUM(k+1); %}
+
+firstgemm = inline_c %{ 
+    dague_int_t fcblk = SYMB_CBLKNUM(firstblok+1); /* Facing block column of the first etra-daigonal block */
+    dague_int_t listptr = UPDOWN_GCBLK2LIST( UPDOWN_LOC2GLOB( fcblk ) ); /* Index in the global list of the column block receiving contributyion */
+    return UPDOWN_LISTBLOK( UPDOWN_LISTPTR( listptr+1 ) -1 );
+    %}
+    
+// Parallel partitioning
+:B(k) // Should match SOLV_COEFTAB(k)
+
+// Parameters
+/* C is A(k) if it's a leaf or get the cblk from the last update */
+READ A <- A(k)
+RW   B <- ( gcblk2list < 0 ) ? B(k) : C GEMM_FORWARD( lastbrow )
+       -> B GEMM_FORWARD(firstblok+1..lastblok-1)
+       -> (k == cblknbr) ? B TRSM_BACKWARD(k) : C GEMM_BACKWARD( firstgemm )
+
+BODY
+      DRYRUN(
+             /*core_zpotrfsp1d(A, datacode, k, descA->pastix_data->sopar.espilondiag );*/
+             /*TRSM( L, L , N, N, A, B )*/
+	     );
+      printlog(
+               "thread %d solvedown_1dplus( cblknum=%d, browk1=%d, lastbrow=%d, firstblok=%d, lastblok=%d )\n",
+               context->eu_id, k, /*browk, */ browk1, lastbrow, firstblok, lastblok);
+
+END
+
+/**************************************************
+ *                      GEMM_FORWARD                      *
+ **************************************************/
+
+GEMM_FORWARD(k)
+
+// Execution space
+k = 0..bloknbr
+fcblk  = inline_c %{ return SYMB_CBLKNUM(k); %}
+cblk   = inline_c %{ return sparse_matrix_get_lcblknum( descA, (dague_int_t)k ); %}// TODO: store cblknum in symbblok
+phony  = inline_c %{ return k == SYMB_BLOKNUM( cblk ); %}
+prev   = inline_c %{ if (phony) return 0; else return sparse_matrix_get_listptr_prev( descA, (dague_int_t)k, (dague_int_t)fcblk ); %}
+next   = inline_c %{ if (phony) return 0; else return sparse_matrix_get_listptr_next( descA, (dague_int_t)k, (dague_int_t)fcblk ); %}
+
+// Parallel partitioning
+:B(fcblk)
+
+// Parameters
+READ  A <- A(fcblk)
+READ  B <- phony ? B(fcblk) : B TRSM_FORWARD(cblk) /* B never comes from memory but we keep it for correctness of the code */
+RW    C <- ( prev == 0 ) ? B(fcblk) : C GEMM_FORWARD( prev )
+        -> phony ? B(fcblk)/* B never go back to memory but we keep it for correctness of the code */
+        -> ((!phony) && (next == 0)) ? B TRSM_FORWARD( fcblk )
+        -> ((!phony) && (next != 0)) ? C GEMM_FORWARD( next )
+
+BODY
+      if (!phony) {
+          Dague_Complex64_t *work = (Dague_Complex64_t *)dague_private_memory_pop( p_work );
+
+          DRYRUN(
+                 //core_zpotrfsp1d_gemm(cblk, k, fcblk, A, C, work, datacode);
+                 /* GEMM ( N, N, A, B, C ); */
+                 );
+          printlog(
+                   "thread %d compute_1dgemm( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
+                   context->eu_id, k, fcblk, cblk, prev, next);
+
+          dague_private_memory_push( p_work, (void *)work );
+      } else {
+          printlog(
+                   "thread %d phony_gemm( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
+                   context->eu_id, k, fcblk, cblk, prev, next);
+      }
+END
+
+
+
+/**************************************************
+ *                TRSM_BACKWARD                    *
+ **************************************************/
+TRSM_BACKWARD(k)
+
+// Execution space
+k = 0..cblknbr
+gcblk2list= inline_c %{ return UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( k )); %}
+firstbrow = inline_c %{ if ( gcblk2list != -1 ) return UPDOWN_LISTPTR( gcblk2list   ); else return -1; %}
+lastbrow  = inline_c %{ if ( gcblk2list != -1 ) return UPDOWN_LISTPTR( gcblk2list+1 )-1; else return -1; %}
+firstblok = inline_c %{ return SYMB_BLOKNUM(k)+1; %}
+
+// Parallel partitioning
+:B(k) // Should match SOLV_COEFTAB(k)
+
+// Parameters
+/* C is A(k) if it's a leaf or get the cblk from the last update */
+READ A <- A(k)
+RW   B -> ( gcblk2list < 0 ) ? B(k) : B GEMM_BACKWARD( firstbrow..lastbrow )
+       <- ( k == cblknbr ) ? B TRSM_FORWARD( k ) : C GEMM_BACKWARD(firstblok)
+       
+BODY
+      DRYRUN(
+             /*core_zpotrfsp1d(A, datacode, k, descA->pastix_data->sopar.espilondiag );*/
+             /*TRSM( L, L , N, N, A, B )*/
+	     );
+      printlog(
+               "thread %d solvedown_1dplus( cblknum=%d, browk=%d, browk1=%d, lastbrow=%d, firstblok=%d, lastblok=%d )\n",
+               context->eu_id, k, browk, browk1, lastbrow, firstblok, lastblok);
+
+END
+
+/**************************************************
+ *                      GEMM_BACKWARD                      *
+ **************************************************/
+
+GEMM_BACKWARD(k)
+
+// Execution space
+k = 0..browsize
+bloknum= inline_c %{ return UPDOWN_LISTBLOK(k); %}
+fcblk  = inline_c %{ return SYMB_CBLKNUM(bloknum); %}
+cblk   = inline_c %{ return sparse_matrix_get_lcblknum( descA, (dague_int_t)bloknum ); %}// TODO: store cblknum in symbblok
+
+gcblk2list= inline_c %{ return UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( fcblk )); %}
+firstbrow = inline_c %{ assert( gcblk2list != -1 ); return UPDOWN_LISTPTR( gcblk2list   ); %}
+lastbrow  = inline_c %{ assert( gcblk2list != -1 ); return UPDOWN_LISTPTR( gcblk2list+1 )-1; %}
+
+// Parallel partitioning
+:B(cblk)
+
+// Parameters
+READ  A <- A(cblk)
+READ  B <- B TRSM_BACKWARD(fcblk) 
+
+RW    C <- ( k == lastbrow  ) ?  B TRSM_FORWARD( cblk )  : C GEMM_BACKWARD( k+1 )
+        -> ( k == firstbrow ) ?  B TRSM_BACKWARD( cblk ) : C GEMM_BACKWARD( k-1 )
+
+BODY
+                                                         
+    DRYRUN(
+           Dague_Complex64_t *work = (Dague_Complex64_t *)dague_private_memory_pop( p_work );
+           //core_zpotrfsp1d_gemm(cblk, k, fcblk, A, C, work, datacode);
+           /* GEMM ( N, N, A, B, C ); */
+           dague_private_memory_push( p_work, (void *)work );
+           );
+    printlog(
+             "thread %d compute_1dgemm( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
+             context->eu_id, k, fcblk, cblk, prev, next);
+END
