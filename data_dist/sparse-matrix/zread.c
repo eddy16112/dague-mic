@@ -302,7 +302,6 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
     return dparm[DPARM_FACT_FLOPS];
 }
 
-
 void sparse_matrix_zcsc2cblk(const SolverMatrix *solvmatr,
                              Dague_Complex64_t  *transcsc, 
                              dague_int_t         itercblk)
@@ -461,6 +460,51 @@ void sparse_matrix_zclean( sparse_context_t *dspctxt )
     return;
 }
 
+void sparse_vector_zinit( sparse_context_t *dspctxt )
+{
+    pastix_data_t *pastix_data = NULL;
+
+    pastix_data = dspctxt->desc->pastix_data;
+
+    if (pastix_data->malsmx)
+        {
+            free(pastix_data->solvmatr.updovct.sm2xtab);
+            pastix_data->malsmx = 0;
+        }
+
+    pastix_data->solvmatr.updovct.sm2xnbr = 1;
+    pastix_data->solvmatr.updovct.sm2xtab = malloc( pastix_data->solvmatr.updovct.sm2xnbr *
+                                        pastix_data->solvmatr.updovct.sm2xsze *
+                                        dspctxt->rhsdesc->typesze );
+
+    pastix_data->malsmx = 1;
+    
+    Z_buildUpdoVect(pastix_data,
+                    NULL,
+                    dspctxt->rhs,
+                    0);
+    
+    return;
+}
+
+void sparse_vector_zfinalize( sparse_context_t *dspctxt )
+{
+    dague_int_t   *iparm = dspctxt->iparm;
+    DagDouble_t   *dparm = dspctxt->dparm;
+    pastix_data_t *pastix_data = NULL; 
+
+    pastix_data = dspctxt->desc->pastix_data;
+
+    Z_CscRhsUpdown(&(pastix_data->solvmatr.updovct),
+                   &(pastix_data->solvmatr.symbmtx),
+                   dspctxt->rhs, 
+                   dspctxt->n, 
+                   dspctxt->peritab,
+                   iparm[IPARM_DOF_NBR],
+                   iparm[IPARM_RHS_MAKING],
+                   0);
+    return;
+}
 
 #if 0
 int sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
