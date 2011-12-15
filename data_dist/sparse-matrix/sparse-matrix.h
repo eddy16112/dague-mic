@@ -125,4 +125,15 @@ void sparse_matrix_cclean( sparse_context_t *dspctxt );
 void sparse_matrix_dclean( sparse_context_t *dspctxt );
 void sparse_matrix_sclean( sparse_context_t *dspctxt );
 
+void sparse_vector_zinit( sparse_context_t *dspctxt );
+void sparse_vector_cinit( sparse_context_t *dspctxt );
+void sparse_vector_dinit( sparse_context_t *dspctxt );
+void sparse_vector_sinit( sparse_context_t *dspctxt );
+void sparse_vector_zfinalize( sparse_context_t *dspctxt );
+void sparse_vector_cfinalize( sparse_context_t *dspctxt );
+void sparse_vector_dfinalize( sparse_context_t *dspctxt );
+void sparse_vector_sfinalize( sparse_context_t *dspctxt );
+
+
+
 #endif /* _SPARSE_MATRIX_H_ */
