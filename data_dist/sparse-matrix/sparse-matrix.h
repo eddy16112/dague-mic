@@ -67,6 +67,15 @@ typedef struct sparse_matrix_desc_t {
     pastix_data_t        *pastix_data;
 } sparse_matrix_desc_t;
 
+typedef struct sparse_vector_desc_t {
+    dague_ddesc_t         super;
+    enum spmtx_type       mtype;   /* Precision of the matrix             */
+    int                   typesze; /* Type size                           */
+    //    dague_symbol_matrix_t symbmtx; /* Pointer to symbol matrix structure  */
+    pastix_data_t        *pastix_data;
+} sparse_vector_desc_t;
+
+
 typedef struct sparse_context_s {
     int          format;     /* Matrix file format                         */
     int          factotype;
@@ -89,6 +98,7 @@ typedef struct sparse_context_s {
     dague_int_t  iparm[IPARM_SIZE];
     double       dparm[DPARM_SIZE];
     sparse_matrix_desc_t *desc; /* Pointer to symbol matrix structure */    
+    sparse_vector_desc_t *rhsdesc; /* Pointer to symbol matrix structure */    
 } sparse_context_t;
 
 void sparse_matrix_init( sparse_matrix_desc_t *desc, 
