@@ -48,6 +48,7 @@ set(SOURCES
   zhetrf_sp1dplus_wrapper.c
   zpotrf_sp1dplus_wrapper.c
   zgetrf_sp1dplus_wrapper.c
+  zpotrs_sp1dplus_wrapper.c
 )
 
 precisions_rules_py(generated_files

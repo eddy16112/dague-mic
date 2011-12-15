@@ -25,7 +25,7 @@ extern "C" %{
  */
 descA    [type = "sparse_matrix_desc_t *"]
 A        [type = "dague_ddesc_t *"]
-descB    [type = "sparse_matrix_desc_t *"]
+descB    [type = "sparse_vector_desc_t *"]
 B        [type = "dague_ddesc_t *" aligned=A]
 datacode [type = "SolverMatrix*" default="&(descA->pastix_data->solvmatr)" hidden=on]
 cblknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.cblknbr - 1" hidden=on] 
