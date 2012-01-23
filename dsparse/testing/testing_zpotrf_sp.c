@@ -45,6 +45,11 @@ int main(int argc, char ** argv)
     sparse_matrix_init( &ddescA, spmtx_ComplexDouble, nodes, cores, rank );
     dspctxt.desc = &ddescA;
 
+    sparse_vector_desc_t ddescB;
+    sparse_vector_init( &ddescB, spmtx_ComplexDouble, nodes, cores, rank,
+                        ddescA.pastix_data );
+    dspctxt.rhsdesc = &ddescB;
+
     /* Read the matrix files */
     flops = sparse_matrix_zrdmtx( &dspctxt );
     
@@ -59,18 +64,21 @@ int main(int argc, char ** argv)
     switch ( factotype ) {
     case DSPARSE_LLT:
       if(loud > 2) printf("+++ Computing potrf ... ");
-      PASTE_CODE_ENQUEUE_KERNEL( dague, zpotrf_sp,
-                                 ((sparse_matrix_desc_t*)&ddescA) );
+      PASTE_CODE_ENQUEUE_KERNEL( dague, zpotrf_sp, (&ddescA) );
       PASTE_CODE_PROGRESS_KERNEL( dague, zpotrf_sp );
       
       dsparse_zpotrf_sp_Destruct( DAGUE_zpotrf_sp );
+
+      sparse_vector_zinit( &dspctxt );
+      dsparse_zpotrs_sp( dague, &ddescA, &ddescB);
+      sparse_vector_zfinalize( &dspctxt );
+
       break;
 
     case DSPARSE_LDLT:
 #if defined(PRECISION_z) || defined(PRECISION_c)
       if(loud > 2) printf("+++ Computing sytrf ... ");
-      PASTE_CODE_ENQUEUE_KERNEL( dague, zsytrf_sp,
-                                 ((sparse_matrix_desc_t*)&ddescA) );
+      PASTE_CODE_ENQUEUE_KERNEL( dague, zsytrf_sp, (&ddescA) );
       PASTE_CODE_PROGRESS_KERNEL( dague, zsytrf_sp );
       
       dsparse_zsytrf_sp_Destruct( DAGUE_zsytrf_sp );
@@ -79,8 +87,7 @@ int main(int argc, char ** argv)
 
     case DSPARSE_LDLTH:
       if(loud > 2) printf("+++ Computing hetrf ... ");
-      PASTE_CODE_ENQUEUE_KERNEL( dague, zhetrf_sp,
-                                 ((sparse_matrix_desc_t*)&ddescA) );
+      PASTE_CODE_ENQUEUE_KERNEL( dague, zhetrf_sp, (&ddescA) );
       PASTE_CODE_PROGRESS_KERNEL( dague, zhetrf_sp );
       
       dsparse_zhetrf_sp_Destruct( DAGUE_zhetrf_sp );
@@ -89,8 +96,7 @@ int main(int argc, char ** argv)
     case DSPARSE_LU:
     default:
       if(loud > 2) printf("+++ Computing getrf ... ");
-      PASTE_CODE_ENQUEUE_KERNEL( dague, zgetrf_sp,
-                                 ((sparse_matrix_desc_t*)&ddescA) );
+      PASTE_CODE_ENQUEUE_KERNEL( dague, zgetrf_sp, (&ddescA) );
       PASTE_CODE_PROGRESS_KERNEL( dague, zgetrf_sp );
       
       dsparse_zgetrf_sp_Destruct( DAGUE_zgetrf_sp );
@@ -98,14 +104,16 @@ int main(int argc, char ** argv)
     
     if(loud > 2) printf("Done.\n");
         
-    cleanup_dague(dague, iparam, sparam);
-    
 /*     D_Udump_all( &(ddescA.pastix_data->solvmatr), DUMP_SOLV ); */
+
     if( check )
         sparse_matrix_zcheck( &dspctxt );
     sparse_matrix_zclean( &dspctxt );
     
-    sparse_matrix_destroy( (sparse_matrix_desc_t*)&ddescA );
+    sparse_matrix_destroy( &ddescA );
+    sparse_vector_destroy( &ddescB );
 
+    cleanup_dague(dague, iparam, sparam);
+    
     return EXIT_SUCCESS;
 }
