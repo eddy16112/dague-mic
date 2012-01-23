@@ -241,6 +241,7 @@ subs = {
     ('testing_s',   'testing_d',   'testing_c',   'testing_z'  ),
     ('TESTING_S',   'TESTING_D',   'TESTING_C',   'TESTING_Z'  ),
     ('twoDBC_s',    'twoDBC_d',    'twoDBC_c',    'twoDBC_z'   ),
+    ('vector_s',    'vector_d',    'vector_c',    'vector_z'   ),
     ('workspace_s', 'workspace_d', 'workspace_c', 'workspace_z'),
   ],
   'tracing' : [
