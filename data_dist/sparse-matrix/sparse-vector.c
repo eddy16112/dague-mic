@@ -64,7 +64,7 @@ void *sparse_vector_data_of(struct dague_ddesc *mat, ... )
 
     char *ptr = (char*)(spmtx->pastix_data->solvmatr.updovct.sm2xtab);
 
-    return ptr + (size_t)(spmtx->pastix_data->solvmatr.cblktab[cblknum].sm2xind)
+    return ptr + (size_t)(spmtx->pastix_data->solvmatr.updovct.cblktab[cblknum].sm2xind)
         *        (size_t)(spmtx->typesze);
 }
 
