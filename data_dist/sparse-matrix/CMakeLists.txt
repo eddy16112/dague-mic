@@ -21,6 +21,7 @@ precisions_rules_py(generated_files
 
 set( dague_sparse_SRC
   sparse-matrix.c 
+  sparse-vector.c 
   ${generated_files}
   )
 
