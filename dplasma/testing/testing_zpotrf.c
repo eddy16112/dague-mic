@@ -105,7 +105,7 @@ int main(int argc, char ** argv)
     dplasma_zpotrf_Destruct( DAGUE_zpotrf );
     if(loud > 2) printf("Done.\n");
 
-    if ( check && info != 0 ) {
+    if ( info != 0 ) {
         if( rank == 0 && loud ) printf("-- Factorization is suspicious (info = %d) ! \n", info);
         ret |= 1;
     }
@@ -178,14 +178,14 @@ static int check_factorization( dague_context_t *dague, int loud, PLASMA_enum up
 
     side = (uplo == PlasmaUpper ) ? PlasmaLeft : PlasmaRight;
 
-    /* Compute L'L or U'U  */
+    /* Compute LL' or U'U  */
     dplasma_ztrmm( dague, side, uplo, PlasmaConjTrans, PlasmaNonUnit, 1.0, 
                    (tiled_matrix_desc_t*)&L1, 
                    (tiled_matrix_desc_t*)&L2);
 
-    /* compute L'L - A or U'U - A */
-    dplasma_zaxpy( dague, uplo, -1.0, A0, 
-                   (tiled_matrix_desc_t*)&L2);
+    /* compute LL' - A or U'U - A */
+    dplasma_zgeadd( dague, uplo, -1.0, A0, 
+                    (tiled_matrix_desc_t*)&L2);
 
     Anorm = dplasma_zlanhe(dague, PlasmaMaxNorm, uplo, A0);
     Rnorm = dplasma_zlanhe(dague, PlasmaMaxNorm, uplo,

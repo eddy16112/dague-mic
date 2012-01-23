@@ -59,6 +59,36 @@ static inline void remote_dep_dec_flying_messages(dague_object_t *dague_object, 
     __dague_complete_task(dague_object, ctx);
 }
 
+/* Mark that one of the remote deps is finished, and return the remote dep to
+ * the free items queue if it is now done */
+static void remote_dep_complete_one_and_cleanup(dague_remote_deps_t* deps) {
+    deps->output_sent_count++;
+    if(deps->output_count == deps->output_sent_count) {
+        unsigned int count = 0;
+        int k = 0;
+        while( count < deps->output_count ) {
+            for(uint32_t a = 0; a < (dague_remote_dep_context.max_nodes_number + 31)/32; a++)
+                deps->output[k].rank_bits[a] = 0;
+            count += deps->output[k].count;
+            deps->output[k].count = 0;
+#if defined(DAGUE_DEBUG)
+            deps->output[k].data = NULL;
+            deps->output[k].type = NULL;
+#endif
+            k++;
+            assert(k < MAX_PARAM_COUNT);
+        }
+        assert(count == deps->output_count);
+        deps->output_count = 0;
+        deps->output_sent_count = 0;
+#if defined(DAGUE_DEBUG)
+        memset( &deps->msg, 0, sizeof(remote_dep_wire_activate_t) );
+#endif
+        dague_atomic_lifo_push(deps->origin,           
+             dague_list_item_singleton((dague_list_item_t*) deps));
+    }
+}                                                                                           
+
 #endif
 
 #ifndef DAGUE_DIST_EAGER_LIMIT 
@@ -80,22 +110,17 @@ static inline void remote_dep_dec_flying_messages(dague_object_t *dague_object, 
 #ifdef DISTRIBUTED
 int dague_remote_dep_init(dague_context_t* context)
 {
-    int np;
-    
-    np = (int32_t) remote_dep_init(context);
-    /* Worst case: one of the DAGs is going to use up to 
-     * MAX_PARAM_COUNT times nb_nodes dependencies.
-     */
-    remote_deps_allocation_init(context->nb_nodes, MAX_PARAM_COUNT);
-    if(np > 1)
+    (void)remote_dep_init(context);
+
+    if(context->nb_nodes > 1)
     {
-        context->remote_dep_fw_mask_sizeof = ((np + 31) / 32) * sizeof(uint32_t);
+        context->remote_dep_fw_mask_sizeof = ((context->nb_nodes + 31) / 32) * sizeof(uint32_t);
     }
     else 
     {
         context->remote_dep_fw_mask_sizeof = 0; /* hoping memset(0b) is fast */
     }
-    return np;
+    return context->nb_nodes;
 }
 
 int dague_remote_dep_fini(dague_context_t* context)
@@ -204,8 +229,8 @@ int dague_remote_dep_activate(dague_execution_unit_t* eu_context,
     
     for( i = 0; remote_deps_count; i++) {
         if( 0 == remote_deps->output[i].count ) continue;
+        
         him = 0;
-
         for( array_index = count = 0; count < remote_deps->output[i].count; array_index++ ) {
             current_mask = remote_deps->output[i].rank_bits[array_index];
             if( 0 == current_mask ) continue;  /* no bits here */
@@ -236,20 +261,22 @@ int dague_remote_dep_activate(dague_execution_unit_t* eu_context,
                     {
                         DEBUG((" TOPO\t%s\troot=%d\t%d (d%d) -> %d (d%d)\n", dague_service_to_string(exec_context, tmp, 128), remote_deps->root, eu_context->master_context->my_rank, me, rank, him));
                         
-                        AREF(remote_deps->output[i].data);
+                        if(ACCESS_NONE != exec_context->function->out[i]->access_type)
+                        {
+                            AREF(remote_deps->output[i].data);
+                            if((int)(remote_deps->output[i].type->elem_size) < RDEP_MSG_EAGER_LIMIT) {
+                                RDEP_MSG_EAGER_SET(&remote_deps->msg);
+                            } else {
+                                RDEP_MSG_EAGER_CLR(&remote_deps->msg);
+                            }
+                            DEBUG((" RDEP\t%s\toutput=%d, type size=%d, eager=%lx\n",
+                                   dague_service_to_string(exec_context, tmp, 128), i,
+                                   (NULL == remote_deps->output[i].type ? 0 : remote_deps->output[i].type->elem_size), RDEP_MSG_EAGER(&remote_deps->msg)));
+                        }
                         if(remote_dep_is_forwarded(eu_context, remote_deps, rank))
                         {
                             continue;
                         }
-                        if( (ACCESS_NONE != exec_context->function->in[i]->access_type) &&  /* controls never take the eager path */ 
-                            (remote_deps->output[i].type->elem_size <= RDEP_MSG_EAGER_LIMIT) ) {
-                            RDEP_MSG_EAGER_SET(&remote_deps->msg);
-                        } else {
-                            RDEP_MSG_EAGER_CLR(&remote_deps->msg);
-                        }
-                        DEBUG((" RDEP\t%s\toutput=%d, type size=%d, eager=%lx\n",
-                               dague_service_to_string(exec_context, tmp, 128), i,
-                               (NULL == remote_deps->output[i].type ? 0 : remote_deps->output[i].type->elem_size), RDEP_MSG_EAGER(&remote_deps->msg)));
                         remote_dep_inc_flying_messages(exec_context->dague_object, eu_context->master_context);
                         remote_dep_mark_forwarded(eu_context, remote_deps, rank);
                         remote_dep_send(rank, remote_deps);
@@ -283,7 +310,7 @@ void remote_deps_allocation_init(int np, int max_output_deps)
         /* compute the maximum size of the dependencies array */
         int rankbits_size = sizeof(uint32_t) * ((np + 31)/32);
         dague_remote_deps_t fake_rdep;
-        dague_remote_dep_inited = 1;
+
         dague_remote_dep_context.max_dep_count = max_output_deps;
         dague_remote_dep_context.max_nodes_number = np;
         dague_remote_dep_context.elem_size = 
@@ -294,22 +321,24 @@ void remote_deps_allocation_init(int np, int max_output_deps)
             /* One extra rankbit to track the delivery of Activates */
             rankbits_size;
         dague_atomic_lifo_construct(&dague_remote_dep_context.freelist);
+        dague_remote_dep_inited = 1;
     }
 
     assert( (int)dague_remote_dep_context.max_dep_count >= max_output_deps );
     assert( (int)dague_remote_dep_context.max_nodes_number >= np );
 }
 
+
 void remote_deps_allocation_fini(void)
 {
     dague_remote_deps_t* rdeps;
         
-    assert(dague_remote_dep_inited);
-    while(NULL != (rdeps = (dague_remote_deps_t*) dague_atomic_lifo_pop(&dague_remote_dep_context.freelist)))
-    {
-        free(rdeps);
+    if(1 == dague_remote_dep_inited) {
+        while(NULL != (rdeps = (dague_remote_deps_t*) dague_atomic_lifo_pop(&dague_remote_dep_context.freelist))) {
+            free(rdeps);
+        }
+        dague_atomic_lifo_destruct(&dague_remote_dep_context.freelist);
     }
-    dague_atomic_lifo_destruct(&dague_remote_dep_context.freelist);
     dague_remote_dep_inited = 0;
 } 
 

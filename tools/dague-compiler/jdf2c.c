@@ -39,7 +39,7 @@ static int jdf_property_get_int( const jdf_def_list_t* properties, const char* p
 
 /** A coutput and houtput functions to write in the .h and .c files, counting the number of lines */
 
-static int nblines(const char *p)
+static inline int nblines(const char *p)
 {
     int r = 0;
     for(; *p != '\0'; p++)
@@ -114,6 +114,26 @@ static void houtput(const char *format, ...)
         hfile_lineno += nblines(res);
         free(res);
     }
+}
+
+/**
+ * Returns true if the function has any valid data output (not control).
+ * Otherwise, returns false.
+ */
+static inline int function_has_data_output( const jdf_function_entry_t *f )
+{
+    jdf_dataflow_t* flow;
+    jdf_dep_t *dep;
+
+    for( flow = f->dataflow; flow != NULL; flow = flow->next) {
+        if(flow->access_type != JDF_VAR_TYPE_CTL) {
+            for(dep = flow->deps; dep != NULL; dep = dep->next)
+                if( JDF_DEP_TYPE_OUT == dep->type ) {
+                    return 1;
+                }
+        }
+    }
+    return 0;
 }
 
 /** Utils: dumper functions for UTIL_DUMP_LIST_FIELD and UTIL_DUMP_LIST calls **/
@@ -256,7 +276,7 @@ static char * dump_expr(void **elem, void *arg)
                                 dump_expr((void**)e->jdf_ba2, &ri) );
         break;
     case JDF_LESS:
-        string_arena_add_string(sa, "(%s <  %s)",
+        string_arena_add_string(sa, "(%s < %s)",
                                 dump_expr((void**)e->jdf_ba1, &li),
                                 dump_expr((void**)e->jdf_ba2, &ri) );
         break;
@@ -266,7 +286,7 @@ static char * dump_expr(void **elem, void *arg)
                                 dump_expr((void**)e->jdf_ba2, &ri) );
         break;
     case JDF_MORE:
-        string_arena_add_string(sa, "(%s >  %s)",
+        string_arena_add_string(sa, "(%s > %s)",
                                 dump_expr((void**)e->jdf_ba1, &li),
                                 dump_expr((void**)e->jdf_ba2, &ri) );
         break;
@@ -390,22 +410,6 @@ static char* dump_predicate(void** elem, void *arg)
 }
 
 /**
- * Dump a repository line, like
- * #define F_repo (__dague_object->F_repo)
- */
-static char *dump_repo(void **elem, void *arg)
-{
-    jdf_function_entry_t *f = (jdf_function_entry_t *)elem;
-    string_arena_t *sa = (string_arena_t*)arg;
-
-    string_arena_init(sa);
-    string_arena_add_string(sa, "%s_repo (__dague_object->%s_repository)",
-                            f->fname, f->fname);
-
-    return string_arena_get_string(sa);
-}
-
-/**
  * Parameters of the dump_assignments function
  */
 typedef struct assignment_info {
@@ -475,6 +479,9 @@ static char *dump_data_declaration(void **elem, void *arg)
     string_arena_t *sa = (string_arena_t*)arg;
     jdf_dataflow_t *f = (jdf_dataflow_t*)elem;
     char *varname = f->varname;
+
+    if(f->access_type == JDF_VAR_TYPE_CTL) 
+        return NULL;
 
     string_arena_init(sa);
 
@@ -686,23 +693,30 @@ static char *dump_data_repository_constructor(void **elem, void *arg)
 {
     string_arena_t *sa = (string_arena_t*)arg;
     jdf_function_entry_t *f = (jdf_function_entry_t *)elem;
-    int nbdata;
 
     string_arena_init(sa);
 
-    JDF_COUNT_LIST_ENTRIES(f->dataflow, jdf_dataflow_t, next, nbdata);
-
-    string_arena_add_string(sa, 
-                            "  %s_nblocal_tasks = %s_%s_internal_init(_res);\n"
-                            "  if( 0 == %s_nblocal_tasks ) %s_nblocal_tasks = 10;\n"
-                            "  _res->%s_repository = data_repo_create_nothreadsafe(\n"
-                            "          ((unsigned int)(%s_nblocal_tasks * 1.5)) > MAX_DATAREPO_HASH ?\n"
-                            "          MAX_DATAREPO_HASH :\n"
-                            "          ((unsigned int)(%s_nblocal_tasks * 1.5)), %d);\n",
-                            f->fname, jdf_basename, f->fname,
-                            f->fname, f->fname,
-                            f->fname,
-                            f->fname, f->fname, nbdata);
+    if( 0 == function_has_data_output(f) ) {
+        string_arena_add_string(sa, 
+                                "  %s_nblocal_tasks = %s_%s_internal_init(_res);\n"
+                                "  (void)%s_nblocal_tasks;\n",
+                                f->fname, jdf_basename, f->fname,
+                                f->fname);
+    } else {
+        int nbdata = 0;
+        JDF_COUNT_LIST_ENTRIES(f->dataflow, jdf_dataflow_t, next, nbdata);
+        string_arena_add_string(sa, 
+                                "  %s_nblocal_tasks = %s_%s_internal_init(_res);\n"
+                                "  if( 0 == %s_nblocal_tasks ) %s_nblocal_tasks = 10;\n"
+                                "  _res->%s_repository = data_repo_create_nothreadsafe(\n"
+                                "          ((unsigned int)(%s_nblocal_tasks * 1.5)) > MAX_DATAREPO_HASH ?\n"
+                                "          MAX_DATAREPO_HASH :\n"
+                                "          ((unsigned int)(%s_nblocal_tasks * 1.5)), %d);\n",
+                                f->fname, jdf_basename, f->fname,
+                                f->fname, f->fname,
+                                f->fname,
+                                f->fname, f->fname, nbdata);
+    }
 
     return string_arena_get_string(sa);
 }
@@ -888,6 +902,7 @@ static void jdf_generate_header_file(const jdf_t* jdf)
             "#define _%s_h_\n",
             jdf_basename, jdf_basename);
     houtput("#include <dague.h>\n"
+            "#include <debug.h>\n"
             "#include <assert.h>\n\n");
 
     for( g = jdf->datatypes; NULL != g; g = g->next ) {
@@ -971,10 +986,15 @@ static void jdf_generate_structure(const jdf_t *jdf)
     coutput("typedef struct __dague_%s_internal_object {\n", jdf_basename);
     coutput(" dague_%s_object_t super;\n",
             jdf_basename);
-    coutput("  /* The list of data repositories */\n"
-            "%s",
-            UTIL_DUMP_LIST_FIELD( sa1, jdf->functions, next, fname,
-                                  dump_string, NULL, "", "  data_repo_t *", "_repository;\n", "_repository;\n"));
+    coutput("  /* The list of data repositories */\n");
+    {
+        jdf_function_entry_t* f;
+
+        for( f = jdf->functions; NULL != f; f = f->next ) {
+            if( 0 != function_has_data_output(f) )
+                coutput("  data_repo_t *%s_repository;\n", f->fname);
+        }
+    }
     coutput("} __dague_%s_internal_object_t;\n"
             "\n", jdf_basename);
 
@@ -992,9 +1012,16 @@ static void jdf_generate_structure(const jdf_t *jdf)
             UTIL_DUMP_LIST(sa1, jdf->functions, next,
                            dump_predicate, sa2, "", "#define ", "\n", "\n"));
 
-    coutput("/* Data Repositories */\n%s\n",
-            UTIL_DUMP_LIST(sa1, jdf->functions, next,
-                           dump_repo, sa2, "", "#define ", "\n", "\n"));
+    coutput("/* Data Repositories */\n");
+    {
+        jdf_function_entry_t* f;
+
+        for( f = jdf->functions; NULL != f; f = f->next ) {
+            if( 0 != function_has_data_output(f) )
+                coutput("#define %s_repo (__dague_object->%s_repository)\n",
+                        f->fname, f->fname);
+        }
+    }
 
     coutput("/* Dependency Tracking Allocation Macro */\n"
             "#define ALLOCATE_DEP_TRACKING(DEPS, vMIN, vMAX, vNAME, vSYMBOL, PREVDEP, FLAG)               \\\n"
@@ -1344,21 +1371,33 @@ static char* has_ready_input_dependency(void **elt, void *pint)
     jdf_dep_t* dep = flow->deps;
     int can_be_startup = 0, has_input = 0;
 
-    while( NULL != dep ) {
-        if( dep->type == JDF_DEP_TYPE_IN ) {
-            has_input = 1;
-            if( NULL == dep->guard->calltrue->var ) {
-                can_be_startup = 1;
+    if( JDF_VAR_TYPE_CTL == flow->access_type ) {
+        has_input = 1;
+        can_be_startup = 1;
+        while( NULL != dep ) {
+            if( dep->type == JDF_DEP_TYPE_IN ) {
+                if( dep->guard->guard_type != JDF_GUARD_BINARY )
+                    can_be_startup = 0;
             }
-            if( dep->guard->guard_type == JDF_GUARD_TERNARY ) {
-                if( NULL == dep->guard->callfalse->var ) {
+            dep = dep->next;
+        }
+    } else {  /* This is a data */
+        while( NULL != dep ) {
+            if( dep->type == JDF_DEP_TYPE_IN ) {
+                has_input = 1;
+                if( NULL == dep->guard->calltrue->var ) {
                     can_be_startup = 1;
                 }
+                if( dep->guard->guard_type == JDF_GUARD_TERNARY ) {
+                    if( NULL == dep->guard->callfalse->var ) {
+                        can_be_startup = 1;
+                    }
+                }
             }
+            dep = dep->next;
         }
-        dep = dep->next;
     }
-    if( (0 == can_be_startup) && (has_input) ) {
+    if( (0 == can_be_startup) && has_input ) {
         *((int*)pint) = 0;
     }
     return NULL;
@@ -1387,7 +1426,8 @@ static char* dump_direct_input_conditions(void **elt, void *arg)
                 }
             }
             if( dep->guard->guard_type == JDF_GUARD_BINARY ) {
-                if( NULL == dep->guard->calltrue->var ) {
+                if( (NULL == dep->guard->calltrue->var) ||
+                    (flow->access_type == JDF_VAR_TYPE_CTL)) {
                     if( 0 == already_added ) {
                         info.sa = sa;
                         dump_expr((void**)dep->guard->guard, &info);
@@ -1431,8 +1471,14 @@ static char* dump_direct_input_conditions(void **elt, void *arg)
         }
         dep = dep->next;
     }
+    /* We need to prepend ! if we're dealing with control flows */
+    if( already_added && (JDF_VAR_TYPE_CTL == flow->access_type) ) {
+        string_arena_init(sa1);
+        string_arena_add_string( sa1, "!(%s)", string_arena_get_string(sa) );
+        string_arena_init(sa);
+        string_arena_add_string( sa, "%s", string_arena_get_string(sa1) );
+    }
     string_arena_free(sa1);
-
     return (0 == already_added) ? NULL : string_arena_get_string(sa);
 }
 
@@ -1499,10 +1545,13 @@ static void jdf_generate_startup_tasks(const jdf_t *jdf, const jdf_function_entr
             indent(nesting), f->fname, UTIL_DUMP_LIST_FIELD(sa1, f->definitions, next, name,
                                                             dump_string, NULL, 
                                                             "", "", ", ", ""));
+    /**
+     * Dump all the conditions that can invalidate the startup propriety.
+     */
     {
         char* condition = NULL;
         string_arena_init(sa2);
-        
+
         condition = UTIL_DUMP_LIST(sa1, f->dataflow, next, dump_direct_input_conditions, sa2,
                                    "", "(", ") && ", ")");
         if( strlen(condition) > 1 )
@@ -1526,16 +1575,16 @@ static void jdf_generate_startup_tasks(const jdf_t *jdf, const jdf_function_entr
     {
         struct jdf_dataflow *dataflow = f->dataflow;
         for(idx = 0; NULL != dataflow; idx++, dataflow = dataflow->next ) {
-            coutput("  new_context->data[%d].data_repo = NULL;\n"
-                    "  new_context->data[%d].data      = NULL;\n",
+            coutput("    new_context->data[%d].data_repo = NULL;\n"
+                    "    new_context->data[%d].data      = NULL;\n",
                     idx, idx);
         }
     }
     coutput("#if defined(DAGUE_DEBUG)\n"
             "%s  {\n"
             "%s    char tmp[128];\n"
-            "%s    printf(\"Add startup task %%s\\n\",\n"
-            "%s           dague_service_to_string(new_context, tmp, 128));\n"
+            "%s    DEBUG((\"Add startup task %%s\\n\",\n"
+            "%s           dague_service_to_string(new_context, tmp, 128)));\n"
             "%s  }\n"
             "#endif\n", indent(nesting), indent(nesting), indent(nesting), indent(nesting), indent(nesting));
 
@@ -1777,13 +1826,13 @@ static void jdf_generate_simulation_cost_fct(const jdf_t *jdf, const jdf_functio
 
     ai.sa = sa;
     ai.idx = 0;
-    ai.holder = "exec_context->locals";
+    ai.holder = "this_task->locals";
     ai.expr = NULL;
 
     coutput("#if defined(DAGUE_SIM)\n"
-            "static int %s(const dague_execution_context_t *exec_context)\n"
+            "static int %s(const dague_execution_context_t *this_task)\n"
             "{\n"
-            "  const dague_object_t *__dague_object = (const dague_object_t*)exec_context->dague_object;\n"
+            "  const dague_object_t *__dague_object = (const dague_object_t*)this_task->dague_object;\n"
             "%s"
             "  (void)__dague_object;\n",
             prefix, UTIL_DUMP_LIST_FIELD(sa1, f->definitions, next, name, 
@@ -1797,7 +1846,7 @@ static void jdf_generate_simulation_cost_fct(const jdf_t *jdf, const jdf_functio
     string_arena_init(sa);
     info.prefix = "";
     info.sa = sa;
-    info.assignments = "exec_context->locals";
+    info.assignments = "this_task->locals";
     coutput("  return %s;\n", dump_expr((void**)f->simcost, &info));
     coutput("}\n"
             "#endif\n"
@@ -2022,9 +2071,7 @@ static char *dump_pseudodague(void **elem, void *arg)
 static void jdf_generate_predeclarations( const jdf_t *jdf )
 {
     jdf_function_entry_t *f;
-    int depid;
     jdf_dataflow_t *fl;
-    jdf_dep_t *dl;
     string_arena_t *sa = string_arena_new(64);
     string_arena_t *sa2 = string_arena_new(64);
 
@@ -2045,25 +2092,9 @@ static void jdf_generate_predeclarations( const jdf_t *jdf )
     coutput("/** Predeclarations of the parameters */\n");
     for(f = jdf->functions; f != NULL; f = f->next) {
         for(fl = f->dataflow; fl != NULL; fl = fl->next) {
-            for(depid = 1, dl = fl->deps; dl != NULL; depid++, dl = dl->next) {
-                if( (dl->guard->guard_type == JDF_GUARD_UNCONDITIONAL) ||
-                    (dl->guard->guard_type == JDF_GUARD_BINARY) ) {
-                    if( dl->guard->calltrue->var != NULL ) {
-                        coutput("static const dague_flow_t flow_of_%s_%s_for_%s;\n", 
-                                jdf_basename, dl->guard->calltrue->func_or_mem, dl->guard->calltrue->var);
-                    } 
-                } else {
-                    /* dl->guard->guard_type == JDF_GUARD_TERNARY */
-                    if( dl->guard->calltrue->var != NULL ) {
-                        coutput("static const dague_flow_t flow_of_%s_%s_for_%s;\n", 
-                                jdf_basename, dl->guard->calltrue->func_or_mem, dl->guard->calltrue->var);
-                    } 
-                    if( dl->guard->callfalse->var != NULL ) {
-                        coutput("static const dague_flow_t flow_of_%s_%s_for_%s;\n", 
-                                jdf_basename, dl->guard->callfalse->func_or_mem, dl->guard->callfalse->var);
-                    }
-                }
-            }
+
+            coutput("static const dague_flow_t flow_of_%s_%s_for_%s;\n", 
+                    jdf_basename, f->fname, fl->varname);
         }
     }
 }
@@ -2093,7 +2124,7 @@ static void jdf_generate_destructor( const jdf_t *jdf )
     coutput("void dague_%s_destroy( dague_%s_object_t *o )\n"
             "{\n"
             "  dague_object_t *d = (dague_object_t *)o;\n"
-            "  __dague_%s_internal_object_t *io = (__dague_%s_internal_object_t*)o;\n"
+            "  __dague_%s_internal_object_t *__dague_object = (__dague_%s_internal_object_t*)o; (void)__dague_object;\n"
             "  int i;\n",
             jdf_basename, jdf_basename,
             jdf_basename,
@@ -2113,11 +2144,16 @@ static void jdf_generate_destructor( const jdf_t *jdf )
                 jdf_basename, g->name);
     }
 
-    coutput("  /* Destroy the data repositories for this object */\n"
-            "%s",
-            UTIL_DUMP_LIST_FIELD( sa, jdf->functions, next, fname,
-                                  dump_string, NULL, "", "   data_repo_destroy_nothreadsafe(io->", 
-                                  "_repository);\n", "_repository);\n"));
+    coutput("  /* Destroy the data repositories for this object */\n");
+    {
+        jdf_function_entry_t* f;
+
+        for( f = jdf->functions; NULL != f; f = f->next ) {
+            if( 0 != function_has_data_output(f) )
+                coutput("   data_repo_destroy_nothreadsafe(__dague_object->%s_repository);\n",
+                        f->fname);
+        }
+    }
 
     coutput("  for(i = 0; i < DAGUE_%s_NB_FUNCTIONS; i++)\n"
             "    dague_destruct_dependencies( d->dependencies_array[i] );\n"
@@ -2399,12 +2435,11 @@ static void jdf_generate_code_flow_initialization(const jdf_t *jdf,
     char* condition[] = {"  if( %s ) {\n", "  else if( %s ) {\n"};
 
     if( JDF_VAR_TYPE_CTL == flow->access_type ) {
-        coutput("  exec_context->data[%u].data = NULL;\n"
-                "  exec_context->data[%u].data_repo = NULL;\n", flow_index, flow_index);
+        coutput("    /* this_task->data[%u] is a control flow */\n", flow_index);
         return;
     }
-    coutput( "  e%s = exec_context->data[%u].data_repo;\n"
-             "  g%s = exec_context->data[%u].data;\n"
+    coutput( "  e%s = this_task->data[%u].data_repo;\n"
+             "  g%s = this_task->data[%u].data;\n"
              "  if( NULL == g%s ) {\n",
              flow->varname, flow_index,
              flow->varname, flow_index,
@@ -2412,7 +2447,7 @@ static void jdf_generate_code_flow_initialization(const jdf_t *jdf,
     sa = string_arena_new(64);
     info.sa = sa;
     info.prefix = "";
-    info.assignments = "exec_context->locals";
+    info.assignments = "  this_task->locals";
 
     for(dl = flow->deps; dl != NULL; dl = dl->next) {
         if( dl->type == JDF_DEP_TYPE_OUT )
@@ -2445,8 +2480,8 @@ static void jdf_generate_code_flow_initialization(const jdf_t *jdf,
     }
 
  done_with_input:
-    coutput("    exec_context->data[%u].data = g%s;\n"
-            "    exec_context->data[%u].data_repo = e%s;\n"
+    coutput("    this_task->data[%u].data = g%s;\n"
+            "    this_task->data[%u].data_repo = e%s;\n"
             "  }\n"
             "  %s = ADATA(g%s);\n",
             flow_index, flow->varname,
@@ -2474,8 +2509,8 @@ static void jdf_generate_code_call_final_write(const jdf_t *jdf, const jdf_call_
     if( call->var == NULL ) {
         UTIL_DUMP_LIST(sa, call->parameters, next,
                        dump_expr, (void**)&info, "", "", ", ", "");
-        coutput("%s  if( ADATA(exec_context->data[%d].data) != %s(%s) ) {\n"
-                "%s    dague_remote_dep_memcpy( context, exec_context->dague_object, %s(%s), exec_context->data[%d].data, \n"
+        coutput("%s  if( ADATA(this_task->data[%d].data) != %s(%s) ) {\n"
+                "%s    dague_remote_dep_memcpy( context, this_task->dague_object, %s(%s), this_task->data[%d].data, \n"
                 "%s                             __dague_object->super.arenas[DAGUE_%s_%s_ARENA]->opaque_dtt );\n"
                 "%s  }\n",                
                 spaces, dataflow_index, call->func_or_mem, string_arena_get_string(sa),
@@ -2582,12 +2617,12 @@ static void jdf_generate_code_papi_events_after(const jdf_t *jdf, const jdf_func
 	    "#endif\n");
 }
 
-static void jdf_generate_code_grapher_task_done(const jdf_t *jdf, const jdf_function_entry_t *f)
+static void jdf_generate_code_grapher_task_done(const jdf_t *jdf, const jdf_function_entry_t *f, const char* context_name)
 {
     (void)jdf;
 
-    coutput("  dague_prof_grapher_task(exec_context, context->eu_id, %s_hash(__dague_object, exec_context->locals));\n",
-            f->fname);
+    coutput("  dague_prof_grapher_task(%s, context->eu_id, %s_hash(__dague_object, %s->locals));\n",
+            context_name, f->fname, context_name);
 }
 
 static void jdf_generate_code_cache_awareness_update(const jdf_t *jdf, const jdf_function_entry_t *f)
@@ -2609,19 +2644,19 @@ static void jdf_generate_code_cache_awareness_update(const jdf_t *jdf, const jdf
     string_arena_free(sa);
 }
 
-static void jdf_generate_code_call_release_dependencies(const jdf_t *jdf, const jdf_function_entry_t *function)
+static void jdf_generate_code_call_release_dependencies(const jdf_t *jdf,
+                                                        const jdf_function_entry_t *function,
+                                                        const char* context_name)
 {
     (void)jdf;
 
-    coutput("  {\n"
-            "    release_deps_of_%s_%s(context, exec_context,\n"
-            "        DAGUE_ACTION_RELEASE_REMOTE_DEPS |\n"
-            "        DAGUE_ACTION_RELEASE_LOCAL_DEPS |\n"
-            "        DAGUE_ACTION_RELEASE_LOCAL_REFS |\n"
-            "        DAGUE_ACTION_DEPS_MASK,\n"
-            "        NULL);\n"
-            "  }\n",
-            jdf_basename, function->fname);
+    coutput("  release_deps_of_%s_%s(context, %s,\n"
+            "      DAGUE_ACTION_RELEASE_REMOTE_DEPS |\n"
+            "      DAGUE_ACTION_RELEASE_LOCAL_DEPS |\n"
+            "      DAGUE_ACTION_RELEASE_LOCAL_REFS |\n"
+            "      DAGUE_ACTION_DEPS_MASK,\n"
+            "      NULL);\n",
+            jdf_basename, function->fname, context_name);
 }
 
 static int jdf_property_get_int( const jdf_def_list_t* properties, const char* prop_name, int ret_if_not_found )
@@ -2653,50 +2688,54 @@ static void jdf_generate_code_hook(const jdf_t *jdf, const jdf_function_entry_t 
     sa2 = string_arena_new(64);
     ai.sa = sa2;
     ai.idx = 0;
-    ai.holder = "exec_context->locals";
+    ai.holder = "this_task->locals";
     ai.expr = NULL;
-    coutput("static int %s(dague_execution_unit_t *context, dague_execution_context_t *exec_context)\n"
+    coutput("static int %s(dague_execution_unit_t *context, dague_execution_context_t *this_task)\n"
             "{\n"
-            "  const __dague_%s_internal_object_t *__dague_object = (__dague_%s_internal_object_t *)exec_context->dague_object;\n"
+            "  const __dague_%s_internal_object_t *__dague_object = (__dague_%s_internal_object_t *)this_task->dague_object;\n"
             "  assignment_t tass[MAX_PARAM_COUNT];\n"
             "  (void)context; (void)__dague_object; (void)tass;\n"
             "#if defined(DAGUE_SIM)\n"
             "  int __dague_simulation_date = 0;\n"
             "#endif\n"
-            "%s\n",
+            "%s",
             name, jdf_basename, jdf_basename,
             UTIL_DUMP_LIST_FIELD(sa, f->definitions, next, name, 
                                  dump_assignments, &ai, "", "  int ", ";\n", ";\n"));
     coutput("%s\n",
             UTIL_DUMP_LIST_FIELD(sa, f->definitions, next, name,
                                  dump_string, NULL, "", "  (void)", ";", ";\n"));
-    coutput("  /** Declare the variables that will hold the data, and all the accounting for each */\n"
-            "%s\n",
-            UTIL_DUMP_LIST(sa, f->dataflow, next,
-                           dump_data_declaration, sa2, "", "", "", ""));
+    {
+        char* output = UTIL_DUMP_LIST(sa, f->dataflow, next,
+                                      dump_data_declaration, sa2, "", "", "", "");
+        if( 0 != strlen(output) )
+            coutput("  /** Declare the variables that will hold the data, and all the accounting for each */\n"
+                    "%s\n",
+                    output);
+    }
 
-    coutput("  /** Lookup the input data, and store them in the context */\n");
+    coutput("  /** Lookup the input data, and store them in the context if any */\n");
     for( di = 0, fl = f->dataflow; fl != NULL; fl = fl->next, di++ ) {
 
-        jdf_generate_code_flow_initialization(jdf, f->fname, fl, di);
+        if(fl->access_type == JDF_VAR_TYPE_CTL) continue;  /* control flow, nothing to store */
 
-        if(fl->access_type != JDF_VAR_TYPE_CTL) 
-            coutput("#if defined(DAGUE_SIM)\n"
-                    "  if( (NULL != e%s) && (e%s->sim_exec_date > __dague_simulation_date) )\n"
-                    "    __dague_simulation_date =  e%s->sim_exec_date;\n"
-                    "#endif\n",
-                    fl->varname,
-                    fl->varname,
-                    fl->varname);
+        jdf_generate_code_flow_initialization(jdf, f->fname, fl, di);
+        coutput("#if defined(DAGUE_SIM)\n"
+                "  if( (NULL != e%s) && (e%s->sim_exec_date > __dague_simulation_date) )\n"
+                "    __dague_simulation_date =  e%s->sim_exec_date;\n"
+                "#endif\n",
+                fl->varname,
+                fl->varname,
+                fl->varname);
     }
     coutput("#if defined(DAGUE_SIM)\n"
-            "  if( exec_context->function->sim_cost_fct != NULL ) {\n"
-            "    exec_context->sim_exec_date = __dague_simulation_date + exec_context->function->sim_cost_fct(exec_context);\n"
+            "  if( this_task->function->sim_cost_fct != NULL ) {\n"
+            "    this_task->sim_exec_date = __dague_simulation_date + this_task->function->sim_cost_fct(this_task);\n"
             "  } else {\n"
-            "    exec_context->sim_exec_date = __dague_simulation_date;\n"
+            "    this_task->sim_exec_date = __dague_simulation_date;\n"
             "  }\n"
-            "  if( context->largest_simulation_date < exec_context->sim_exec_date )\n"
-            "    context->largest_simulation_date = exec_context->sim_exec_date;\n"
+            "  if( context->largest_simulation_date < this_task->sim_exec_date )\n"
+            "    context->largest_simulation_date = this_task->sim_exec_date;\n"
             "#endif\n");
 
     jdf_generate_code_papi_events_before(jdf, f);
@@ -2708,9 +2747,9 @@ static void jdf_generate_code_hook(const jdf_t *jdf, const jdf_function_entry_t 
         sa3 = string_arena_new(64);
         linfo.prefix = "";
         linfo.sa = sa2;
-        linfo.assignments = "exec_context->locals";
+        linfo.assignments = "this_task->locals";
 
-        coutput("  TAKE_TIME(context, 2*exec_context->function->function_id, %s_hash( __dague_object, exec_context->locals), __dague_object->super.%s, ((dague_ddesc_t*)(__dague_object->super.%s))->data_key((dague_ddesc_t*)__dague_object->super.%s, %s) );\n",
+        coutput("  TAKE_TIME(context, 2*this_task->function->function_id, %s_hash( __dague_object, this_task->locals), __dague_object->super.%s, ((dague_ddesc_t*)(__dague_object->super.%s))->data_key((dague_ddesc_t*)__dague_object->super.%s, %s) );\n",
                 f->fname,
                 f->predicate->func_or_mem, f->predicate->func_or_mem, f->predicate->func_or_mem,
                 UTIL_DUMP_LIST(sa3, f->predicate->parameters, next,
@@ -2728,11 +2767,11 @@ static void jdf_generate_code_hook(const jdf_t *jdf, const jdf_function_entry_t 
     ai.idx = 0;
     coutput("  return 0;\n"
             "}\n"
-            "static int complete_%s(dague_execution_unit_t *context, dague_execution_context_t *exec_context)\n"
+            "static int complete_%s(dague_execution_unit_t *context, dague_execution_context_t *this_task)\n"
             "{\n"
-            "  const __dague_%s_internal_object_t *__dague_object = (__dague_%s_internal_object_t *)exec_context->dague_object;\n"
+            "  const __dague_%s_internal_object_t *__dague_object = (__dague_%s_internal_object_t *)this_task->dague_object;\n"
             "  (void)context; (void)__dague_object;\n"
-            "%s\n",
+            "%s",
             name, jdf_basename, jdf_basename,
             UTIL_DUMP_LIST_FIELD(sa, f->definitions, next, name, 
                                  dump_assignments, &ai, "", "  int ", ";\n", ";\n"));
@@ -2742,7 +2781,7 @@ static void jdf_generate_code_hook(const jdf_t *jdf, const jdf_function_entry_t 
                                  dump_string, NULL, "", "  (void)", ";", ";\n"));
 
     if( profile_on ) {
-        coutput("  TAKE_TIME(context,2*exec_context->function->function_id+1, %s_hash( __dague_object, exec_context->locals ), NULL, 0);\n",
+        coutput("  TAKE_TIME(context,2*this_task->function->function_id+1, %s_hash( __dague_object, this_task->locals ), NULL, 0);\n",
                 f->fname);
     }
     jdf_generate_code_papi_events_after(jdf, f);
@@ -2754,9 +2793,9 @@ static void jdf_generate_code_hook(const jdf_t *jdf, const jdf_function_entry_t 
     }
     coutput("#endif /* DISTRIBUTED */\n");
 
-    jdf_generate_code_grapher_task_done(jdf, f);
+    jdf_generate_code_grapher_task_done(jdf, f, "this_task");
 
-    jdf_generate_code_call_release_dependencies(jdf, f);
+    jdf_generate_code_call_release_dependencies(jdf, f, "this_task");
 
     coutput("  return 0;\n"
             "}\n\n");
@@ -2863,6 +2902,8 @@ static void jdf_generate_code_free_hash_table_entry(const jdf_t *jdf, const jdf_
 
 static void jdf_generate_code_release_deps(const jdf_t *jdf, const jdf_function_entry_t *f, const char *name)
 {
+    int has_output_data = function_has_data_output(f);
+
     coutput("static int %s(dague_execution_unit_t *eu, dague_execution_context_t *context, uint32_t action_mask, dague_remote_deps_t *deps)\n"
             "{\n"
             "  const __dague_%s_internal_object_t *__dague_object = (const __dague_%s_internal_object_t *)context->dague_object;\n"
@@ -2875,16 +2916,19 @@ static void jdf_generate_code_release_deps(const jdf_t *jdf, const jdf_function_
             "  (void)__dague_object;\n",
             name, jdf_basename, jdf_basename);
 
-    coutput("  if( action_mask & DAGUE_ACTION_RELEASE_LOCAL_DEPS ) {\n"
-            "    arg.output_entry = data_repo_lookup_entry_and_create( eu, %s_repo, %s_hash(__dague_object, context->locals) );\n"
-            "  }\n",
-            f->fname, f->fname);
+    if( 0 != has_output_data )
+        coutput("  if( action_mask & DAGUE_ACTION_RELEASE_LOCAL_DEPS ) {\n"
+                "    arg.output_entry = data_repo_lookup_entry_and_create( eu, %s_repo, %s_hash(__dague_object, context->locals) );\n"
+                "#if defined(DAGUE_SIM)\n"
+                "    assert(arg.output_entry->sim_exec_date == 0);\n"
+                "    arg.output_entry->sim_exec_date = context->sim_exec_date;\n"
+                "#endif\n"
+                "  }\n",
+                f->fname, f->fname);
+    else
+        coutput("  arg.output_entry = NULL;\n");
 
-    coutput("#if defined(DAGUE_SIM)\n"
-            "  assert(arg.output_entry->sim_exec_date == 0);\n"
-            "  arg.output_entry->sim_exec_date = context->sim_exec_date;\n"
-            "#endif\n"
-            "#if defined(DISTRIBUTED)\n"
+    coutput("#if defined(DISTRIBUTED)\n"
             "  arg.remote_deps_count = 0;\n"
             "  arg.remote_deps = NULL;\n"
             "#endif\n"
@@ -2892,9 +2936,12 @@ static void jdf_generate_code_release_deps(const jdf_t *jdf, const jdf_function_
             "\n",
             jdf_basename, f->fname);
 
-    coutput("  if(action_mask & DAGUE_ACTION_RELEASE_LOCAL_DEPS) {\n"
-            "    data_repo_entry_addto_usage_limit(%s_repo, arg.output_entry->key, arg.output_usage);\n"
-            "    if( NULL != arg.ready_list ) {\n"
+    coutput("  if(action_mask & DAGUE_ACTION_RELEASE_LOCAL_DEPS) {\n");
+    if( 0 != has_output_data ) {
+        coutput("    data_repo_entry_addto_usage_limit(%s_repo, arg.output_entry->key, arg.output_usage);\n",
+                f->fname);
+    }
+    coutput("    if( NULL != arg.ready_list ) {\n"
             "      __dague_schedule(eu, arg.ready_list);\n"
             "      arg.ready_list = NULL;\n"
             "    }\n"
@@ -2903,11 +2950,10 @@ static void jdf_generate_code_release_deps(const jdf_t *jdf, const jdf_function_
             "  if( (action_mask & DAGUE_ACTION_SEND_REMOTE_DEPS) && arg.remote_deps_count ) {\n"
             "    arg.nb_released += dague_remote_dep_activate(eu, context, arg.remote_deps, arg.remote_deps_count);\n"
             "  }\n"
-            "#endif\n",
-            f->fname);
+            "#endif\n");
 
-
-    jdf_generate_code_free_hash_table_entry(jdf, f);
+    if( 0 != has_output_data )
+        jdf_generate_code_free_hash_table_entry(jdf, f);
 
     coutput("  assert( NULL == arg.ready_list );\n"
             "  return arg.nb_released;\n"
@@ -3057,7 +3103,7 @@ static char *jdf_dump_context_assignment(string_arena_t *sa_open,
                             "%s%sif( NULL != eu ) {\n"
                             "%s%s  char tmp[128], tmp1[128];\n"
                             "%s%s  DEBUG((\"thread %%d release deps of %s:%%s to %s:%%s (from node %%d to %%d)\\n\", eu->eu_id,\n"
-                            "%s%s         dague_service_to_string(exec_context, tmp, 128),\n"
+                            "%s%s         dague_service_to_string(this_task, tmp, 128),\n"
                             "%s%s         dague_service_to_string(&%s, tmp1, 128), rank_src, rank_dst));\n"
                             "%s%s}\n"
                             "#endif\n",
@@ -3074,7 +3120,7 @@ static char *jdf_dump_context_assignment(string_arena_t *sa_open,
 
     if( NULL != targetf->priority ) {
         string_arena_add_string(sa_open,
-                                "%s%s  %s.priority = priority_of_%s_%s_as_expr_fct(exec_context->dague_object, nc.locals);\n",
+                                "%s%s  %s.priority = priority_of_%s_%s_as_expr_fct(this_task->dague_object, nc.locals);\n",
                                 prefix, indent(nbopen), var, jdf_basename, targetf->fname);
     } else {
         string_arena_add_string(sa_open, "%s%s  %s.priority = 0;\n",
@@ -3117,17 +3163,17 @@ static void jdf_generate_code_iterate_successors(const jdf_t *jdf, const jdf_fun
 
     info.sa = sa2;
     info.prefix = "";
-    info.assignments = "exec_context->locals";
+    info.assignments = "this_task->locals";
 
     ai.sa = sa2;
     ai.idx = 0;
-    ai.holder = "exec_context->locals";
+    ai.holder = "this_task->locals";
     ai.expr = NULL;
     coutput("static void\n"
-            "%s(dague_execution_unit_t *eu, dague_execution_context_t *exec_context,\n"
+            "%s(dague_execution_unit_t *eu, dague_execution_context_t *this_task,\n"
             "               uint32_t action_mask, dague_ontask_function_t *ontask, void *ontask_arg)\n"
             "{\n"
-            "  const __dague_%s_internal_object_t *__dague_object = (const __dague_%s_internal_object_t*)exec_context->dague_object;\n"
+            "  const __dague_%s_internal_object_t *__dague_object = (const __dague_%s_internal_object_t*)this_task->dague_object;\n"
             "  dague_execution_context_t nc;\n"
             "  dague_arena_t* arena = NULL;\n"
             "  int rank_src = 0, rank_dst = 0;\n"
@@ -3141,7 +3187,7 @@ static void jdf_generate_code_iterate_successors(const jdf_t *jdf, const jdf_fun
             UTIL_DUMP_LIST_FIELD(sa1, f->definitions, next, name,
                                  dump_string, NULL, "", "  (void)", ";", ";\n"));
 
-    coutput("  nc.dague_object = exec_context->dague_object;\n");
+    coutput("  nc.dague_object = this_task->dague_object;\n");
     coutput("#if defined(DISTRIBUTED)\n"
             "  rank_src = ((dague_ddesc_t*)__dague_object->super.%s)->rank_of((dague_ddesc_t*)__dague_object->super.%s, %s);\n"
             "#endif\n",
@@ -3170,7 +3216,7 @@ static void jdf_generate_code_iterate_successors(const jdf_t *jdf, const jdf_fun
                                         "    arena = %s;\n"
                                         "#endif  /* defined(DISTRIBUTED) */\n", string_arena_get_string(sa));
                 string_arena_init(sa);
-                string_arena_add_string(sa, "ontask(eu, &nc, exec_context, %d, %d, rank_src, rank_dst, arena, ontask_arg)",
+                string_arena_add_string(sa, "ontask(eu, &nc, this_task, %d, %d, rank_src, rank_dst, arena, ontask_arg)",
                                         flownb, depnb);
 
                 switch( dl->guard->guard_type ) {
@@ -3213,7 +3259,7 @@ static void jdf_generate_code_iterate_successors(const jdf_t *jdf, const jdf_fun
 
                         depnb++;
                         string_arena_init(sa);
-                        string_arena_add_string(sa, "ontask(eu, &nc, exec_context, %d, %d, rank_src, rank_dst, arena, ontask_arg)",
+                        string_arena_add_string(sa, "ontask(eu, &nc, this_task, %d, %d, rank_src, rank_dst, arena, ontask_arg)",
                                                 flownb, depnb);
 
                         if( NULL != dl->guard->callfalse->var ) {
@@ -3230,7 +3276,7 @@ static void jdf_generate_code_iterate_successors(const jdf_t *jdf, const jdf_fun
                     } else {
                         depnb++;
                         string_arena_init(sa);
-                        string_arena_add_string(sa, "ontask(eu, &nc, exec_context, %d, %d, rank_src, rank_dst, arena, ontask_arg)",
+                        string_arena_add_string(sa, "ontask(eu, &nc, this_task, %d, %d, rank_src, rank_dst, arena, ontask_arg)",
                                                 flownb, depnb);
 
                         if( NULL != dl->guard->callfalse->var ) {

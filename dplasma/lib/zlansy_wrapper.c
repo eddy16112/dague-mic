@@ -3,7 +3,7 @@
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
  *
- * @precisions normal z -> s d c
+ * @precisions normal z -> c
  *
  */
 #include "dague.h"
@@ -21,20 +21,20 @@
 #define max(a, b) ((a)>(b)?(a):(b))
 #endif
 
-struct lanhe_args_s {
+struct lansy_args_s {
   PLASMA_enum ntype;
   tiled_matrix_desc_t *desc;
 };
-typedef struct lanhe_args_s lanhe_args_t;
+typedef struct lansy_args_s lansy_args_t;
 
 static int
-dague_operator_zlanhe_max( struct dague_execution_unit *eu,
+dague_operator_zlansy_max( struct dague_execution_unit *eu,
                            const void* src,
                            void* dest,
                            void* op_data, ... )
 {
     va_list ap;
-    lanhe_args_t *args = (lanhe_args_t*)op_data;
+    lansy_args_t *args = (lansy_args_t*)op_data;
     PLASMA_enum uplo;
     int m, n;
     int tempmm, tempnn, ldam;
@@ -56,7 +56,7 @@ dague_operator_zlanhe_max( struct dague_execution_unit *eu,
       CORE_zlange( args->ntype, tempmm, tempnn,
 		   (PLASMA_Complex64_t*)src, ldam, NULL, (double*)dest );
     } else {
-      CORE_zlanhe( args->ntype, uplo, tempmm, 
+      CORE_zlansy( args->ntype, uplo, tempmm, 
 		   (PLASMA_Complex64_t*)src, ldam, NULL, (double*)dest );
     }    
     return 0;
@@ -67,7 +67,7 @@ dague_operator_zlanhe_max( struct dague_execution_unit *eu,
  *
  * @ingroup DPLASMA_Complex64_t
  *
- *  dplasma_zlanhe_New - Sets the elements of the matrix A on the diagonal
+ *  dplasma_zlansy_New - Sets the elements of the matrix A on the diagonal
  *  to beta and on the off-diagonals to alpha
  *
  *******************************************************************************
@@ -84,17 +84,17 @@ dague_operator_zlanhe_max( struct dague_execution_unit *eu,
  *
  **/
 #if 0
-dague_object_t* dplasma_zlanhe_New( PLASMA_enum ntype,
+dague_object_t* dplasma_zlansy_New( PLASMA_enum ntype,
                                     tiled_matrix_desc_t *A,
                                     double *result )
 {
-    dague_zlanhe_object_t* object;
-    lanhe_args_t args;
+    dague_zlansy_object_t* object;
+    lansy_args_t args;
     return (dague_object_t*)object;
 }
 #endif
 
-double dplasma_zlanhe( dague_context_t *dague, 
+double dplasma_zlansy( dague_context_t *dague, 
 		       PLASMA_enum ntype,
 		       PLASMA_enum uplo,
 		       tiled_matrix_desc_t *A) 
@@ -105,13 +105,13 @@ double dplasma_zlanhe( dague_context_t *dague,
     dague_operator_t op;
     double *work = NULL;
     two_dim_block_cyclic_t workD, workS;
-    lanhe_args_t args;
+    lansy_args_t args;
     double result = -1.0;
 
     switch( ntype ) {
     case PlasmaFrobeniusNorm:
     case PlasmaInfNorm:
-      fprintf(stderr, "zlanhe: Only PlasmaMaxNorm is supported\n");
+      fprintf(stderr, "zlansy: Only PlasmaMaxNorm is supported\n");
 
     case PlasmaMaxNorm:
         PASTE_CODE_INIT_AND_ALLOCATE_MATRIX(
@@ -121,7 +121,7 @@ double dplasma_zlanhe( dague_context_t *dague,
              ((two_dim_block_cyclic_t*)A)->grid.strows, ((two_dim_block_cyclic_t*)A)->grid.stcols, 
              ((two_dim_block_cyclic_t*)A)->grid.rows));
 
-        op = dague_operator_zlanhe_max;
+        op = dague_operator_zlansy_max;
         break;
 
     /* case PlasmaOneNorm: */
@@ -130,7 +130,7 @@ double dplasma_zlanhe( dague_context_t *dague,
     /*                               ((two_dim_block_cyclic_t*)A)->grid.strows, ((two_dim_block_cyclic_t*)A)->grid.stcols,  */
     /*                               ((two_dim_block_cyclic_t*)A)->grid.rows); */
 
-    /*     op = dague_operator_zlanhe_one; */
+    /*     op = dague_operator_zlansy_one; */
     /*     work = (double *)malloc( max(A->n, A->mt) * sizeof(double) );  */
     /*     break; */
 
@@ -140,7 +140,7 @@ double dplasma_zlanhe( dague_context_t *dague,
     /*                               ((two_dim_block_cyclic_t*)A)->grid.strows, ((two_dim_block_cyclic_t*)A)->grid.stcols,  */
     /*                               ((two_dim_block_cyclic_t*)A)->grid.rows); */
 
-    /*     op = dague_operator_zlanhe_inf; */
+    /*     op = dague_operator_zlansy_inf; */
     /*     work = (double *)malloc( max(A->nt, A->m) * sizeof(double) );  */
     /*     break; */
     default:
@@ -187,9 +187,9 @@ double dplasma_zlanhe( dague_context_t *dague,
 
 #if 0
 void
-dplasma_zlanhe_Destruct( dague_object_t *o )
+dplasma_zlansy_Destruct( dague_object_t *o )
 {
-    dague_zlanhe_object_t *dague_zlanhe = (dague_zlanhe_object_t *)o;
-    dague_zlanhe_destroy(dague_zlanhe);
+    dague_zlansy_object_t *dague_zlansy = (dague_zlansy_object_t *)o;
+    dague_zlansy_destroy(dague_zlansy);
 }
 #endif

@@ -60,6 +60,7 @@ enum iparam_t {
   IPARAM_QR_TS_SZE,    /* Size of TS domain                     (specific to xgeqrf_param) */
   IPARAM_QR_HLVL_SZE,  /* Size of the high level tree           (specific to xgeqrf_param) */
   IPARAM_QR_DOMINO,    /* Enable/disable the domino between the upper and the lower tree (specific to xgeqrf_param) */
+  IPARAM_QR_TSRR,      /* Enable/disable the round-robin on TS domain */
   IPARAM_DOT,          /* Do we require to output the DOT file? */
   IPARAM_SIZEOF
 };
@@ -160,14 +161,14 @@ static inline int min(int a, int b) { return a < b ? a : b; }
     dague_object_t* DAGUE_##KERNEL = dplasma_##KERNEL##_New PARAMS;     \
     dague_enqueue(DAGUE, DAGUE_##KERNEL);                               \
     nb_local_tasks = DAGUE_##KERNEL->nb_local_tasks;                    \
-    if(loud) SYNC_TIME_PRINT(rank, ( #KERNEL " DAG creation: %u local tasks enqueued\n", nb_local_tasks));
+    if(loud) SYNC_TIME_PRINT(rank, ( #KERNEL " DAG creation: %d local tasks enqueued\n", nb_local_tasks));
 
 
 #define PASTE_CODE_PROGRESS_KERNEL(DAGUE, KERNEL)                       \
     SYNC_TIME_START();                                                  \
     TIME_START();                                                       \
     dague_progress(DAGUE);                                              \
-    if(loud) TIME_PRINT(rank, (#KERNEL " computed %u tasks,\trate %f task/s\n", \
+    if(loud) TIME_PRINT(rank, (#KERNEL " computed %d tasks,\trate %f task/s\n", \
                                nb_local_tasks,                          \
                                nb_local_tasks/time_elapsed));           \
     SYNC_TIME_PRINT(rank, (#KERNEL " computation N= %d NB= %d : %f gflops\n", N, NB, \

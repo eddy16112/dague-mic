@@ -507,7 +507,7 @@ dague_check_IN_dependencies( const dague_object_t *dague_object,
                              const dague_execution_context_t* exec_context )
 {
     const dague_function_t* function = exec_context->function;
-    int i, j, value, active;
+    int i, j, mask, active;
     const dague_flow_t* flow;
     const dep_t* dep;
     dague_dependency_t ret = 0;
@@ -520,32 +520,41 @@ dague_check_IN_dependencies( const dague_object_t *dague_object,
         flow = function->in[i];
         /* this param has no dependency condition satisfied */
 #if defined(DAGUE_SCHED_DEPS_MASK)
-        active = (1 << flow->flow_index);
+        mask = (1 << flow->flow_index);
 #else
-        active = 1;
+        mask = 1;
 #endif
-        for( j = 0; (j < MAX_DEP_IN_COUNT) && (NULL != flow->dep_in[j]); j++ ) {
-            dep = flow->dep_in[j];
-            if( NULL != dep->cond ) {
-                /* Check if the condition apply on the current setting */
-                assert( dep->cond->op == EXPR_OP_INLINE );
-                value = dep->cond->inline_func(dague_object, exec_context->locals);
-                if( 0 == value ) {
-                    continue;
+        if( ACCESS_NONE == flow->access_type ) {
+            active = mask;
+            for( j = 0; (j < MAX_DEP_IN_COUNT) && (NULL != flow->dep_in[j]); j++ ) {
+                dep = flow->dep_in[j];
+                if( NULL != dep->cond ) {
+                    /* Check if the condition apply on the current setting */
+                    assert( dep->cond->op == EXPR_OP_INLINE );
+                    if( 0 == dep->cond->inline_func(dague_object, exec_context->locals) ) {
+                        continue;
+                    }
+                }
+                active = 0;
+                break;
+            }
+        } else {
+            active = 0;
+            for( j = 0; (j < MAX_DEP_IN_COUNT) && (NULL != flow->dep_in[j]); j++ ) {
+                dep = flow->dep_in[j];
+                if( dep->dague->nb_parameters == 0 ) {  /* this is only true for memory locations */
+                    if( NULL != dep->cond ) {
+                        /* Check if the condition apply on the current setting */
+                        assert( dep->cond->op == EXPR_OP_INLINE );
+                        if( 0 == dep->cond->inline_func(dague_object, exec_context->locals) ) {
+                            continue;
+                        }
+                    }
+                    active = mask;
+                    break;
                 }
             }
-            if( dep->dague->nb_parameters == 0 ) {  /* this is only true for memory locations */
-                goto dep_resolved;
-            }
-            if( ACCESS_NONE == flow->access_type ) {
-                active = 0;
-                goto dep_resolved;
-            }
         }
-        if( ACCESS_NONE != flow->access_type ) {
-            active = 0;
-        }
-    dep_resolved:
         ret += active;
     }
     return ret;
@@ -628,10 +637,10 @@ int dague_release_local_OUT_dependencies( dague_object_t *dague_object,
                *deps,
                dague_service_to_string(exec_context, tmp2, 128),  dest_flow->name ));
     }
-    assert( 0 == (*deps & (1 << dest_flow->flow_index)) );
 #   else
     (void) origin; (void) origin_flow;
 #   endif 
+    assert( 0 == (*deps & (1 << dest_flow->flow_index)) );
 
     dep_new_value = DAGUE_DEPENDENCIES_IN_DONE | (1 << dest_flow->flow_index);
     /* Mark the dependencies and check if this particular instance can be executed */
@@ -680,10 +689,17 @@ int dague_release_local_OUT_dependencies( dague_object_t *dague_object,
             dague_execution_context_t* new_context;
             dague_thread_mempool_t *mpool;
             new_context = (dague_execution_context_t*)dague_thread_mempool_allocate( eu_context->context_mempool );
-            mpool = new_context->mempool_owner;  /* this should not be copied over from the old execution context */
-            DAGUE_STAT_INCREASE(mem_contexts, sizeof(dague_execution_context_t) + STAT_MALLOC_OVERHEAD);
-            memcpy( new_context, exec_context, sizeof(dague_minimal_execution_context_t) );
+            /* this should not be copied over from the old execution context */
+            mpool = new_context->mempool_owner;
+            /* we copy everything but the dague_list_item_t at the beginning, to
+             * avoid copying uninitialized stuff from the stack
+             */
+            assert( (uintptr_t)new_context == (uintptr_t)&new_context->list_item );
+            memcpy( ((char*)new_context) + sizeof(dague_list_item_t), 
+                    ((char*)exec_context) + sizeof(dague_list_item_t), 
+                    sizeof(dague_minimal_execution_context_t) - sizeof(dague_list_item_t) );
             new_context->mempool_owner = mpool;
+            DAGUE_STAT_INCREASE(mem_contexts, sizeof(dague_execution_context_t) + STAT_MALLOC_OVERHEAD);
 
             DEBUG(("%s becomes schedulable from %s with mask 0x%04x on thread %d\n", 
                    dague_service_to_string(exec_context, tmp, 128),
@@ -791,9 +807,11 @@ dague_ontask_iterate_t dague_release_dep_fct(dague_execution_unit_t *eu,
 
     if( (arg->action_mask & DAGUE_ACTION_RELEASE_LOCAL_DEPS) &&
         (eu->master_context->my_rank == dst_rank) ) {
-        arg->output_entry->data[out_index] = oldcontext->data[target->flow_index].data;
-        arg->output_usage++;
-        AREF( arg->output_entry->data[out_index] );
+        if( (NULL != arg->output_entry) && (NULL != oldcontext->data[target->flow_index].data) ) {
+            arg->output_entry->data[out_index] = oldcontext->data[target->flow_index].data;
+            arg->output_usage++;
+            AREF( arg->output_entry->data[out_index] );
+        }
         arg->nb_released += dague_release_local_OUT_dependencies(oldcontext->dague_object,
                                                                  eu, oldcontext,
                                                                  oldcontext->function->out[out_index],
@@ -842,8 +860,6 @@ int dague_set_complete_callback( dague_object_t* dague_object,
     }
     return -1;
 }
-    dague_completion_cb_t      complete_cb;
-    void*                      complete_cb_data;
 
 /**
  *

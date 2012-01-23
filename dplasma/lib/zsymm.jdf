@@ -6,7 +6,7 @@ extern "C" %{
  *  of Tennessee Research Foundation.  All rights
  *  reserved.
  *
- * @precisions normal z -> s d c
+ * @precisions normal z -> c
  *
  */
 #define PRECISION_z
@@ -42,7 +42,7 @@ plasma_lower   [type="PLASMA_enum" hidden=on default=PlasmaLower ]
 plasma_left    [type="PLASMA_enum" hidden=on default=PlasmaLeft  ]
 plasma_right   [type="PLASMA_enum" hidden=on default=PlasmaRight ]
 
-hemm_in_A(m, n)
+symm_in_A(m, n)
 // Execution space
 m = 0 .. descA.mt-1
 n = ((uplo == plasma_upper) ? m : 0) .. ((uplo == plasma_upper) ? descA.nt-1 : m)
@@ -51,15 +51,15 @@ c = ( (side == plasma_left) ? ((uplo == plasma_lower) ? 0 : 1 ) : ((uplo == plas
 : A(m, n)
 
   RW A <- A(m, n)
-       ->  (c == 0) || (c == 1)              ? A HEMM(m, 0..descC.nt-1, n)
-       -> ((c == 0) || (c == 1)) && (m != n) ? A HEMM(n, 0..descC.nt-1, m)
-       ->  (c == 2) || (c == 3)              ? B HEMM(0..descC.mt-1, n, m)
-       -> ((c == 2) || (c == 3)) && (m != n) ? B HEMM(0..descC.mt-1, m, n)
+       ->  (c == 0) || (c == 1)              ? A SYMM(m, 0..descC.nt-1, n)
+       -> ((c == 0) || (c == 1)) && (m != n) ? A SYMM(n, 0..descC.nt-1, m)
+       ->  (c == 2) || (c == 3)              ? B SYMM(0..descC.mt-1, n, m)
+       -> ((c == 2) || (c == 3)) && (m != n) ? B SYMM(0..descC.mt-1, m, n)
 BODY
 /* nothing */
 END
 
-hemm_in_B(m, n)
+symm_in_B(m, n)
 // Execution space
 m = 0 .. descB.mt-1
 n = 0 .. descB.nt-1
@@ -68,13 +68,13 @@ c = ( (side == plasma_left) ? ((uplo == plasma_lower) ? 0 : 1 ) : ((uplo == plas
 : B(m, n)
 
   RW B <- B(m, n)
-       -> (c == 0) || (c == 1) ? B HEMM(0..descB.mt-1, n, m)
-       -> (c == 2) || (c == 3) ? A HEMM(m, 0..descB.nt-1, n)
+       -> (c == 0) || (c == 1) ? B SYMM(0..descB.mt-1, n, m)
+       -> (c == 2) || (c == 3) ? A SYMM(m, 0..descB.nt-1, n)
 BODY
 /* nothing */
 END
 
-HEMM(m, n, k)
+SYMM(m, n, k)
 
 // Execution space
 m = 0 .. descC.mt-1
@@ -89,18 +89,18 @@ c = ( (side == plasma_left) ? ((uplo == plasma_lower) ? 0 : 1 ) : ((uplo == plas
 
 // Parameters
 
-READ  A <- (c == 0) && (k <= m) ? A hemm_in_A(m, k) 
-        <- (c == 0) && (k >  m) ? A hemm_in_A(k, m) 
-        <- (c == 1) && (k <= m) ? A hemm_in_A(k, m)
-        <- (c == 1) && (k >  m) ? A hemm_in_A(m, k) 
-        <- (c == 2) || (c == 3) ? B hemm_in_B(m, k) 
-READ  B <- (c == 2) && (k <= n) ? A hemm_in_A(n, k)
-        <- (c == 2) && (k <= n) ? A hemm_in_A(k, n) 
-        <- (c == 3) && (k <= n) ? A hemm_in_A(k, n)
-        <- (c == 3) && (k <= n) ? A hemm_in_A(n, k) 
-        <- (c == 0) || (c == 1) ? B hemm_in_B(k, n) 
-RW    C <- ( k == 0 ) ? C(m, n) : C HEMM( m, n, k-1 )
-        -> ( ( (side == plasma_left) && (k == descC.mt-1) ) || ( (side == plasma_right) && (k == descC.nt-1) ) ) ? C( m, n ) : C HEMM(m, n, k+1)
+READ  A <- (c == 0) && (k <= m) ? A symm_in_A(m, k) 
+        <- (c == 0) && (k >  m) ? A symm_in_A(k, m) 
+        <- (c == 1) && (k <= m) ? A symm_in_A(k, m)
+        <- (c == 1) && (k >  m) ? A symm_in_A(m, k) 
+        <- (c == 2) || (c == 3) ? B symm_in_B(m, k) 
+READ  B <- (c == 2) && (k <= n) ? A symm_in_A(n, k)
+        <- (c == 2) && (k <= n) ? A symm_in_A(k, n) 
+        <- (c == 3) && (k <= n) ? A symm_in_A(k, n)
+        <- (c == 3) && (k <= n) ? A symm_in_A(n, k) 
+        <- (c == 0) || (c == 1) ? B symm_in_B(k, n) 
+RW    C <- ( k == 0 ) ? C(m, n) : C SYMM( m, n, k-1 )
+        -> ( ( (side == plasma_left) && (k == descC.mt-1) ) || ( (side == plasma_right) && (k == descC.nt-1) ) ) ? C( m, n ) : C SYMM(m, n, k+1)
 BODY
 
     Dague_Complex64_t zbeta = (k == 0) ? beta : (Dague_Complex64_t)1.0;
@@ -113,7 +113,7 @@ BODY
             int ldam = BLKLDD( descA, m );
             int ldbk = BLKLDD( descB, k );
 
-            CORE_zhemm(
+            CORE_zsymm(
                 side, uplo,
                 tempmm, tempnn,
                 alpha, A, ldam,
@@ -124,15 +124,15 @@ BODY
             int ldak = BLKLDD( descA, k );
             int ldbm = BLKLDD( descB, m );
 
-            CORE_zhemm(
+            CORE_zsymm(
                 side, uplo,
                 tempmm, tempnn,
                 alpha, B, ldak,
                        A, ldbm,
                 zbeta, C, ldcm);
         } else {
-            PLASMA_enum transl = (c == 0 && k > m) || (c == 1 && k < m) ? PlasmaConjTrans : PlasmaNoTrans;
-            PLASMA_enum transr = (c == 3 && k > n) || (c == 2 && k < n) ? PlasmaConjTrans : PlasmaNoTrans;
+            PLASMA_enum transl = (c == 0 && k > m) || (c == 1 && k < m) ? PlasmaTrans : PlasmaNoTrans;
+            PLASMA_enum transr = (c == 3 && k > n) || (c == 2 && k < n) ? PlasmaTrans : PlasmaNoTrans;
             int tempk = (side == PlasmaLeft) ? (( k == descC.mt-1 ) ? descC.m - k * descC.mb : descC.mb)
                 :                              (( k == descC.nt-1 ) ? descC.n - k * descC.nb : descC.nb);
             
@@ -150,7 +150,7 @@ BODY
         }
         );
 
-    printlog("thread %d hemm( %d, %d, %d )\n",
+    printlog("thread %d symm( %d, %d, %d )\n",
              /* "    ( %s, %d, %d, A(%d,%d), %d, B(%d,%d), %d)\n", */
              context->eu_id, m, n, k);
              /* plasma_const(uplo), tempmm, tempnn,  */

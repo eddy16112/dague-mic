@@ -158,7 +158,9 @@ double dplasma_zlange( dague_context_t *dague,
 		       PLASMA_enum ntype,
 		       tiled_matrix_desc_t *A) 
 {
-    dague_map2_object_t *dague_zlange = NULL;
+#if defined(DAGUE_DRY_RUN) || defined(DAGUE_PROF_DRY_BODY) || defined(DAGUE_PROF_DRY_DEP)
+    return -1.0;
+#else
     dague_operator_t op;
     double *work = NULL;
     two_dim_block_cyclic_t workD, workS;
@@ -208,12 +210,7 @@ double dplasma_zlange( dague_context_t *dague,
     args.desc = A;
 
     /* First reduction by tile */
-    dague_zlange = dague_map2_new((dague_ddesc_t*)&workD, (dague_ddesc_t*)A, 
-				  PlasmaUpperLower, *A, workD.super, 
-				  op, (void *)&args);
-    dague_enqueue( dague, (dague_object_t*)dague_zlange);
-    dplasma_progress(dague);
-    dague_map2_destroy( dague_zlange );
+    dplasma_map2( dague, PlasmaUpperLower, A, (tiled_matrix_desc_t*)&workD, op, (void *)&args );
 
     /* Second one with on element (one double or one vector )  per tile */
     PASTE_CODE_INIT_AND_ALLOCATE_MATRIX(
@@ -242,6 +239,7 @@ double dplasma_zlange( dague_context_t *dague,
 #endif
 
     return result;
+#endif
 }
 
 #if 0

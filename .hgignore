@@ -28,8 +28,10 @@ dplasma/testing/TSQR/mpi_testing_tsqr
 dplasma/testing/TSQR/testing_tsqr
 tools/dague-compiler/daguepp
 tests/unit/atomics/lifo
-dplasma/testing/psgeqrf/psgeqrf
-dplasma/testing/psgeqrf/sgeqrf
+tools/gpu/sgemmN-api/sgemmN
+tools/gpu/sgemmN-api/sgemmN-.*\.cubin
+tools/cscalapack/t?sca[sdcz]ge[tq]rf
+tools/cscalapack/t?sca[sdcz]potrf
 tools/grapher
 tools/grapher\.dot
 tools/grapher\.png
@@ -53,6 +55,7 @@ data_dist/matrix/reduce_row\.h
 data_dist/matrix/[sdc]twoDBC\.c
 data_dist/matrix/[sdc]matrix\.c
 data_dist/sparse-matrix/[sdc]read\.c
+dplasma/cores/sgemm-sm.*\.cubin
 dplasma/cores/core_[sdc]trdv\.c
 dplasma/cores/dplasma_[sdc]cores\.h
 dplasma/include/dplasma_[sdc]\.h
@@ -82,6 +85,7 @@ dplasma/lib/[sdc]potrf_rl\.jdf
 dplasma/lib/[sdc]potrf_ll\.jdf
 dplasma/lib/[sdc]potrf_Url\.jdf
 dplasma/lib/[sdc]potrf_Lrl\.jdf
+dplasma/lib/[sdc]print\.jdf
 dplasma/lib/[sdc]getrf\.jdf
 dplasma/lib/[sdc]getrf_sd\.jdf
 dplasma/lib/[sdc]trsmpl\.jdf
@@ -97,7 +101,7 @@ dplasma/lib/[sdc]plrnt\.jdf
 dplasma/lib/[sdc]plghe\.jdf
 dplasma/lib/[sdc]plgsy\.jdf
 dplasma/lib/[sdc]lacpy\.jdf
-dplasma/lib/[sdc]axpy\.jdf
+dplasma/lib/[sdc]geadd\.jdf
 dplasma/lib/[sdc]geqrf_param\.jdf
 dplasma/lib/[sdc]ungqr_param\.jdf
 dplasma/lib/[sdc]orgqr_param\.jdf
@@ -129,6 +133,7 @@ dplasma/lib/[sdcz]potrf_rl\.[ch]
 dplasma/lib/[sdcz]potrf_ll\.[ch]
 dplasma/lib/[sdcz]potrf_Url\.[ch]
 dplasma/lib/[sdcz]potrf_Lrl\.[ch]
+dplasma/lib/[sdcz]print\.[ch]
 dplasma/lib/[sdcz]getrf\.[ch]
 dplasma/lib/[sdcz]getrf_sd\.[ch]
 dplasma/lib/[sdcz]trsmpl\.[ch]
@@ -144,7 +149,7 @@ dplasma/lib/[sdcz]plrnt\.[ch]
 dplasma/lib/[sdcz]plghe\.[ch]
 dplasma/lib/[sdcz]plgsy\.[ch]
 dplasma/lib/[sdcz]lacpy\.[ch]
-dplasma/lib/[sdcz]axpy\.[ch]
+dplasma/lib/[sdcz]geadd\.[ch]
 dplasma/lib/[sdcz]geqrf_param\.[ch]
 dplasma/lib/[sdcz]ungqr_param\.[ch]
 dplasma/lib/[sdcz]orgqr_param\.[ch]
@@ -156,7 +161,7 @@ dplasma/lib/[sdc]symm_wrapper.c
 dplasma/lib/[sdc]trsm_wrapper.c 
 dplasma/lib/[sdc]trmm_wrapper.c 
 dplasma/lib/[sdc]trsmpl_wrapper.c   
-dplasma/lib/[sdc]axpy_wrapper.c
+dplasma/lib/[sdc]geadd_wrapper.c
 dplasma/lib/[sdc]lacpy_wrapper.c
 dplasma/lib/[sdc]laset_wrapper.c
 dplasma/lib/[sdc]plrnt_wrapper.c
@@ -168,6 +173,7 @@ dplasma/lib/[sdc]lansy_wrapper.c
 dplasma/lib/[sdc]potrf_wrapper.c 
 dplasma/lib/[sdc]potrs_wrapper.c 
 dplasma/lib/[sdc]posv_wrapper.c 
+dplasma/lib/[sdc]print_wrapper.c 
 dplasma/lib/[sdc]getrf_wrapper.c 
 dplasma/lib/[sdc]getrs_wrapper.c 
 dplasma/lib/[sdc]gesv_wrapper.c 
@@ -211,7 +217,7 @@ dplasma/testing/testing_[cz]herbt
 dplasma/testing/testing_[c]herbt\.c
 dplasma/testing/testing_[sdcz]posv
 dplasma/testing/testing_[sdc]posv\.c
-dplasma/testing/testing_[sdcz]dpivgen
+dplasma/testing/testing_[sdcz]pivgen
 dplasma/testing/testing_[sdc]pivgen\.c
 dplasma/testing/testing_[sdcz]zlange
 dplasma/testing/testing_[sdc]lange\.c

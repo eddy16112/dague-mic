@@ -1,10 +1,16 @@
 extern "C" %{
-  /**
-   * PLASMA include for defined and constants.
-   *
-   * @precisions normal z -> s d c
-   *
-   */
+/*
+ *  Copyright (c) 2010      
+ * 
+ *  The University of Tennessee and The University
+ *  of Tennessee Research Foundation.  All rights
+ *  reserved.
+ *
+ * @precisions normal z -> s d c
+ *
+ */
+#define PRECISION_z
+
 #include <plasma.h>
 #include <core_blas.h>
 
@@ -13,7 +19,6 @@ extern "C" %{
 #include "data_dist/matrix/precision.h"
 #include "data_dist/matrix/matrix.h"
 
-#define PRECISION_z
 
 #include "dplasma/lib/dplasmajdf.h"
 #include "memory_pool.h"

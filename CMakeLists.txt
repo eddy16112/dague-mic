@@ -74,6 +74,9 @@ option(DAGUE_DEBUG_QR_PIVGEN
 ### Simulating Options
 option(DAGUE_SIM
   "Enable the computation of the critical path, through simulation" OFF)
+if( DAGUE_SIM AND DAGUE_DIST_WITH_MPI )
+  message(FATAL_ERROR "DAGUE_SIM cannot be enabled with DAGUE_DIST_WITH_MPI, please select only one")
+endif()
 
 ### Profiling options
 option(DAGUE_PROF_TRACE
@@ -400,7 +403,6 @@ set(SRCS
   src/stats.c 
   src/remote_dep.c 
   src/barrier.c 
-  src/freelist.c 
   src/debug.c 
   src/bindthread.c 
   src/mempool.c 
@@ -448,10 +450,12 @@ install(FILES "${PROJECT_INCLUDE_DIR}/dague.pc" DESTINATION include)
 
 # build a CPack driven installer package
 include (InstallRequiredSystemLibraries)
+set(CPACK_GENERATOR "TBZ2")
 set (CPACK_RESOURCE_FILE_LICENSE  
      "${CMAKE_CURRENT_SOURCE_DIR}/License.txt")
 set (CPACK_PACKAGE_VERSION_MAJOR "${DAGUE_VERSION_MAJOR}")
 set (CPACK_PACKAGE_VERSION_MINOR "${DAGUE_VERSION_MINOR}")
+set (CPACK_PACKAGE_VERSION_PATCH "gamma")
 include (CPack)
 
 
