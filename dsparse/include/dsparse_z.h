@@ -11,11 +11,16 @@
 /***********************************************************
  *               Blocking interface 
  */
-int dsparse_zcsc2cblk( dague_context_t *dague, sparse_matrix_desc_t *A);
-int dsparse_zpotrf_sp( dague_context_t *dague, sparse_matrix_desc_t *A);
-int dsparse_zgetrf_sp( dague_context_t *dague, sparse_matrix_desc_t *A);
-int dsparse_zhetrf_sp( dague_context_t *dague, sparse_matrix_desc_t *A);
-int dsparse_zsytrf_sp( dague_context_t *dague, sparse_matrix_desc_t *A);
+int dsparse_zcsc2cblk( dague_context_t *dague, sparse_matrix_desc_t *A );
+int dsparse_zpotrf_sp( dague_context_t *dague, sparse_matrix_desc_t *A );
+int dsparse_zgetrf_sp( dague_context_t *dague, sparse_matrix_desc_t *A );
+int dsparse_zhetrf_sp( dague_context_t *dague, sparse_matrix_desc_t *A );
+int dsparse_zsytrf_sp( dague_context_t *dague, sparse_matrix_desc_t *A );
+
+int dsparse_zpotrs_sp( dague_context_t *dague, sparse_matrix_desc_t *A, sparse_vector_desc_t *B );
+int dsparse_zgetrs_sp( dague_context_t *dague, sparse_matrix_desc_t *A, sparse_vector_desc_t *B );
+int dsparse_zhetrs_sp( dague_context_t *dague, sparse_matrix_desc_t *A, sparse_vector_desc_t *B );
+int dsparse_zsytrs_sp( dague_context_t *dague, sparse_matrix_desc_t *A, sparse_vector_desc_t *B );
 
 /***********************************************************
  *             Non-Blocking interface
