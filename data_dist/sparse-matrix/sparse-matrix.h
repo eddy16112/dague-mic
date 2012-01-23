@@ -106,6 +106,13 @@ void sparse_matrix_init( sparse_matrix_desc_t *desc,
                          int nodes, int cores, int myrank);
 void sparse_matrix_destroy( sparse_matrix_desc_t *desc );
 
+void sparse_vector_init( sparse_vector_desc_t *desc, 
+                         enum spmtx_type mtype, 
+                         int nodes, int cores, int myrank,
+                         pastix_data_t *pastix_data);
+void sparse_vector_destroy( sparse_vector_desc_t *desc );
+
+
 dague_int_t sparse_matrix_get_lcblknum(sparse_matrix_desc_t *mat, dague_int_t bloknum );
 dague_int_t sparse_matrix_get_listptr_prev(sparse_matrix_desc_t *mat, dague_int_t bloknum, dague_int_t fcblknum );
 dague_int_t sparse_matrix_get_listptr_next(sparse_matrix_desc_t *mat, dague_int_t bloknum, dague_int_t fcblknum );
@@ -133,7 +140,5 @@ void sparse_vector_zfinalize( sparse_context_t *dspctxt );
 void sparse_vector_cfinalize( sparse_context_t *dspctxt );
 void sparse_vector_dfinalize( sparse_context_t *dspctxt );
 void sparse_vector_sfinalize( sparse_context_t *dspctxt );
-
-
 
 #endif /* _SPARSE_MATRIX_H_ */
