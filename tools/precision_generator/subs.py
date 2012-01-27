@@ -246,6 +246,8 @@ subs = {
     ('twoDBC_s',    'twoDBC_d',    'twoDBC_c',    'twoDBC_z'   ),
     ('vector_s',    'vector_d',    'vector_c',    'vector_z'   ),
     ('workspace_s', 'workspace_d', 'workspace_c', 'workspace_z'),
+    # For PaStiX
+    ('S_buildUpdoVect', 'D_buildUpdoVect', 'C_buildUpdoVect', 'Z_buildUpdoVect'),
   ],
   'tracing' : [
     ['plain','tau'],
