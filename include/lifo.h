@@ -56,7 +56,6 @@ typedef struct dague_list_item_t {
             DAGUE_ATTACH_ELEM(LIST, _item);                             \
             _item = (dague_list_item_t*)_item->list_next;               \
         } while (_item != _end);                                        \
-        DAGUE_VALIDATE_ELEMS(_item);                                    \
     } while(0)
 
 #define DAGUE_DETACH_ELEM(ITEM)                  \
