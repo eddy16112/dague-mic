@@ -27,14 +27,14 @@ elif [ "x$USER" = "xherault" ]; then
   #MPI="-DMPI_COMPILER=/usr/bin/mpicc"
   USER_OPTIONS+="-DDAGUE_Q2J=ON"
 
-elif [ "x${USER}" = "xmfaverge" ]; then
+elif [ "x${USER}" = "xmfaverge" -o "x${USER}" = "xlacoste" ] ; then
   if [ "x${CC}" = "xgcc" ]; then
-      DSPARSE="-DDAGUE_WITH_SPARSE=ON -DPASTIX_DIR=/home/mfaverge/opt/pastix-dbg -DSCOTCH_DIR=/opt/scotch-gf"
+      USER_OPTIONS+="-DDAGUE_WITH_SPARSE=ON -DPASTIX_DIR=/home/mfaverge/opt/pastix-dbg -DSCOTCH_DIR=/opt/scotch-gf"
   else
-      DSPARSE="-DDAGUE_WITH_SPARSE=ON -DPASTIX_DIR=/home/mfaverge/opt/pastix-intel -DSCOTCH_DIR=/opt/scotch"
+      USER_OPTIONS+="-DDAGUE_WITH_SPARSE=ON -DPASTIX_DIR=/home/mfaverge/opt/pastix-intel -DSCOTCH_DIR=/opt/scotch"
   fi
   #USER_OPTIONS+=" -DDAGUE_DIST_WITH_MPI=OFF"
-  USER_OPTIONS+=" -DDAGUE_GPU_WITH_CUDA=OFF"
+  USER_OPTIONS+=" -DDAGUE_GPU_WITH_CUDA=ON"
   USER_OPTIONS+=" -DDAGUE_Q2J=ON"
   USER_OPTIONS+=" -DDPLASMA_PRECISIONS=s;d;c;z"
 
