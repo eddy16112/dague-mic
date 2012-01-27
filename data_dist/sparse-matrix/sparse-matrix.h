@@ -36,6 +36,22 @@ enum spmtx_type {
     spmtx_ComplexDouble = 3,  /**< complex double */
 };
 
+static inline int sparse_matrix_size_of(enum spmtx_type type)
+{
+    switch ( type ) {
+    case spmtx_RealFloat:
+        return sizeof(float);
+    case spmtx_RealDouble:
+        return sizeof(double);
+    case spmtx_ComplexFloat:
+        return sizeof(Dague_Complex32_t);
+    case spmtx_ComplexDouble:
+        return sizeof(Dague_Complex64_t);
+    default:
+        return sizeof(float);
+    }
+}
+
 typedef struct dague_symbol_blok {
     dague_int_t frownum;                 /**< First row index                       */
     dague_int_t lrownum;                 /**< Last row index (inclusive)            */

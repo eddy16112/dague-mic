@@ -29,22 +29,6 @@
 #include "pastix_internal.h"
 #include "data_dist/sparse-matrix/sparse-matrix.h"
 
-static int sparse_matrix_size_of(enum spmtx_type type)
-{
-    switch ( type ) {
-    case spmtx_RealFloat:
-        return sizeof(float);
-    case spmtx_RealDouble:
-        return sizeof(double);
-    case spmtx_ComplexFloat:
-        return sizeof(Dague_Complex32_t);
-    case spmtx_ComplexDouble:
-        return sizeof(Dague_Complex64_t);
-    default:
-        return sizeof(float);
-    }
-}
-
 dague_int_t sparse_matrix_get_lcblknum(sparse_matrix_desc_t *spmtx, dague_int_t bloknum )
 {
     dague_int_t cblknum;

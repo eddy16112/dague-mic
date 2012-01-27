@@ -13,7 +13,11 @@
 //#include "data_dist/sparse-matrix/pastix_internal/pastix_internal.h"
 
 //#define DUMP_SOLV 0x2
-
+int sparse_sgemm_cuda_init( dague_context_t* context, sparse_matrix_desc_t *tileA );
+int sparse_sgemm_cuda_fini( dague_context_t* dague_context );
+void func(void) {
+    assert(0);
+}
 int main(int argc, char ** argv)
 {
     dague_context_t* dague;
@@ -21,7 +25,10 @@ int main(int argc, char ** argv)
     int   iparam[IPARAM_SIZEOF];
     char *sparam[SPARAM_SIZEOF];
     DagDouble_t flops, gflops;
-
+#if defined(HAVE_CUDA) && defined(PRECISION_s)
+    iparam[IPARAM_NGPUS] = 0;
+#endif
+    atexit(&func);
     /* Set defaults for non argv iparams/sparam */
     param_default(iparam, sparam);
 
@@ -53,6 +60,20 @@ int main(int argc, char ** argv)
     /* Read the matrix files */
     flops = sparse_matrix_zrdmtx( &dspctxt );
     
+    /* load the GPU kernel */
+#if defined(HAVE_CUDA) && defined(PRECISION_s)
+    if(iparam[IPARAM_NGPUS] > 0)
+        {
+            if(loud) printf("+++ Load GPU kernel ... ");
+            if(0 != sparse_sgemm_cuda_init(dague, &ddescA))
+                {
+                    fprintf(stderr, "XXX Unable to load GPU kernel.\n");
+                    exit(3);
+                }
+            if(loud) printf("Done\n");
+        }
+#endif
+
     /* Initialize the matrix */
     dsparse_zcsc2cblk( dague, &ddescA );
 /*     D_Udump_all( &(ddescA.pastix_data->solvmatr), DUMP_SOLV ); */
@@ -69,9 +90,9 @@ int main(int argc, char ** argv)
       
       dsparse_zpotrf_sp_Destruct( DAGUE_zpotrf_sp );
 
-      sparse_vector_zinit( &dspctxt );
-      dsparse_zpotrs_sp( dague, &ddescA, &ddescB);
-      sparse_vector_zfinalize( &dspctxt );
+      /* sparse_vector_zinit( &dspctxt ); */
+      /* dsparse_zpotrs_sp( dague, &ddescA, &ddescB); */
+      /* sparse_vector_zfinalize( &dspctxt ); */
 
       break;
 
@@ -112,6 +133,12 @@ int main(int argc, char ** argv)
     
     sparse_matrix_destroy( &ddescA );
     sparse_vector_destroy( &ddescB );
+
+#if defined(HAVE_CUDA) && defined(PRECISION_s)
+    if(iparam[IPARAM_NGPUS] > 0) {
+        sparse_sgemm_cuda_fini(dague);
+    }
+#endif
 
     cleanup_dague(dague, iparam, sparam);
     

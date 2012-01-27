@@ -19,6 +19,11 @@ extern "C" %{
 
 #define PRECISION_z
 
+#if defined(HAVE_CUDA) && defined(PRECISION_s)
+#include "gpu_data.h"
+#include "dsparse/cores/cuda_sparse_sgemm.h"
+extern int *gpu_counter;
+#endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
 %}
 
 /* Globals
@@ -53,6 +58,10 @@ RW A <- ( browk == browk1 ) ? A(k) : C GEMM( lastbrow )
      -> A(k)
 
 BODY
+#if defined(HAVE_CUDA) && defined(PRECISION_s)
+      sparse_gpu_mark_data_usage( (sparse_matrix_desc_t*)__dague_object->super.A, DAGUE_READ | DAGUE_WRITE, k );
+#endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
+
       DRYRUN(
              core_zpotrfsp1d(A, datacode, k, descA->pastix_data->sopar.espilondiag );
 	     );
@@ -88,6 +97,27 @@ RW    C <- ( prev == 0 ) ? A(fcblk) : C GEMM( prev )
 
 BODY
       if (!phony) {
+#if defined(HAVE_CUDA) && defined(PRECISION_s)
+          sparse_gpu_mark_data_usage( (sparse_matrix_desc_t*)__dague_object->super.A, DAGUE_READ, cblk );
+          if( dague_using_gpu() > 0 ) {
+              int rc;
+              
+              if( 0 == (rc = sparse_gpu_sgemm( context, this_task, PlasmaUpper )) )
+                  goto FIN;
+              if( -1 == rc ) {
+                  /* We're done, but the task has been already destroyed */
+                  return -1;
+              }
+              if( -2 == rc ) {
+                  /* The GPU failed to execute this task, but the task was already rescheduled */
+                  fprintf(stderr, "Unable to disable GPU at runtime. Fatal error.\n");
+                  exit(2);
+              }
+              /* Continue with the task on the cores */
+          }
+          sparse_gpu_mark_data_usage( (sparse_matrix_desc_t*)__dague_object->super.A, DAGUE_READ | DAGUE_WRITE, fcblk );
+#endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
+
           Dague_Complex64_t *work = (Dague_Complex64_t *)dague_private_memory_pop( p_work );
 
           DRYRUN(
@@ -103,4 +133,8 @@ BODY
                    "thread %d phony_gemm( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
                    context->eu_id, k, fcblk, cblk, prev, next);
       }
+
+#if defined(HAVE_CUDA) && defined(PRECISION_s)
+FIN:
+#endif
 END

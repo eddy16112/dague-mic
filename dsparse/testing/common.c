@@ -292,7 +292,7 @@ void param_default(int* iparam, char **sparam)
     memset(iparam, 0, IPARAM_SIZEOF * sizeof(int)); 
     memset(sparam, 0, SPARAM_SIZEOF * sizeof(char*)); 
     iparam[IPARAM_NNODES] = 1;
-    iparam[IPARAM_NGPUS]  = -1;
+    iparam[IPARAM_NGPUS]  = 0;
     iparam[IPARAM_FORMAT] = RSA;
     iparam[IPARAM_FACTORIZATION] = DSPARSE_LU;
 }

@@ -22,7 +22,7 @@ macro(testingssp_addexec OUTPUTLIST PRECISIONS ZSOURCES)
 #      )
   else ( MPI_FOUND )
     set(testingssp_addexec_LIBS   
-      commonsp dsparse dague dague_distribution_sparse_matrix 
+      commonsp dsparse dsparse_cores dague dague_distribution_sparse_matrix 
       ${testingssp_addexec_LIBS}
       )
   endif()
