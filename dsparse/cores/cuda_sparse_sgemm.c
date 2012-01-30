@@ -26,8 +26,8 @@
 #define DPLASMA_ONLY_GPU 0
 #define DAGUE_GPU_USE_PRIORITIES 1
 
-#undef printf
-#define DEBUG(__params__) printf __params__
+/* #undef printf */
+/* #define DEBUG(__params__) printf __params__ */
 
 static volatile uint32_t cpu_counter = 0;
 static int ndevices = 0;
@@ -96,7 +96,9 @@ int sparse_sgemm_cuda_init( dague_context_t* dague_context, sparse_matrix_desc_t
         gpu_load[i] = 0;
     }
 #endif
+
     fprintf(stdout, "ndevices %d\n", ndevices);
+
     for( i = 0; i < ndevices; i++ ) {
         size_t sparse_size, thread_gpu_mem;
 #if CUDA_VERSION < 3020
@@ -634,7 +636,7 @@ gpu_sgemm_internal_submit( gpu_device_t* gpu_device,
                     b++;
                     assert( b < SYMB_BLOKNUM( fcblknum+1 ) );
                 }
-            blok_idx[j-bloknum]        = SOLV_COEFIND(j); /* - SOLV_COEFIND(bloknum);*/
+            blok_idx[j-bloknum]        = SOLV_COEFIND(j) - SOLV_COEFIND(bloknum);
             facing_blok_idx[j-bloknum] = SOLV_COEFIND(b) + SYMB_FROWNUM(j) - SYMB_FROWNUM(b) +
                 SOLV_STRIDE(fcblknum)*(SYMB_FROWNUM(bloknum) - SYMB_FCOLNUM(fcblknum));
         }
@@ -680,13 +682,10 @@ gpu_sgemm_internal_submit( gpu_device_t* gpu_device,
 #endif  /* defined(DAGUE_PROF_TRACE) */
     offset = 0;
     bloknbr = SYMB_BLOKNUM(cblknum+1) - bloknum;
-    d_blok            = d_A;
+    d_blok            = d_A + SOLV_COEFIND(bloknum)*TYPE_SIZE(this_task);
     d_blok_idx        = d_C + SOLV_COEFMAX*TYPE_SIZE(this_task);
     d_facing_blok_idx = d_blok_idx + bloknbr*sizeof(int);
-/*     m = SOLV_STRIDE(cblknum)  - SOLV_COEFIND(bloknum); */
-/*     n = SYMB_LROWNUM(bloknum) - SYMB_FROWNUM(bloknum) + 1; */
-/*     k = SYMB_LCOLNUM(cblknum) - SYMB_FCOLNUM(cblknum) + 1; */
-    m = SOLV_STRIDE(fcblknum);
+    m = SOLV_STRIDE(cblknum)  - SOLV_COEFIND(bloknum);
     n = SYMB_LROWNUM(bloknum) - SYMB_FROWNUM(bloknum) + 1;
     k = SYMB_LCOLNUM(cblknum) - SYMB_FCOLNUM(cblknum) + 1;
 
@@ -953,7 +952,7 @@ int sparse_gpu_sgemm( dague_execution_unit_t* eu_context,
     DAGUE_CUDA_CHECK_ERROR( "cuCtxPushCurrent ", status,
                             {return -2;} );
 
-    DEBUG(( "Add sparse_gemm(blok = %d, fcblk = %d, fcblk = %d) priority %d\n",
+    DEBUG(( "Add sparse_gemm(blok = %d, cblk = %d, fcblk = %d) priority %d\n",
             this_task->locals[0].value,
             this_task->locals[2].value,
             this_task->locals[1].value,
@@ -1264,9 +1263,9 @@ int sparse_gpu_sgemm( dague_execution_unit_t* eu_context,
     dague_execution_context_t* progress_array[DAGUE_MAX_STREAMS];
     int blok, cblk, fcblk;
 
-    blok = this_task->locals[0].value;
-    cblk = this_task->locals[2].value;
+    blok  = this_task->locals[0].value;
     fcblk = this_task->locals[1].value;
+    cblk  = this_task->locals[2].value;
 
     //DEBUG(("GEMM( k = %d, m = %d, n = %d )\n", k, m, n));
     /* We always schedule the task on the GPU owning the C cblk. */
@@ -1497,7 +1496,7 @@ int sparse_gpu_data_cblk_write_owner( sparse_matrix_desc_t* data,
     int i;
     (void)data;
 
-    fprintf(stdout, "data_map %p, cblk %d\n", data_map, cblk);
+    DEBUG( ("data_map %p, cblk %d\n", data_map, cblk) );
     if( NULL == (memory_elem = data_map[cblk]) ) {
         return -1;
     }
