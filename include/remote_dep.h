@@ -133,6 +133,9 @@ int dague_remote_dep_off(dague_context_t* context);
 /* Poll for remote completion of tasks that would enable some work locally */
 int dague_remote_dep_progress(dague_execution_unit_t* eu_context);
 
+/* Inform the communication engine from the creation of new objects */
+int dague_remote_dep_new_object(dague_object_t* obj);
+
 /* Send remote dependencies to target processes */
 int dague_remote_dep_activate(dague_execution_unit_t* eu_context,
                                 const dague_execution_context_t* origin,
@@ -153,6 +156,7 @@ void dague_remote_dep_memcpy(dague_execution_unit_t* eu_context,
 # define dague_remote_dep_off(ctx)  (0)
 # define dague_remote_dep_progress(ctx) (0)
 # define dague_remote_dep_activate(ctx, o, r, c) (-1)
+# define dague_remote_dep_new_object(obj) (0)
 #endif /* DISTRIBUTED */
 
 #endif /* __USE_REMOTE_DEP_H__ */

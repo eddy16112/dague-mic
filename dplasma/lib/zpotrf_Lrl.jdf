@@ -26,7 +26,6 @@ extern "C" %{
 #include "zgemm_wrapper.c"
 #include "zherk_wrapper.c"
 
-#define BLKLDD(_desc, _k) (_desc).mb
 
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
 #include "gpu_data.h"
