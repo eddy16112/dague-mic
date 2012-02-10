@@ -20,6 +20,11 @@ extern "C" %{
 #include "data_dist/matrix/matrix.h"
 #include "dplasma/lib/memory_pool.h"
 #include "dplasma/lib/dplasmajdf.h"
+#include "data_dist/matrix/two_dim_rectangle_cyclic.h"
+#include "scheduling.h"
+
+#include "zgemm_wrapper.c"
+#include "zherk_wrapper.c"
 
 #define BLKLDD(_desc, _k) (_desc).mb
 
@@ -28,7 +33,48 @@ extern "C" %{
 #include "dplasma/cores/cuda_zgemm.h"
 extern int *gpu_counter;
 #endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
+
+#define MYGEMM
+#define MYHERK
+
+#define KERNEL_HERK 3
+#define KERNEL_GEMM 4
+
+#define SMALL_TILE_RATE 4
+
+typedef struct {
+    dague_execution_unit_t *context;
+    dague_execution_context_t *task;
+    dague_ddesc_t * A;
+    dague_ddesc_t * B;
+    dague_ddesc_t * C;
+    int cb_kernel_type;
+} callback_data;
+
+static int complete_gemm_callback(dague_object_t* dague_object, void* cb_data)
+{
+    int rc = 0;
+    callback_data* casted_data = (callback_data*)cb_data;
+
+//    printf("call back\n");
+    rc = dague_complete_execution(casted_data->context, casted_data->task);
+
+    if (casted_data->cb_kernel_type == KERNEL_GEMM) {
+		free(casted_data->A);
+        free(casted_data->B);
+		free(casted_data->C);
+    	dplasma_zgemm_Destruct(dague_object);
+    } else if (casted_data->cb_kernel_type == KERNEL_HERK) {
+		free(casted_data->A);
+		free(casted_data->B);
+		dplasma_zherk_Destruct(dague_object);
+	}
+    free(casted_data);
+    return rc;
+}
+
 %}
+
 
 /* Globals
  */
@@ -73,6 +119,7 @@ BODY
         if ( iinfo != 0 && *INFO == 0 )
             *INFO = k*descA.mb+iinfo; /* Should return here */
          );
+   // printf("I am in POTRF\n");
 
     printlog(
              "thread %d CORE_zpotrf( %d ) {%d}\n\t( %s, %d, A(%d,%d)[%p], %d)\n",
@@ -113,6 +160,33 @@ BODY
     int tempmm = m == descA.mt-1 ? descA.m - m * descA.mb : descA.mb;
     int ldak = BLKLDD( descA, k );
     int ldam = BLKLDD( descA, m );
+/*    
+    two_dim_block_cyclic_t *ddescT, *ddescC;
+    ddescT = (two_dim_block_cyclic_t *) malloc(sizeof(two_dim_block_cyclic_t));
+    ddescC = (two_dim_block_cyclic_t *) malloc(sizeof(two_dim_block_cyclic_t));
+
+    int small_mb = descA.mb / 10;
+    int small_nb = descA.nb / 10;
+
+    two_dim_block_cyclic_init(ddescT, matrix_ComplexDouble, 1, 1, 0, small_mb, small_nb, descA.nb, descA.nb, 0, 0, descA.nb, descA.nb, 1, 1, 1);
+    two_dim_block_cyclic_init(ddescC, matrix_ComplexDouble, 1, 1, 0, small_mb, small_nb, tempmm, descA.nb, 0, 0, tempmm, descA.nb, 1, 1, 1);
+
+    ddescT->mat = T;
+    ddescC->mat = C;
+
+    dague_object_t* dague_ztrsm = dplasma_ztrsm_New(PlasmaRight,  PlasmaLower,
+                  PlasmaConjTrans, PlasmaNonUnit,
+                  (Dague_Complex64_t)1.0,
+                  (tiled_matrix_desc_t *)ddescT,
+                  (tiled_matrix_desc_t *)ddescC );    
+
+    callback_data *trsm_cb_data = (callback_data *) malloc(sizeof(callback_data));
+    trsm_cb_data->context = context;
+    trsm_cb_data->task = this_task;
+    dague_set_complete_callback(dague_ztrsm, complete_gemm_callback, (void *)trsm_cb_data);
+    dague_enqueue(context->master_context, dague_ztrsm);
+    
+*/
     DRYRUN(
         CORE_ztrsm(
             PlasmaRight, PlasmaLower, PlasmaConjTrans, PlasmaNonUnit,
@@ -127,7 +201,7 @@ BODY
              plasma_const( PlasmaConjTrans ), plasma_const( PlasmaNonUnit ),
              tempmm, descA.nb, 
              1.0, k, k, T, ldak,
-                  m, k, C, ldam);
+                  m, k, C, ldam); 
 
 END
 
@@ -160,7 +234,38 @@ BODY
 
     int tempmm = m == descA.mt-1 ? descA.m - m*descA.mb : descA.mb;
     int ldam = BLKLDD( descA, m );
-    
+
+#ifdef MYHERK
+	int small_mb = descA.mb / SMALL_TILE_RATE;
+	int small_nb = descA.nb / SMALL_TILE_RATE;
+
+	two_dim_block_cyclic_t *ddescA, *ddescT;
+	ddescA = (two_dim_block_cyclic_t *) malloc(sizeof(two_dim_block_cyclic_t));
+	ddescT = (two_dim_block_cyclic_t *) malloc(sizeof(two_dim_block_cyclic_t));
+
+	two_dim_block_cyclic_init(ddescA, matrix_ComplexDouble, matrix_Lapack,
+							 1, 1, 0, small_mb, small_nb, ldam, descA.mb,
+							 0, 0, tempmm, descA.mb, 1, 1, 1);
+    two_dim_block_cyclic_init(ddescT, matrix_ComplexDouble, matrix_Lapack,
+			                 1, 1, 0, small_mb, small_nb, ldam, descA.mb,
+							 0, 0, tempmm, tempmm, 1, 1, 1);
+	ddescA->mat = A;
+	ddescT->mat = T;
+	//printf("MY HERK\n");
+    dague_object_t *dague_zherk = dplasma_zherk_New( PlasmaLower, PlasmaNoTrans, (double)-1.0,
+						(tiled_matrix_desc_t*) ddescA, (double)1.0, (tiled_matrix_desc_t*) ddescT);
+
+	callback_data *herk_cb_data = (callback_data *) malloc(sizeof(callback_data));
+	herk_cb_data->context = context;
+	herk_cb_data->task = this_task;
+	herk_cb_data->A = (dague_ddesc_t *) ddescA;
+	herk_cb_data->B = (dague_ddesc_t *) ddescT;
+	herk_cb_data->cb_kernel_type = KERNEL_HERK;
+	dague_set_complete_callback(dague_zherk, complete_gemm_callback, (void *)herk_cb_data);
+	dague_enqueue(context->master_context, dague_zherk);
+	//printf("HERK dague\n");
+
+#else    
     DRYRUN(
         CORE_zherk(
             PlasmaLower, PlasmaNoTrans,
@@ -175,6 +280,12 @@ BODY
              tempmm, descA.mb,
              -1.0, m, k, A, ldam,
               1.0, m, m, T, ldam);
+#endif
+
+#ifdef MYHERK
+	return -1;
+#endif
+
 END
 
 /**************************************************
@@ -205,28 +316,49 @@ BODY
     int ldam = BLKLDD( descA, m );
     int ldan = BLKLDD( descA, n );
 
-#if defined(HAVE_CUDA) && defined(PRECISION_s)
-    gpu_mark_data_usage( (tiled_matrix_desc_t*)__dague_object->super.A, DAGUE_READ, m, k );
-    gpu_mark_data_usage( (tiled_matrix_desc_t*)__dague_object->super.A, DAGUE_READ, n, k );
-    if( dague_using_gpu() > 0 ) {
-        int rc;
+#ifdef MYGEMM
 
-        if( 0 == (rc = gpu_zgemm( context, this_task, uplo )) )
-            goto FIN;
-        if( -1 == rc ) {
-            /* We're done, but the task has been already destroyed */
-            return -1;
-        }
-        if( -2 == rc ) {
-            /* The GPU failed to execute this task, but the task was already rescheduled */
-	    fprintf(stderr, "Unable to disable GPU at runtime. Fatal error.\n");
-	    exit(2);
-        }
-        /* Continue with the task on the cores */
-    }
-    gpu_mark_data_usage( (tiled_matrix_desc_t*)__dague_object->super.A, DAGUE_READ | DAGUE_WRITE, m, n );
-#endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
+    int small_mb = descA.mb / SMALL_TILE_RATE;
+    int small_nb = descA.nb / SMALL_TILE_RATE;
 
+    two_dim_block_cyclic_t *ddescA, *ddescB, *ddescC;
+    ddescA = (two_dim_block_cyclic_t *) malloc(sizeof(two_dim_block_cyclic_t));
+    ddescB = (two_dim_block_cyclic_t *) malloc(sizeof(two_dim_block_cyclic_t));
+    ddescC = (two_dim_block_cyclic_t *) malloc(sizeof(two_dim_block_cyclic_t));
+    
+    two_dim_block_cyclic_init(ddescA, matrix_ComplexDouble, matrix_Lapack, 
+				 1, 1, 0, small_mb, small_nb, ldam, descA.nb,
+				 0, 0, tempmm, descA.nb, 1, 1, 1);
+    two_dim_block_cyclic_init(ddescB, matrix_ComplexDouble, matrix_Lapack,
+				 1, 1, 0, small_mb, small_nb, ldan, descA.nb,
+				 0, 0, descA.mb, descA.nb, 1, 1, 1);
+    two_dim_block_cyclic_init(ddescC, matrix_ComplexDouble, matrix_Lapack,
+				 1, 1, 0, small_mb, small_nb, ldam, descA.nb, 
+				 0, 0, tempmm, descA.nb, 1, 1, 1);
+    ddescA->mat = A;
+    ddescB->mat = B;
+    ddescC->mat = C;
+ 
+    dague_object_t *dague_zgemm = dplasma_zgemm_New(PlasmaNoTrans, PlasmaConjTrans, (Dague_Complex64_t)-1.0,
+							 (tiled_matrix_desc_t *)ddescA, (tiled_matrix_desc_t *)ddescB,
+							 (Dague_Complex64_t) 1.0,  (tiled_matrix_desc_t *)ddescC);
+//    printf("I create dague\n");
+
+    callback_data *gemm_cb_data = (callback_data *) malloc(sizeof(callback_data));
+    gemm_cb_data->context = context;
+    gemm_cb_data->task = this_task;
+    gemm_cb_data->A = (dague_ddesc_t *) ddescA;
+    gemm_cb_data->B = (dague_ddesc_t *) ddescB;
+    gemm_cb_data->C = (dague_ddesc_t *) ddescC;
+    gemm_cb_data->cb_kernel_type = KERNEL_GEMM;
+    dague_set_complete_callback(dague_zgemm, complete_gemm_callback, (void *)gemm_cb_data);
+//    printf("I set call back\n");
+    
+    dague_enqueue(context->master_context, dague_zgemm);
+
+    //printf("GEMM dague\n");
+   
+#else 
     DRYRUN(
         CORE_zgemm( 
             PlasmaNoTrans, PlasmaConjTrans,
@@ -235,6 +367,7 @@ BODY
                                      B /*A(n, k)*/, ldan,
             (Dague_Complex64_t) 1.0, C /*A(m, n)*/, ldam);
         );
+
     printlog("thread %d CORE_zgemm( %d, %d, %d ) {%d}\n\t( %s, %s, %d, %d, %d, %f, A(%d,%d)[%p], %d, A(%d,%d)[%p], %d, %f, A(%d,%d)[%p], %d)\n",
              context->eu_id, k, m, n, this_task->priority, 
              plasma_const( PlasmaNoTrans ),  plasma_const( PlasmaConjTrans ),
@@ -242,6 +375,11 @@ BODY
              -1.0, m, k, A, ldam,
                    n, k, B, ldan,
               1.0, m, n, C, ldam);
+#endif
+
+#ifdef MYGEMM
+    return -1;
+#endif
 
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
 FIN:
