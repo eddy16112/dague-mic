@@ -21,10 +21,12 @@ extern "C" %{
 #include "dplasma/lib/memory_pool.h"
 #include "dplasma/lib/dplasmajdf.h"
 #include "data_dist/matrix/two_dim_rectangle_cyclic.h"
+#include "data_dist/matrix/sym_two_dim_rectangle_cyclic.h"	
 #include "scheduling.h"
 
 #include "zgemm_wrapper.c"
 #include "zherk_wrapper.c"
+#include "ztrsm_wrapper.c"
 
 
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
@@ -35,9 +37,13 @@ extern int *gpu_counter;
 
 #define MYGEMM
 #define MYHERK
+//#define MYTRSM
+#define MYPOTRF
 
-#define KERNEL_HERK 3
-#define KERNEL_GEMM 4
+#define KERNEL_POTRF	1
+#define KERNEL_TRSM		2
+#define KERNEL_HERK		3
+#define KERNEL_GEMM		4
 
 #define SMALL_TILE_RATE 4
 
@@ -67,7 +73,15 @@ static int complete_gemm_callback(dague_object_t* dague_object, void* cb_data)
 		free(casted_data->A);
 		free(casted_data->B);
 		dplasma_zherk_Destruct(dague_object);
+	} else if (casted_data->cb_kernel_type == KERNEL_TRSM) {
+		free(casted_data->A);
+		free(casted_data->B);
+		dplasma_ztrsm_Destruct(dague_object);
+	} else if (casted_data->cb_kernel_type == KERNEL_POTRF) {
+		free(casted_data->A);
+		dplasma_zpotrf_Destruct(dague_object);
 	}
+
     free(casted_data);
     return rc;
 }
@@ -109,7 +123,43 @@ BODY
 
     int tempkm = k == descA.mt-1 ? descA.m - k*descA.mb : descA.mb;
     int ldak = BLKLDD( descA, k );
+#ifdef MYPOTRF
+	if (tempkm > 100) {
+		printf("potrf dague\n");
+		two_dim_block_cyclic_t *ddescT;
+		ddescT = (two_dim_block_cyclic_t *) malloc(sizeof(two_dim_block_cyclic_t));
 
+		int small_mb = descA.mb / SMALL_TILE_RATE;
+		int small_nb = descA.nb / SMALL_TILE_RATE;
+	
+		int iinfo = 0;
+		two_dim_block_cyclic_init(ddescT, matrix_ComplexDouble, matrix_Lapack,
+				                        1, 1, 0, small_mb, small_nb, ldak, tempkm,
+										0, 0, tempkm, tempkm, 1, 1, 1);
+        ddescT->mat = T;
+
+//		ddescT->super.storage = matrix_Lapack;
+		dague_object_t* dague_zpotrf = dplasma_zpotrf_New(uplo, (tiled_matrix_desc_t *)ddescT, &iinfo );
+		callback_data *potrf_cb_data = (callback_data *) malloc(sizeof(callback_data));
+		potrf_cb_data->context = context;
+		potrf_cb_data->task = this_task;
+		potrf_cb_data->A = (dague_ddesc_t *) ddescT;
+		potrf_cb_data->cb_kernel_type = KERNEL_POTRF;
+		dague_set_complete_callback(dague_zpotrf, complete_gemm_callback, (void *)potrf_cb_data);
+		dague_enqueue(context->master_context, dague_zpotrf);
+		return -1;
+
+	} else {
+		DRYRUN(
+			int iinfo = 0;
+			CORE_zpotrf(
+				uplo, tempkm, T, ldak,
+				&iinfo );
+			if ( iinfo != 0 && *INFO == 0 )
+				*INFO = k*descA.mb+iinfo; /* Should return here */
+			);
+	}
+#else 
     DRYRUN(
         int iinfo = 0;
         CORE_zpotrf(
@@ -124,6 +174,8 @@ BODY
              "thread %d CORE_zpotrf( %d ) {%d}\n\t( %s, %d, A(%d,%d)[%p], %d)\n",
              context->eu_id, k, this_task->priority, 
              plasma_const(uplo), tempkm, k, k, T, descA.mb );
+#endif
+
 END
 
 
@@ -159,33 +211,41 @@ BODY
     int tempmm = m == descA.mt-1 ? descA.m - m * descA.mb : descA.mb;
     int ldak = BLKLDD( descA, k );
     int ldam = BLKLDD( descA, m );
-/*    
+
+#ifdef MYTRSM	
     two_dim_block_cyclic_t *ddescT, *ddescC;
     ddescT = (two_dim_block_cyclic_t *) malloc(sizeof(two_dim_block_cyclic_t));
     ddescC = (two_dim_block_cyclic_t *) malloc(sizeof(two_dim_block_cyclic_t));
 
-    int small_mb = descA.mb / 10;
-    int small_nb = descA.nb / 10;
+    int small_mb = descA.mb / SMALL_TILE_RATE;
+    int small_nb = descA.nb / SMALL_TILE_RATE;
 
-    two_dim_block_cyclic_init(ddescT, matrix_ComplexDouble, 1, 1, 0, small_mb, small_nb, descA.nb, descA.nb, 0, 0, descA.nb, descA.nb, 1, 1, 1);
-    two_dim_block_cyclic_init(ddescC, matrix_ComplexDouble, 1, 1, 0, small_mb, small_nb, tempmm, descA.nb, 0, 0, tempmm, descA.nb, 1, 1, 1);
+    two_dim_block_cyclic_init(ddescT, matrix_ComplexDouble, matrix_Lapack, 
+								1, 1, 0, small_mb, small_nb, ldak, descA.nb,
+								0, 0, descA.nb, descA.nb, 1, 1, 1);
+    two_dim_block_cyclic_init(ddescC, matrix_ComplexDouble, matrix_Lapack, 
+								1, 1, 0, small_mb, small_nb, ldam, descA.nb, 
+								0, 0, tempmm, descA.nb, 1, 1, 1);
 
     ddescT->mat = T;
     ddescC->mat = C;
 
     dague_object_t* dague_ztrsm = dplasma_ztrsm_New(PlasmaRight,  PlasmaLower,
-                  PlasmaConjTrans, PlasmaNonUnit,
-                  (Dague_Complex64_t)1.0,
-                  (tiled_matrix_desc_t *)ddescT,
-                  (tiled_matrix_desc_t *)ddescC );    
+													PlasmaConjTrans, PlasmaNonUnit,
+													(Dague_Complex64_t)1.0,
+													(tiled_matrix_desc_t *)ddescT,
+													(tiled_matrix_desc_t *)ddescC );    
 
     callback_data *trsm_cb_data = (callback_data *) malloc(sizeof(callback_data));
     trsm_cb_data->context = context;
     trsm_cb_data->task = this_task;
+	trsm_cb_data->A = (dague_ddesc_t *) ddescT;
+	trsm_cb_data->B = (dague_ddesc_t *) ddescC;
+	trsm_cb_data->cb_kernel_type = KERNEL_TRSM;
     dague_set_complete_callback(dague_ztrsm, complete_gemm_callback, (void *)trsm_cb_data);
     dague_enqueue(context->master_context, dague_ztrsm);
     
-*/
+#else
     DRYRUN(
         CORE_ztrsm(
             PlasmaRight, PlasmaLower, PlasmaConjTrans, PlasmaNonUnit,
@@ -201,6 +261,11 @@ BODY
              tempmm, descA.nb, 
              1.0, k, k, T, ldak,
                   m, k, C, ldam); 
+#endif
+
+#ifdef MYTRSM
+	return -1;
+#endif
 
 END
 
@@ -250,9 +315,10 @@ BODY
 							 0, 0, tempmm, tempmm, 1, 1, 1);
 	ddescA->mat = A;
 	ddescT->mat = T;
-	//printf("MY HERK\n");
+	printf("MY HERK\n");
     dague_object_t *dague_zherk = dplasma_zherk_New( PlasmaLower, PlasmaNoTrans, (double)-1.0,
-						(tiled_matrix_desc_t*) ddescA, (double)1.0, (tiled_matrix_desc_t*) ddescT);
+													(tiled_matrix_desc_t*) ddescA, (double)1.0, 
+													(tiled_matrix_desc_t*) ddescT);
 
 	callback_data *herk_cb_data = (callback_data *) malloc(sizeof(callback_data));
 	herk_cb_data->context = context;
@@ -339,8 +405,8 @@ BODY
     ddescC->mat = C;
  
     dague_object_t *dague_zgemm = dplasma_zgemm_New(PlasmaNoTrans, PlasmaConjTrans, (Dague_Complex64_t)-1.0,
-							 (tiled_matrix_desc_t *)ddescA, (tiled_matrix_desc_t *)ddescB,
-							 (Dague_Complex64_t) 1.0,  (tiled_matrix_desc_t *)ddescC);
+													(tiled_matrix_desc_t *)ddescA, (tiled_matrix_desc_t *)ddescB,
+													(Dague_Complex64_t) 1.0,  (tiled_matrix_desc_t *)ddescC);
 //    printf("I create dague\n");
 
     callback_data *gemm_cb_data = (callback_data *) malloc(sizeof(callback_data));
