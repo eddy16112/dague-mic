@@ -35,10 +35,10 @@ extern "C" %{
 extern int *gpu_counter;
 #endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
 
-#define MYGEMM
-#define MYHERK
-#define MYTRSM
-#define MYPOTRF
+//#define MYGEMM
+//#define MYHERK
+//#define MYTRSM
+//#define MYPOTRF
 
 #define KERNEL_POTRF	1
 #define KERNEL_TRSM		2
@@ -393,13 +393,23 @@ BODY
     int ldam = BLKLDD( descA, m );
     int ldan = BLKLDD( descA, n );
 
+#ifdef HAVE_CUDA
+	printf("HAVE_CUDA OK\n");
+#endif
+
+#ifdef PRECISION_s
+	printf("PRECISION_s OK\n");
+#endif
+
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
     gpu_mark_data_usage( (tiled_matrix_desc_t*)__dague_object->super.A, DAGUE_READ, m, k );
     gpu_mark_data_usage( (tiled_matrix_desc_t*)__dague_object->super.A, DAGUE_READ, n, k );
-    if( dague_using_gpu() > 0 ) {
+    printf("gpu_mark_data_usage OK\n");
+	printf("dague_using_gpu :%d\n", dague_using_gpu());
+	if( dague_using_gpu() > 0 ) {
         int rc;
-
         if( 0 == (rc = gpu_zgemm( context, this_task, uplo )) )
+			printf("rc 0\n");
             goto FIN;
         if( -1 == rc ) {
             /* We're done, but the task has been already destroyed */
