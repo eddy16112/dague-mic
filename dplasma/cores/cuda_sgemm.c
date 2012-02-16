@@ -30,7 +30,7 @@ static int ndevices = 0;
 #if DPLASMA_SCHEDULING
 uint32_t *gpu_set;
 int *gpu_load;
-const uint32_t MAX_QUEUE = 55;
+static const uint32_t MAX_QUEUE = 55;
 #endif
 #include "data_dist/matrix/matrix.h"
 

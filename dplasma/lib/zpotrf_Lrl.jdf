@@ -35,9 +35,9 @@ extern "C" %{
 extern int *gpu_counter;
 #endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
 
-//#define MYGEMM
-//#define MYHERK
-//#define MYTRSM
+#define MYGEMM
+#define MYHERK
+#define MYTRSM
 //#define MYPOTRF
 
 #define KERNEL_POTRF	1
@@ -322,7 +322,7 @@ BODY
                                   0, 0, tempmm, tempmm, 1, 1, 1);
         small_descA->mat = A;
         small_descT->mat = T;
-        //printf("MY HERK\n");
+        printf("MY HERK\n");
         dague_object_t *dague_zherk = dplasma_zherk_New( PlasmaLower, PlasmaNoTrans, (double)-1.0,
                                                          (tiled_matrix_desc_t*) small_descA, (double)1.0,
                                                          (tiled_matrix_desc_t*) small_descT);
@@ -408,9 +408,11 @@ BODY
 	printf("dague_using_gpu :%d\n", dague_using_gpu());
 	if( dague_using_gpu() > 0 ) {
         int rc;
-        if( 0 == (rc = gpu_zgemm( context, this_task, uplo )) )
+		rc = gpu_zgemm( context, this_task, uplo );
+        if( 0 == rc) {
 			printf("rc 0\n");
             goto FIN;
+		}
         if( -1 == rc ) {
             /* We're done, but the task has been already destroyed */
             return -1;
@@ -420,6 +422,7 @@ BODY
             fprintf(stderr, "Unable to disable GPU at runtime. Fatal error.\n");
             exit(2);
         }
+		fprintf(stderr, "#####continuing with the task on the cores\n");
         /* Continue with the task on the cores */
     }
     gpu_mark_data_usage( (tiled_matrix_desc_t*)__dague_object->super.A, DAGUE_READ | DAGUE_WRITE, m, n );
