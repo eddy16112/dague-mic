@@ -32,11 +32,13 @@ set(JDF
   zherk_LN.jdf zherk_LT.jdf zherk_UN.jdf zherk_UT.jdf
   ztrsm_LLN.jdf ztrsm_LLT.jdf ztrsm_LUN.jdf ztrsm_LUT.jdf ztrsm_RLN.jdf ztrsm_RLT.jdf ztrsm_RUN.jdf ztrsm_RUT.jdf
   ztrmm_LLN.jdf ztrmm_LLT.jdf ztrmm_LUN.jdf ztrmm_LUT.jdf ztrmm_RLN.jdf ztrmm_RLT.jdf ztrmm_RUN.jdf ztrmm_RUT.jdf
+  zlaswp.jdf
   zpotrf_rl.jdf zpotrf_ll.jdf
   zpotrf_Url.jdf zpotrf_Lrl.jdf
   zgebut.jdf
   zhebut.jdf
-  zgetrf.jdf zgetrf_sd.jdf
+  zgetrf.jdf
+  zgetrf_incpiv.jdf zgetrf_incpiv_sd.jdf
   ztrsmpl.jdf ztrsmpl_sd.jdf
   zgeqrf.jdf
   zgelqf.jdf
@@ -71,6 +73,7 @@ set(SOURCES
   zgeadd_wrapper.c
   zlacpy_wrapper.c
   zlaset_wrapper.c
+  zlaswp_wrapper.c
   zplrnt_wrapper.c
   zplghe_wrapper.c
   zplgsy_wrapper.c
@@ -85,6 +88,9 @@ set(SOURCES
   zgetrf_wrapper.c
   zgetrs_wrapper.c
   zgesv_wrapper.c
+  zgetrf_incpiv_wrapper.c
+  zgetrs_incpiv_wrapper.c
+  zgesv_incpiv_wrapper.c
   zgeqrf_wrapper.c
   zgeqrf_param_wrapper.c
   zungqr_param_wrapper.c
