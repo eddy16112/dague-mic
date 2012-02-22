@@ -148,8 +148,8 @@ BODY
              /*TRSM( L, L , N, N, A, B )*/
 	     );
       printlog(
-               "thread %d solvedown_1dplus( cblknum=%d, browk=%d, browk1=%d, lastbrow=%d, firstblok=%d, lastblok=%d )\n",
-               context->eu_id, k, browk, browk1, lastbrow, firstblok, lastblok);
+               "thread %d solvedown_1dplus( cblknum=%d )\n",
+               context->eu_id, k);
 
 END
 
@@ -188,6 +188,6 @@ BODY
            dague_private_memory_push( p_work, (void *)work );
            );
     printlog(
-             "thread %d compute_1dgemm( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
-             context->eu_id, k, fcblk, cblk, prev, next);
+             "thread %d compute_1dgemm( k=%d, bloknum=%d, fcblk=%d, cblk=%d )\n",
+             context->eu_id, k, bloknum, fcblk, cblk);
 END
