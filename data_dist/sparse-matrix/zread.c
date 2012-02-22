@@ -30,6 +30,23 @@
 #include "sparse-matrix.h"
 
 
+double Z_CscNorm1(const CscMatrix *cscmtx,
+                  MPI_Comm         comm);
+
+void Z_CscRhsUpdown(const UpDownVector *updovct, 
+                    const SymbolMatrix *symbmtx, 
+                    Dague_Complex64_t  *rhs, 
+                    const dague_int_t   ncol,
+                    const dague_int_t  *invp,
+                    const int           dof, 
+                    const int           rhsmaking,
+                    MPI_Comm            comm);
+
+int Z_buildUpdoVect(pastix_data_t     *pastix_data,
+                    dague_int_t       *loc2glob,
+                    Dague_Complex64_t *b,
+                    MPI_Comm           pastix_comm);
+
 int Z_pastix_fillin_csc( pastix_data_t     *pastix_data,
                          MPI_Comm           pastix_comm,
                          dague_int_t        n,
@@ -490,7 +507,7 @@ void sparse_vector_zinit( sparse_context_t *dspctxt )
 void sparse_vector_zfinalize( sparse_context_t *dspctxt )
 {
     dague_int_t   *iparm = dspctxt->iparm;
-    DagDouble_t   *dparm = dspctxt->dparm;
+    //    DagDouble_t   *dparm = dspctxt->dparm;
     pastix_data_t *pastix_data = NULL; 
 
     pastix_data = dspctxt->desc->pastix_data;
