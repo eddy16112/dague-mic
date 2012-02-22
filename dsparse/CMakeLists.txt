@@ -19,7 +19,9 @@ if ( DAGUE_WITH_SPARSE )
   endif( ${CMAKE_CURRENT_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR} )
   
   add_subdirectory(include)
-  add_subdirectory(cores)
+  if(CUDA_FOUND)
+        add_subdirectory(cores)
+  endif()
   add_subdirectory(lib)
   add_subdirectory(testing)
 

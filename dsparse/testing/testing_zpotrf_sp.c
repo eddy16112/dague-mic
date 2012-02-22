@@ -28,7 +28,7 @@ int main(int argc, char ** argv)
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
     iparam[IPARAM_NGPUS] = 0;
 #endif
-    atexit(&func);
+
     /* Set defaults for non argv iparams/sparam */
     param_default(iparam, sparam);
 

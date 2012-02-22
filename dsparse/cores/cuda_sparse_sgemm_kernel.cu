@@ -61,9 +61,8 @@ GENERATE_SM_VERSION_NAME(sparse_sgemm_kernel_N_T_64_16_4_16_4)(float *C, const f
   const int ty = threadIdx.y;
 
   const int ibx = blockIdx.x * 64;
-  const int iby = blockIdx.y *16;
+  const int iby = blockIdx.y * 16;
         
-
   const int idt = ty * 16 + tx;
 
   if( iby + tx >=n )
@@ -221,8 +220,6 @@ GENERATE_SM_VERSION_NAME(sparse_sgemm_kernel_N_T_64_16_4_16_4)(float *C, const f
     lda = 0 ;
   else lda = lda ;
 
-
-        
   switch(lda){
   case 16:
         
