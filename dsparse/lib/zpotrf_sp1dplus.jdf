@@ -102,9 +102,16 @@ BODY
           if( dague_using_gpu() > 0 ) {
               int rc;
               
-              if( 0 == (rc = sparse_gpu_sgemm( context, this_task, PlasmaUpper )) )
+              if( 0 == (rc = sparse_gpu_sgemm( context, this_task, PlasmaUpper )) ) {
+                  printlog(
+                           "thread %d compute_1dgemm( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d ) - GPU(0)\n",
+                           context->eu_id, k, fcblk, cblk, prev, next);
                   goto FIN;
+              }
               if( -1 == rc ) {
+                  printlog(
+                           "thread %d compute_1dgemm( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d ) - GPU(-1)\n",
+                           context->eu_id, k, fcblk, cblk, prev, next);
                   /* We're done, but the task has been already destroyed */
                   return -1;
               }
