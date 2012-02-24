@@ -12,6 +12,10 @@
 #define _SPARSE_MATRIX_H_ 
 
 #include <stdint.h>
+#if defined(HAVE_CUDA)
+#include <cuda.h>
+#endif
+
 #include "dague_config.h"
 #include "data_distribution.h"
 #include "data_dist/matrix/precision.h"
@@ -80,6 +84,9 @@ typedef struct sparse_matrix_desc_t {
     enum spmtx_type       mtype;   /* Precision of the matrix             */
     int                   typesze; /* Type size                           */
     //    dague_symbol_matrix_t symbmtx; /* Pointer to symbol matrix structure  */
+#if defined(HAVE_CUDA)
+    CUdeviceptr          *d_blocktab;
+#endif
     pastix_data_t        *pastix_data;
 } sparse_matrix_desc_t;
 
