@@ -14,7 +14,9 @@
 #include "scheduling.h"
 #include "fifo.h"
 
+#include <cblas.h>
 #include <plasma.h>
+#include <core_blas.h>
 
 #include <stdio.h>
 #include <cublas.h>
@@ -22,9 +24,23 @@
 
 #include "data_distribution.h"
 
+
+void core_spotrfsp1d_gemm(dague_int_t cblknum,
+                          dague_int_t bloknum,
+                          dague_int_t fcblknum,
+                          float *L,
+                          float *C,
+                          float *work,
+                          SolverMatrix *datacode);
+
+
 #define DPLASMA_SCHEDULING 1
 #define DPLASMA_ONLY_GPU 0
 #define DAGUE_GPU_USE_PRIORITIES 1
+
+
+#define DSPARSE_INDIVUAL_BLOCKTAB
+static inline int dague_imax(int a, int b) { return (a >= b) ? a : b; };
 
 /* #undef printf */
 /* #define DEBUG(__params__) printf __params__ */
@@ -37,7 +53,8 @@ int *gpu_load;
 const uint32_t MAX_QUEUE = 55;
 #endif
 
-
+#warning "Don't forget to change int in dague_int_t"
+typedef int my_tmp_int_t;
 
 static int OHM_N = 5;
 static int OHM_M = 3;
@@ -59,8 +76,12 @@ int sparse_sgemm_cuda_init( dague_context_t* dague_context, sparse_matrix_desc_t
     CUdevice hcuDevice;
     int i, j;
     char *env;
+    size_t sparse_size;
     (void)dague_context;
-
+#if !defined(DSPARSE_INDIVUAL_BLOCKTAB)
+    my_tmp_int_t *blocktab;
+    size_t       blocktab_size;
+#endif
 
     UGLY_A = sparseA;
     datacode = &(UGLY_A->pastix_data->solvmatr);
@@ -97,10 +118,54 @@ int sparse_sgemm_cuda_init( dague_context_t* dague_context, sparse_matrix_desc_t
     }
 #endif
 
-    fprintf(stdout, "ndevices %d\n", ndevices);
+    /*
+     * Compute the size of each chunk on the GPU
+     */
+    sparse_size = SOLV_COEFMAX * sparse_matrix_size_of(sparseA->mtype);
+#if defined(DSPARSE_INDIVUAL_BLOCKTAB)
+    {
+        int maxblockpercol, cblknum;
+        int maxblocktabsize;
 
+        maxblockpercol = 0;
+        for ( cblknum = 0; cblknum < SYMB_CBLKNBR; cblknum++) {
+            maxblockpercol = dague_imax( maxblockpercol,
+                                        (SYMB_BLOKNUM(cblknum+1) -
+                                         SYMB_BLOKNUM(cblknum)));
+        }
+        
+        sparse_size = ((sparse_size +31)/32)*32;
+
+        maxblocktabsize = maxblockpercol*sizeof(int);
+        maxblocktabsize = ((maxblocktabsize+31)/32)*32;
+        
+        sparse_size += maxblocktabsize;
+    }
+#endif
+
+    /*
+     * Create the blocktab that will be transfered to the GPUs
+     */
+#if !defined(DSPARSE_INDIVUAL_BLOCKTAB)
+    {
+        my_tmp_int_t iterblock;
+
+        blocktab_size = 2 * (SYMB_BLOKNBR) * sizeof(my_tmp_int_t);
+        blocktab = (my_tmp_int_t*)malloc( blocktab_size );
+
+        for (iterblock = 0; iterblock < SYMB_BLOKNBR; iterblock++)
+        {
+            blocktab[2*iterblock]   = SYMB_FROWNUM(iterblock);
+            blocktab[2*iterblock+1] = SYMB_LROWNUM(iterblock);
+        }
+
+        sparseA->d_blocktab = (CUdeviceptr *)malloc(ndevices * sizeof(CUdeviceptr));
+    }
+#endif
+
+    fprintf(stdout, "ndevices %d\n", ndevices);
     for( i = 0; i < ndevices; i++ ) {
-        size_t sparse_size, thread_gpu_mem;
+        size_t thread_gpu_mem;
 #if CUDA_VERSION < 3020
         unsigned int total_mem, free_mem;
 #else
@@ -186,29 +251,49 @@ int sparse_sgemm_cuda_init( dague_context_t* dague_context, sparse_matrix_desc_t
         } else {
             cuFuncSetBlockShape( gpu_device->hcuFunction, 16, 4, 1 );
         }
+
+        /*
+         * Transfer the blocktab before to allocate the chunks of memory
+         */
+#if !defined(DSPARSE_INDIVUAL_BLOCKTAB)
+        {
+            status = (cudaError_t)cuMemAlloc( &(sparseA->d_blocktab[i]),
+                                              blocktab_size );
+            
+            DAGUE_CUDA_CHECK_ERROR( "cuMemAlloc ", status,
+                                    ({
+                                        fprintf(stderr, "Cannot Allocat blocktab on GPU\n");
+                                        assert(-1);
+                                        break;
+                                    }) );
+            
+            status = (cudaError_t)cuMemcpyHtoD( sparseA->d_blocktab[i],
+                                                blocktab,
+                                                blocktab_size );
+
+            DAGUE_CUDA_CHECK_ERROR( "cuMemcpyHtoD ", status,
+                                    ({
+                                        fprintf(stderr, "Cannot transfer the blocktab to GPU\n");
+                                        assert(-1);
+                                        break;
+                                    }) );
+        }
+#endif        
+
         /**
          * Prepare the reusable memory on the GPU.
          */
         sparse_gpu_data_map_init( gpu_device, sparseA );
+
         /**
          * It appears that CUDA allocate the memory in chunks of 1MB,
          * so we need to adapt to this.
          */
-        {
-            int maxblokpercol, cblknum;
-            maxblokpercol = 0;
-            for ( cblknum = 0; cblknum < SYMB_CBLKNBR; cblknum++) {
-                maxblokpercol = MAX(maxblokpercol,
-                                    SYMB_BLOKNUM(cblknum+1) -
-                                    SYMB_BLOKNUM(cblknum));
-            }
-            sparse_size = SOLV_COEFMAX *
-                sparse_matrix_size_of(sparseA->mtype) +
-                maxblokpercol*sizeof(int);
-        }
         cuMemGetInfo( &free_mem, &total_mem );
+
         /* We allocate 9/10 of the total memory */
-        thread_gpu_mem = (total_mem - total_mem / 10);
+        thread_gpu_mem = (free_mem - free_mem / 10);
+
         fprintf(stdout, "mem %ld %ld %ld", free_mem, total_mem, thread_gpu_mem);
         
         while( free_mem > (total_mem - thread_gpu_mem) ) {
@@ -320,6 +405,11 @@ int sparse_sgemm_cuda_init( dague_context_t* dague_context, sparse_matrix_desc_t
                                 {free(gpu_device); return -1;} );
     }
 
+
+#if !defined(DSPARSE_INDIVUAL_BLOCKTAB)
+    free(blocktab);
+#endif
+
     return 0;
 }
 
@@ -408,6 +498,11 @@ int sparse_sgemm_cuda_fini(dague_context_t* dague_context)
         free( gpu_device->fifo_pending_exec ); gpu_device->fifo_pending_exec = NULL;
         free( gpu_device->fifo_pending_out ); gpu_device->fifo_pending_out = NULL;
 #endif  /* !defined(DAGUE_GPU_STREAM_PER_TASK) */
+
+#if !defined(DSPARSE_INDIVUAL_BLOCKTAB)
+        cuMemFree(UGLY_A->d_blocktab[i]);
+#endif
+
         status = (cudaError_t)cuCtxDestroy( gpu_device->ctx );
         DAGUE_CUDA_CHECK_ERROR( "(FINI) cuCtxDestroy ", status,
                                 {continue;} );
@@ -415,6 +510,10 @@ int sparse_sgemm_cuda_fini(dague_context_t* dague_context)
         free(gpu_device);
         active_devices++;
     }
+
+#if !defined(DSPARSE_INDIVUAL_BLOCKTAB)
+    free(UGLY_A->d_blocktab);
+#endif
 
     /* No active devices */
     if( 0 == active_devices )
@@ -545,6 +644,12 @@ gpu_sgemm_internal_push( gpu_device_t* gpu_device,
                                     return_code = -2;
                                     assert(0);
                                     goto release_and_return_error;} );
+
+        status = cuStreamSynchronize( stream );
+        DAGUE_CUDA_CHECK_ERROR( "cuStreamSynchronize", status,
+                                {   fprintf(stderr, "Tout a peter envoi A\n");
+                                    assert(0); } );
+
         gpu_device->transferred_data_in += cblk_size;
         how_many++;
     }
@@ -566,6 +671,12 @@ gpu_sgemm_internal_push( gpu_device_t* gpu_device,
                                     return_code = -3;
                                     assert(0);
                                     goto release_and_return_error; } );
+
+        status = cuStreamSynchronize( stream );
+        DAGUE_CUDA_CHECK_ERROR( "cuStreamSynchronize", status,
+                                {   fprintf(stderr, "Tout a peter envoi C\n");
+                                    assert(0); } );
+
         gpu_device->transferred_data_in += cblk_size;
         how_many++;
     }
@@ -601,11 +712,11 @@ gpu_sgemm_internal_submit( gpu_device_t* gpu_device,
     d_C = gpu_elem_C->gpu_mem;
 
 
+#if defined(DSPARSE_INDIVUAL_BLOCKTAB)
     {
         int bloknbr, j, b, return_code, how_many = 0;
         int * blok_idx;
         int * facing_blok_idx;
-        CUdeviceptr d_stride;
         size_t stride_size;
 
         bloknbr = SYMB_BLOKNUM(cblknum+1) - bloknum;
@@ -613,7 +724,6 @@ gpu_sgemm_internal_submit( gpu_device_t* gpu_device,
         b = SYMB_BLOKNUM( fcblknum );
         blok_idx = (int*)malloc(stride_size);
         facing_blok_idx = &(blok_idx[bloknbr]);
-
 
         for (j=bloknum; j<SYMB_BLOKNUM(cblknum + 1); j++) {
             /* Find facing bloknum */
@@ -642,18 +752,23 @@ gpu_sgemm_internal_submit( gpu_device_t* gpu_device,
         }
 
 
-        d_stride = d_C  + SOLV_COEFMAX * TYPE_SIZE(this_task);
+        int displacement = SOLV_COEFMAX * TYPE_SIZE(this_task);
+        displacement = ((displacement+31)/32)*32;
+
+        d_blok_idx = d_C  + displacement;
        
-        status = (cudaError_t)cuMemcpyHtoD( d_stride,
+        status = (cudaError_t)cuMemcpyHtoD( d_blok_idx,
                                             blok_idx,
                                             stride_size);
+
         DAGUE_CUDA_CHECK_ERROR( "cuMemcpyHtoD to device (d_stride) ",
                                 status,
-                                {   printf("<<%p>> -> <<%p>> [%d]\n",
-                                           (void*)blok_idx,
-                                           (void*)(long)d_stride, stride_size);
+                                {   fprintf(stderr, "<<%p>> -> <<%p>> [%d]\n",
+                                            (void*)blok_idx,
+                                            (void*)(long)d_blok_idx, (int)stride_size);
                                     return_code = -2;
-                                    exit(666);
+                                    /*exit(666);*/
+                                    assert(666==0);
                                     return (return_code < 0 ? return_code : how_many);} );
         gpu_device->transferred_data_in += stride_size;
         how_many++;
@@ -661,6 +776,7 @@ gpu_sgemm_internal_submit( gpu_device_t* gpu_device,
         free(blok_idx);
 
     }
+#endif
 
     DEBUG(("Request GPU runs SPARSE_GEMM(%d, %d, %d)\n",
            bloknum, cblknum, fcblknum));
@@ -680,14 +796,29 @@ gpu_sgemm_internal_submit( gpu_device_t* gpu_device,
                        task_id, ddesca, data_id);
     }
 #endif  /* defined(DAGUE_PROF_TRACE) */
+
+
+    float *myA    = (float*)malloc(SOLV_COEFMAX * sizeof(float) );
+    float *myCcpu = (float*)malloc(SOLV_COEFMAX * sizeof(float) );
+    float *myCgpu = (float*)malloc(SOLV_COEFMAX * sizeof(float) );
+
+    cudaThreadSynchronize();
+    cudaMemcpy( myA,    (void*)d_A, SOLV_COEFMAX * sizeof(float), cudaMemcpyDeviceToHost );
+    cudaMemcpy( myCcpu, (void*)d_C, SOLV_COEFMAX * sizeof(float), cudaMemcpyDeviceToHost );
+
+    core_spotrfsp1d_gemm( cblknum, bloknum, fcblknum, myA, myCcpu, myCgpu, datacode );
+
+    
     offset = 0;
     bloknbr = SYMB_BLOKNUM(cblknum+1) - bloknum;
-    d_blok            = d_A + SOLV_COEFIND(bloknum)*TYPE_SIZE(this_task);
-    d_blok_idx        = d_C + SOLV_COEFMAX*TYPE_SIZE(this_task);
-    d_facing_blok_idx = d_blok_idx + bloknbr*sizeof(int);
+    d_blok  = d_A + SOLV_COEFIND(bloknum)*TYPE_SIZE(this_task);
     m = SOLV_STRIDE(cblknum)  - SOLV_COEFIND(bloknum);
     n = SYMB_LROWNUM(bloknum) - SYMB_FROWNUM(bloknum) + 1;
     k = SYMB_LCOLNUM(cblknum) - SYMB_FCOLNUM(cblknum) + 1;
+
+#if !defined(DSPARSE_INDIVUAL_BLOCKTAB)
+    d_C = d_C + ((SYMB_FROWNUM(bloknum) - SYMB_FCOLNUM(fcblknum))*SOLV_STRIDE(fcblknum)) *TYPE_SIZE(this_task);
+#endif
 
     CU_PUSH_POINTER( gpu_device->hcuFunction, offset, d_C );
     CU_PUSH_POINTER( gpu_device->hcuFunction, offset, d_blok);
@@ -701,8 +832,24 @@ gpu_sgemm_internal_submit( gpu_device_t* gpu_device,
     CU_PUSH_FLOAT(   gpu_device->hcuFunction, offset, alpha );
     CU_PUSH_FLOAT(   gpu_device->hcuFunction, offset, beta );
     CU_PUSH_INT(     gpu_device->hcuFunction, offset, bloknbr);
+#if defined(DSPARSE_INDIVUAL_BLOCKTAB)
+    d_facing_blok_idx = d_blok_idx + bloknbr*sizeof(int);
     CU_PUSH_POINTER( gpu_device->hcuFunction, offset, d_blok_idx);
     CU_PUSH_POINTER( gpu_device->hcuFunction, offset, d_facing_blok_idx);
+#else
+    {
+        my_tmp_int_t fblcknbr = SYMB_BLOKNUM(fcblknum+1) - SYMB_BLOKNUM(fcblknum);
+        CUdeviceptr d_blocktab, d_fbloktab;
+        
+        d_blocktab = UGLY_A->d_blocktab[gpu_device->id] + 2 * bloknum                * sizeof(my_tmp_int_t);
+        d_fbloktab = UGLY_A->d_blocktab[gpu_device->id] + 2 * SYMB_BLOKNUM(fcblknum) * sizeof(my_tmp_int_t);
+
+        CU_PUSH_POINTER( gpu_device->hcuFunction, offset, d_blocktab );
+        CU_PUSH_INT(     gpu_device->hcuFunction, offset, fblcknbr   );
+        CU_PUSH_POINTER( gpu_device->hcuFunction, offset, d_fbloktab );
+    }
+#endif
+
     cuParamSetSize(  gpu_device->hcuFunction, offset );
 
     /* cuLaunch: we kick off the CUDA */
@@ -718,8 +865,28 @@ gpu_sgemm_internal_submit( gpu_device_t* gpu_device,
 /*         fprintf(stdout, "TODO\n"); */
 /*         assert(0); */
 /*     } */
+
     status = (cudaError_t)cuLaunchGridAsync( gpu_device->hcuFunction,
                                              grid_width, grid_height, stream);
+
+    status = cuStreamSynchronize( stream );
+    DAGUE_CUDA_CHECK_ERROR( "cuStreamSynchronize", status,
+                            {   fprintf(stderr, "Tout a peter kernel\n");
+                                assert(0); } );
+
+
+    cudaMemcpy( myCgpu, (void*)d_C, SOLV_COEFMAX * sizeof(float), cudaMemcpyDeviceToHost );
+    float one = -1.0;
+    cblas_saxpy( SOLV_STRIDE(fcblknum) * (SYMB_LCOLNUM(fcblknum) - SYMB_FCOLNUM( fcblknum ) + 1 ),
+                 one, myCcpu, 1, myCgpu, 1);
+    
+    CORE_slange( PlasmaMaxNorm, SOLV_STRIDE(fcblknum), (SYMB_LCOLNUM(fcblknum) - SYMB_FCOLNUM( fcblknum ) + 1 ), 
+                 myCgpu, SOLV_STRIDE(fcblknum), NULL, &one );
+
+    
+    if ( one != 0.0 ) {
+        fprintf(stderr, "WARNING: Norm for bloknum=%d is %e\n", bloknum, one);
+    }
 
     DAGUE_CUDA_CHECK_ERROR( "cuLaunchGridAsync ", status,
                               {return -1;} );
@@ -778,6 +945,12 @@ gpu_sgemm_internal_pop( gpu_device_t* gpu_device,
                                            (void*)(long)d_C, (void*)C);
                                     return_code = -2;
                                     goto release_and_return_error;} );
+
+    status = cuStreamSynchronize( stream );
+    DAGUE_CUDA_CHECK_ERROR( "cuStreamSynchronize", status,
+                            {   fprintf(stderr, "Tout a peter retour C\n");
+                                assert(0); } );
+
         gpu_device->transferred_data_out += cblk_size;
         how_many++;
     }
@@ -1207,7 +1380,9 @@ int sparse_gpu_sgemm( dague_execution_unit_t* eu_context,
     /* Something wrong happened. Push all the pending tasks back on the
      * cores, and disable the gpu.
      */
-    exit(-20);
+    fprintf(stderr, "Big Badaboumm\n");
+    /*exit(-20);*/
+    assert(-20 == 0);
     return -2;
 }
 #else
