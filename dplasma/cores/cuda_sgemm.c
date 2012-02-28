@@ -1204,6 +1204,7 @@ extern int ndevices;
 
 int gpu_mark_data_usage( tiled_matrix_desc_t* data, int type, int col, int row )
 {
+//	printf("col: %d, row: %d\n", col, row);
     memory_elem_t* this_data;
 
     if( (NULL == data_map) || (NULL == (this_data = data_map[col * data->lnt + row])) ) {
