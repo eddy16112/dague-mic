@@ -19,21 +19,23 @@ precisions_rules_py(generated_files
 if(CUDA_FOUND)
     set(CUDA_BUILD_CUBIN ON)
     set(CUDA_PROPAGATE_HOST_FLAGS OFF)
-    set(CUDA_NVCC_FLAGS -maxrregcount 32 -arch sm_11 -DCUDA_SM_VERSION=11)
+    set(CUDA_NVCC_FLAGS_BACKUP ${CUDA_NVCC_FLAGS})
+
+    set(CUDA_NVCC_FLAGS -maxrregcount 32 -arch sm_11 -DCUDA_SM_VERSION=11 ${CUDA_NVCC_FLAGS_BACKUP})
     cuda_add_library(sgemm-sm_11 cuda_sgemm_kernel.cu)
     install(TARGETS sgemm-sm_11 ARCHIVE DESTINATION lib)
     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sgemm-sm_11_generated_cuda_sgemm_kernel.cu.o.cubin.txt
       DESTINATION lib
       RENAME sgemm-sm_11.cubin)
 
-    set(CUDA_NVCC_FLAGS -maxrregcount 32 -arch sm_13 -DCUDA_SM_VERSION=13)
+    set(CUDA_NVCC_FLAGS -maxrregcount 32 -arch sm_13 -DCUDA_SM_VERSION=13 ${CUDA_NVCC_FLAGS_BACKUP})
     cuda_add_library(sgemm-sm_13 cuda_sgemm_kernel.cu)
     install(TARGETS sgemm-sm_13 ARCHIVE DESTINATION lib)
     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sgemm-sm_13_generated_cuda_sgemm_kernel.cu.o.cubin.txt
       DESTINATION lib
       RENAME sgemm-sm_13.cubin)
 
-    set(CUDA_NVCC_FLAGS -arch sm_20 -DCUDA_SM_VERSION=20)
+    set(CUDA_NVCC_FLAGS -arch sm_20 -DCUDA_SM_VERSION=20 ${CUDA_NVCC_FLAGS_BACKUP})
     cuda_add_library(sgemm-sm_20 cuda_sgemm_kernelf.cu)
     install(TARGETS sgemm-sm_20 ARCHIVE DESTINATION lib)
     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sgemm-sm_20_generated_cuda_sgemm_kernelf.cu.o.cubin.txt
@@ -42,6 +44,8 @@ if(CUDA_FOUND)
 
     cuda_build_clean_target()
     set(GPU_KERNEL_SOURCES cuda_sgemm.c cuda_stsmqr.c)
+
+    set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS_BACKUP})
 else()
   set(GPU_KERNEL_SOURCES "")
 endif()

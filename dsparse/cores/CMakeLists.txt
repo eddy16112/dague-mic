@@ -19,29 +19,33 @@ precisions_rules_py(generated_files
 if(CUDA_FOUND)
     set(CUDA_BUILD_CUBIN ON)
     set(CUDA_PROPAGATE_HOST_FLAGS OFF)
-    set(CUDA_NVCC_FLAGS -maxrregcount 32 -arch sm_11 -DCUDA_SM_VERSION=11)
-    cuda_add_library(sparse_sgemm-sm_11 cuda_sparse_sgemm_kernel.cu)
+    set(CUDA_NVCC_FLAGS_BACKUP ${CUDA_NVCC_FLAGS})
+
+    set(CUDA_NVCC_FLAGS -maxrregcount 32 -arch sm_11 -DCUDA_SM_VERSION=11 ${CUDA_NVCC_FLAGS_BACKUP})
+    cuda_add_library(sparse_sgemm-sm_11 cuda_sparse_sgemm_kernel_bloktab.cu)
     install(TARGETS sparse_sgemm-sm_11 ARCHIVE DESTINATION lib)
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sparse_sgemm-sm_11_generated_cuda_sparse_sgemm_kernel.cu.o.cubin.txt
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sparse_sgemm-sm_11_generated_cuda_sparse_sgemm_kernel_bloktab.cu.o.cubin.txt
       DESTINATION lib
       RENAME sparse_sgemm-sm_11.cubin)
 
-    set(CUDA_NVCC_FLAGS -maxrregcount 32 -arch sm_13 -DCUDA_SM_VERSION=13)
-    cuda_add_library(sparse_sgemm-sm_13 cuda_sparse_sgemm_kernel.cu)
+    set(CUDA_NVCC_FLAGS -maxrregcount 32 -arch sm_13 -DCUDA_SM_VERSION=13 ${CUDA_NVCC_FLAGS_BACKUP})
+    cuda_add_library(sparse_sgemm-sm_13 cuda_sparse_sgemm_kernel_bloktab.cu)
     install(TARGETS sparse_sgemm-sm_13 ARCHIVE DESTINATION lib)
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sparse_sgemm-sm_13_generated_cuda_sparse_sgemm_kernel.cu.o.cubin.txt
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sparse_sgemm-sm_13_generated_cuda_sparse_sgemm_kernel_bloktab.cu.o.cubin.txt
       DESTINATION lib
       RENAME sparse_sgemm-sm_13.cubin)
 
-     set(CUDA_NVCC_FLAGS -arch sm_20 -DCUDA_SM_VERSION=20)
-     cuda_add_library(sparse_sgemm-sm_20 cuda_sparse_sgemm_kernel.cu)
+     set(CUDA_NVCC_FLAGS -arch sm_20 -DCUDA_SM_VERSION=20 ${CUDA_NVCC_FLAGS_BACKUP})
+     cuda_add_library(sparse_sgemm-sm_20 cuda_sparse_sgemm_kernel_bloktab.cu)
      install(TARGETS sparse_sgemm-sm_20 ARCHIVE DESTINATION lib)
-     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sparse_sgemm-sm_20_generated_cuda_sparse_sgemm_kernel.cu.o.cubin.txt
+     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sparse_sgemm-sm_20_generated_cuda_sparse_sgemm_kernel_bloktab.cu.o.cubin.txt
        DESTINATION lib
        RENAME sparse_sgemm-sm_20.cubin)
 
 #    cuda_build_clean_target()
     set(GPU_KERNEL_SOURCES cuda_sparse_sgemm.c)
+
+    set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS_BACKUP})
 else()
   set(GPU_KERNEL_SOURCES "")
 endif()
