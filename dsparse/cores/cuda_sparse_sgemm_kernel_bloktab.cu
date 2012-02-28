@@ -112,21 +112,28 @@ GENERATE_SM_VERSION_NAME(sparse_sgemm_kernel_N_T_64_16_4_16_4)(float *C, const f
     size_t blocksize = BLOCKSIZE(blocktab, blocknum);
     int rownum;
     int offset;
-    while(totalblocksize + blocksize < idx_x + 1) 
-      {
-	totalblocksize += blocksize;
-	blocknum++;
-	blocksize = BLOCKSIZE(blocktab, blocknum);
-      }
-    rownum = idx_x - totalblocksize + FROWNUM(blocktab, blocknum);
-    offset = 0;
-    while (LROWNUM(fblocktab, fblocknum) < rownum) {
-      offset += BLOCKSIZE(fblocktab, fblocknum);
-      fblocknum++;
-    }
-    offset += rownum - FROWNUM(fblocktab, fblocknum);
 
-    C += offset + __mul24(iby,ldc);
+    if ( idx_x < m ) {
+        /*
+         * We should keep blocknum < blocknbr
+         */
+        while(totalblocksize + blocksize < idx_x + 1) 
+            {
+                totalblocksize += blocksize;
+                blocknum++;
+                blocksize = BLOCKSIZE(blocktab, blocknum);
+            }
+        rownum = idx_x - totalblocksize + FROWNUM(blocktab, blocknum);
+        offset = 0;
+        while (LROWNUM(fblocktab, fblocknum) < rownum) {
+            offset += BLOCKSIZE(fblocktab, fblocknum);
+            fblocknum++;
+        }
+        offset += rownum - FROWNUM(fblocktab, fblocknum);
+        
+        C += offset + __mul24(iby,ldc);
+    } 
+    __syncthreads();
 #undef FROWNUM
 #undef LROWNUM
   }
@@ -403,3 +410,27 @@ GENERATE_SM_VERSION_NAME(sparse_sgemm_kernel_N_T_64_16_4_16_4)(float *C, const f
   }
 
 }
+
+
+extern "C" void
+GENERATE_SM_VERSION_NAME(sparse_sgemm_N_T_64_16_4_16_4)(float *C, 
+                                                        const float *A,
+                                                        const float *B,
+                                                        int m, int n, int k, 
+                                                        int lda, int ldb, int ldc,
+                                                        float alpha, float beta, 
+                                                        int blocknbr, const int * blocktab, int fblocknbr, const int * fblocktab)
+{        
+  dim3 threads( 16, 4 );
+  dim3 grid(m/64+(m%64!=0),n/16+(n%16!=0));
+/*   fprintf(stdout, */
+/* 	  "titi C %016lx A %016lx B %016lx m %d n %d k %d lda %d ldb %d ldc %d alpha %g beta %g locnbr %d %d %d\n", */
+/* 	  C, A, B, m, n ,k, lda, ldb, ldc, alpha, beta, blocnbr, sizeof(float), sizeof(int)); */
+  GENERATE_SM_VERSION_NAME(sparse_sgemm_kernel_N_T_64_16_4_16_4)<<< grid, threads >>>(C, A, B,	
+                                                                                      m, n, k, 
+                                                                                      lda, ldb, ldc,
+                                                                                      alpha,  beta, 
+                                                                                      blocknbr, blocktab,
+                                                                                      fblocknbr, fblocktab);
+}
+
