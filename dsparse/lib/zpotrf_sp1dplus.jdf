@@ -98,6 +98,10 @@ RW    C <- ( prev == 0 ) ? A(fcblk) : C GEMM( prev )
 BODY
       if (!phony) {
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
+          printlog(
+                   "thread %d compute_1dgemm START ( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
+                   context->eu_id, k, fcblk, cblk, prev, next);
+
           sparse_gpu_mark_data_usage( (sparse_matrix_desc_t*)__dague_object->super.A, DAGUE_READ, cblk );
           if( dague_using_gpu() > 0 ) {
               int rc;
