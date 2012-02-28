@@ -31,8 +31,6 @@ set(JDF
   zlaswp.jdf
   zpotrf_rl.jdf zpotrf_ll.jdf
   zpotrf_Url.jdf zpotrf_Lrl.jdf
-  zgebut.jdf
-  zhebut.jdf
   zgetrf.jdf
   zgetrf_incpiv.jdf zgetrf_incpiv_sd.jdf
   ztrsmpl.jdf ztrsmpl_sd.jdf
@@ -44,6 +42,13 @@ set(JDF
   zgeqrf_param.jdf zungqr_param.jdf
   zungqr.jdf
 )
+if (MPI_FOUND)
+  set( JDF
+       $JDF
+       zgebut.jdf
+       zhebut.jdf)
+endif (MPI_FOUND)
+
 precisions_rules_py(generated_jdf
                     "${JDF}"
                     PRECISIONS "${DPLASMA_PRECISIONS}")
@@ -84,7 +89,6 @@ set(SOURCES
   zlansy_wrapper.c
   # Lapack
   zpotrf_wrapper.c
-  zhebut_wrapper.c
   zpotrs_wrapper.c
   zposv_wrapper.c
   zgetrf_wrapper.c
@@ -101,6 +105,12 @@ set(SOURCES
   zhbrdt_wrapper.c
   zungqr_wrapper.c
 )
+if (MPI_FOUND)
+  set( SOURCES
+       $SOURCES
+       zhebut_wrapper.c)
+endif (MPI_FOUND)
+
 precisions_rules_py(generated_files
                  "${SOURCES}"
                  PRECISIONS "${DPLASMA_PRECISIONS}")

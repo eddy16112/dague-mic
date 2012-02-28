@@ -125,8 +125,6 @@ static int dplasma_datatype_define_subarray( dague_remote_dep_datatype_t oldtype
     return 0;
 }
 
-#else /* HAVE MPI */
-# error "No, no. Have MPI. Really."
 #endif
 
 
