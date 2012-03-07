@@ -8,7 +8,6 @@
 #define DAGUE_EXECUTION_UNIT_H_HAS_BEEN_INCLUDED
 
 #include "dague_config.h"
-#include "dague.h"
 
 #ifdef HAVE_HWLOC
 #include <hwloc.h>
@@ -62,10 +61,10 @@ struct dague_context_t {
     int largest_simulation_date;
 #endif
 
-#ifdef HAVE_HWLOC 
-    int comm_th_core; 
-    hwloc_cpuset_t comm_th_binding_mask;
-    hwloc_cpuset_t core_free_mask;
+#ifdef HAVE_HWLOC
+    int comm_th_core;
+    hwloc_cpuset_t comm_th_index_mask;
+    hwloc_cpuset_t index_core_free_mask;
 #endif
 
     /* This field should always be the last one in the structure. Even if the
