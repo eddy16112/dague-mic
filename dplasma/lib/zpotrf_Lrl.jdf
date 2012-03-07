@@ -35,17 +35,17 @@ extern "C" %{
 extern int *gpu_counter;
 #endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
 
-//#define MYGEMM
-//#define MYHERK
-//#define MYTRSM
-//#define MYPOTRF
+#define MYGEMM
+#define MYHERK
+#define MYTRSM
+#define MYPOTRF
 
 #define KERNEL_POTRF	1
 #define KERNEL_TRSM		2
 #define KERNEL_HERK		3
 #define KERNEL_GEMM		4
 
-#define SMALL_TILE_RATE 6
+#define SMALL_TILE_RATE 5
 #define SMALL_TILE_THRESHOLD	192
 
 typedef struct {
@@ -113,7 +113,14 @@ RW T <- (k == 0) ? A(k, k) : T HERK(k-1, k)
      -> T TRSM(k+1..descA.mt-1, k)
      -> A(k, k)
 
-; (k >= (descA.mt - PRI_CHANGE)) ? (descA.mt - k) * (descA.mt - k) * (descA.mt - k) : 1000000000
+; inline_c %{
+    if (descA.mb == SMALL_TILE_THRESHOLD) {
+//        printf("small\n");
+        return (k >= (descA.mt - PRI_CHANGE)) ? (descA.mt - k) * (descA.mt - k) * (descA.mt - k) : 0x7fffffff;
+    } else {
+        return (k >= (descA.mt - PRI_CHANGE)) ? (descA.mt - k) * (descA.mt - k) * (descA.mt - k) : 1000000000;
+    } 
+%}
 //; (k >= (descA.mt - PRI_CHANGE)) ? (descA.mt - k + 7) * (descA.mt - k + 2) * (descA.mt - k) / 6 : 0
 
 BODY
@@ -202,7 +209,13 @@ RW    C <- (k == 0) ? A(m, k) : C GEMM(k-1, m, k)
         -> B GEMM(k, m+1..descA.mt-1, m )
         -> A(m, k)
 
-; (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - k - m - 1) * (m - k) : 1000000000
+; inline_c %{
+    if (descA.mb == SMALL_TILE_THRESHOLD) {
+        return (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - k - m - 1) * (m - k) : 0x7fffffff-1; 
+    } else {
+        return (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - k - m - 1) * (m - k) : 1000000000;
+    } 
+%}
 //;  (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m - k) * ((descA.mt - m - k + 1) / 2 + 2) - 1 + (descA.mt - m + 2) * (descA.mt - m + 1) * (descA.mt - m) / 6 : 0
 
 BODY
@@ -303,7 +316,16 @@ READ  A <- C TRSM(m, k)
 RW    T <- (k == 0)   ? A(m, m)    : T HERK(k-1, m)
         -> (m == k+1) ? T POTRF(m) : T HERK(k+1, m)
 
-; (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * (m - k) : 1000000000
+
+; inline_c %{
+    if (descA.mb == SMALL_TILE_THRESHOLD) {
+        return (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * (m - k) : 0x7fffffff-1;
+    } else {
+        return (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * (m - k) : 1000000000;
+    }
+%}
+
+//; (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * (m - k) : 1000000000
 //; (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m + 2) * (descA.mt - m + 1) * (descA.mt - m) / 6 + descA.mt - m + k + 1 : 0
 
 BODY
@@ -402,7 +424,15 @@ READ  B <- C TRSM(n, k)
 RW    C <- (k == 0)   ? A(m, n)      : C GEMM(k-1, m, n)
         -> (n == k+1) ? C TRSM(m, n) : C GEMM(k+1, m, n)
 
-; (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - m - n - 3) * (m - n) + 6 * (m - k) : 1000000000
+; inline_c %{
+    if (descA.mb == SMALL_TILE_THRESHOLD) {
+        return (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - m - n - 3) * (m - n) + 6 * (m - k) : 0x7fffffff-2;
+    } else {
+        return (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - m - n - 3) * (m - n) + 6 * (m - k) : 1000000000;
+    }
+%}
+
+//; (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - m - n - 3) * (m - n) + 6 * (m - k) : 1000000000
 //;  (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m - n) * ((descA.mt - n - k + 1) / 2 + 2) - 1 + (descA.mt - m + 2) * (descA.mt - m + 1) * (descA.mt - m) / 6 + descA.mt - n + k + 1 : 0
 
 BODY
