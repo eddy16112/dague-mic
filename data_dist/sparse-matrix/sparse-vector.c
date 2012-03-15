@@ -122,8 +122,7 @@ int sparse_vector_key_to_string(struct dague_ddesc *mat, uint32_t datakey, char 
 
 void sparse_vector_init( sparse_vector_desc_t *desc, 
                          enum spmtx_type mtype, 
-                         int nodes, int cores, int myrank,
-                         pastix_data_t *pastix_data)
+                         int nodes, int cores, int myrank)
 {
     /* dague_ddesc structure */
     desc->super.nodes   = nodes;
@@ -138,10 +137,9 @@ void sparse_vector_init( sparse_vector_desc_t *desc,
     desc->super.keydim = NULL; /* Initialized when the matrix is read */
 #endif /* DAGUE_PROF_TRACE */
 
-    desc->mtype   = mtype;
-    desc->typesze = sparse_vector_size_of( mtype );
-
-    desc->pastix_data = pastix_data;
+    desc->mtype       = mtype;
+    desc->typesze     = sparse_vector_size_of( mtype );
+    desc->pastix_data = NULL;
 
     DEBUG(("sparse_vector_init: desc = %p, mtype = %zu, \n"
            "\tnodes = %u, cores = %u, myrank = %u\n",
