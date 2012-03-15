@@ -410,7 +410,10 @@ void sparse_matrix_zcheck( sparse_context_t *dspctxt )
     DagDouble_t *dparm = dspctxt->dparm;
     pastix_data_t *pastix_data = dspctxt->desc->pastix_data;
 
-    iparm[IPARM_START_TASK] = API_TASK_SOLVE;
+    if (dspctxt->factotype == DSPARSE_LLT )
+        iparm[IPARM_START_TASK] = API_TASK_REFINE;
+    else
+        iparm[IPARM_START_TASK] = API_TASK_SOLVE;
     iparm[IPARM_END_TASK]   = API_TASK_REFINE;
 
     /*******************************************/

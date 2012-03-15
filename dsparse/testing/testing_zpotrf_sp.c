@@ -53,8 +53,7 @@ int main(int argc, char ** argv)
     dspctxt.desc = &ddescA;
 
     sparse_vector_desc_t ddescB;
-    sparse_vector_init( &ddescB, spmtx_ComplexDouble, nodes, cores, rank,
-                        ddescA.pastix_data );
+    sparse_vector_init( &ddescB, spmtx_ComplexDouble, nodes, cores, rank );
     dspctxt.rhsdesc = &ddescB;
 
     /* Read the matrix files */
@@ -90,10 +89,6 @@ int main(int argc, char ** argv)
       
       dsparse_zpotrf_sp_Destruct( DAGUE_zpotrf_sp );
 
-      /* sparse_vector_zinit( &dspctxt ); */
-      /* dsparse_zpotrs_sp( dague, &ddescA, &ddescB); */
-      /* sparse_vector_zfinalize( &dspctxt ); */
-
       break;
 
     case DSPARSE_LDLT:
@@ -127,8 +122,19 @@ int main(int argc, char ** argv)
         
 /*     D_Udump_all( &(ddescA.pastix_data->solvmatr), DUMP_SOLV ); */
 
-    if( check )
+    if( check ) {
+        switch ( factotype ) {
+        case DSPARSE_LLT:
+            if(loud > 2) printf("+++ Computing potrs ... ");
+            sparse_vector_zinit( &dspctxt );
+            dsparse_zpotrs_sp( dague, &ddescA, &ddescB);
+            sparse_vector_zfinalize( &dspctxt );
+        default:
+            (void)0;
+        }
+
         sparse_matrix_zcheck( &dspctxt );
+    }
     sparse_matrix_zclean( &dspctxt );
     
     sparse_matrix_destroy( &ddescA );
