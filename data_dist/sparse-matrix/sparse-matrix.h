@@ -131,8 +131,7 @@ void sparse_matrix_destroy( sparse_matrix_desc_t *desc );
 
 void sparse_vector_init( sparse_vector_desc_t *desc, 
                          enum spmtx_type mtype, 
-                         int nodes, int cores, int myrank,
-                         pastix_data_t *pastix_data);
+                         int nodes, int cores, int myrank);
 void sparse_vector_destroy( sparse_vector_desc_t *desc );
 
 
