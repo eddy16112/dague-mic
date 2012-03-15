@@ -39,6 +39,9 @@
 /* Simulating */
 #cmakedefine DAGUE_SIM
 
+/* DSPARSE Options */
+#cmakedefine DSPARSE_WITH_SOLVE
+
 /* system */
 #cmakedefine HAVE_PTHREAD
 #cmakedefine HAVE_SCHED_SETAFFINITY

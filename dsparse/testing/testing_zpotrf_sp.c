@@ -123,6 +123,7 @@ int main(int argc, char ** argv)
 /*     D_Udump_all( &(ddescA.pastix_data->solvmatr), DUMP_SOLV ); */
 
     if( check ) {
+#if defined(DSPARSE_WITH_SOLVE)
         switch ( factotype ) {
         case DSPARSE_LLT:
             if(loud > 2) printf("+++ Computing potrs ... ");
@@ -132,7 +133,7 @@ int main(int argc, char ** argv)
         default:
             (void)0;
         }
-
+#endif
         sparse_matrix_zcheck( &dspctxt );
     }
     sparse_matrix_zclean( &dspctxt );
