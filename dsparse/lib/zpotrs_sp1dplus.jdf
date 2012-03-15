@@ -30,7 +30,7 @@ B        [type = "dague_ddesc_t *" aligned=A]
 datacode [type = "SolverMatrix*" default="&(descA->pastix_data->solvmatr)" hidden=on]
 cblknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.cblknbr - 1" hidden=on] 
 bloknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.bloknbr - 2" hidden=on] /* -2 to avoid last diagonal block */
-browsize [type = "dague_int_t"   default="_res->super.bloknbr - _res->super.cblknbr - 1" hidden=on]
+browsize [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.bloknbr - descA->pastix_data->solvmatr.symbmtx.cblknbr - 2" hidden=on]
 p_work   [type = "dague_memory_pool_t *" size = "datacode->coefmax * sizeof(Dague_Complex64_t)"]
 
 /**************************************************
