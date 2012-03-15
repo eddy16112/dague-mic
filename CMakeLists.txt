@@ -35,6 +35,12 @@ mark_as_advanced(BUILD_DPLASMA)
 if( BUILD_DPLASMA AND NOT BUILD_DAGUE )
   message(FATAL_ERROR "Building the DPLASMA layer requires the DAGuE framework")
 endif( BUILD_DPLASMA AND NOT BUILD_DAGUE )
+option(BUILD_DSPARSE
+       "Compile the DSPARSE layer" ON)
+mark_as_advanced(BUILD_DSPARSE)
+if( BUILD_DSPARSE AND NOT BUILD_DAGUE )
+  message(FATAL_ERROR "Building the DSPARSE layer requires the DAGuE framework")
+endif( BUILD_DSPARSE AND NOT BUILD_DAGUE )
 
 ### Misc options
 option(BUILD_SHARED_LIBS
@@ -127,6 +133,11 @@ option(DAGUE_PROF_DRY_BODY
   "Disable calls to the actual bodies; no computation is performed" OFF)
 option(DAGUE_PROF_DRY_DEP
   "Disable calls to the actual data transport; remote dependencies are notified, but no data movement takes place" OFF)
+
+### Dsparse options
+mark_as_advanced(DSPARSE_WITH_SOLVE)
+cmake_dependent_option(DSPARSE_WITH_SOLVE
+  "Activate the solve computed with DAGuE (requires BUILD_DSPARSE)" OFF "BUILD_DSPARSE" OFF)
 
 ### Look for OMEGA
 option(DAGUE_Q2J
@@ -453,7 +464,7 @@ if( DAGUE_PROF_GRAPHER )
   list(APPEND EXTRA_SOURCES src/dague_prof_grapher.c)
 endif( DAGUE_PROF_GRAPHER )
 
-if( DAGUE_WITH_SPARSE )
+if( BUILD_DSPARSE )
   find_package( PASTIX REQUIRED )
   find_package( SCOTCH REQUIRED )
 endif()
@@ -531,12 +542,12 @@ ENDIF( BUILD_DAGUE )
 IF( BUILD_DPLASMA )
   add_subdirectory(dplasma)
 ENDIF ( BUILD_DPLASMA )
+IF( BUILD_DSPARSE )
+    add_subdirectory(dsparse)
+EDNIF( BUILD_DSPARSE )
 IF( BUILD_TESTING AND BUILD_DAGUE )
   add_subdirectory(tests)
 ENDIF( BUILD_TESTING AND BUILD_DAGUE )
-
-# Need to add BUILD_DSPARSE
-add_subdirectory(dsparse)
 
 # Configuration header
 configure_file (
