@@ -22,12 +22,12 @@
 /***************************************************************************//**
  *  Internal static descriptor initializer (PLASMA code)
  **/
-void tiled_matrix_desc_init( tiled_matrix_desc_t *tdesc, 
-                             enum matrix_type    dtyp, 
-                             enum matrix_storage storage, 
+void tiled_matrix_desc_init( tiled_matrix_desc_t *tdesc,
+                             enum matrix_type    dtyp,
+                             enum matrix_storage storage,
                              int mb, int nb,
-                             int lm, int ln, 
-                             int i,  int j, 
+                             int lm, int ln,
+                             int i,  int j,
                              int m,  int n)
 {
     /* Matrix address */
@@ -48,6 +48,16 @@ void tiled_matrix_desc_init( tiled_matrix_desc_t *tdesc,
     tdesc->lm = lm;
     tdesc->ln = ln;
 
+    /* Large matrix derived parameters */
+    /* tdesc->lm1 = (lm/mb); */
+    /* tdesc->ln1 = (ln/nb); */
+    tdesc->lmt = (lm%mb==0) ? (lm/mb) : (lm/mb+1);
+    tdesc->lnt = (ln%nb==0) ? (ln/nb) : (ln/nb+1);
+
+    /* Update lm and ln to include the padding */
+    tdesc->lm = tdesc->lmt * tdesc->mb;
+    tdesc->ln = tdesc->lnt * tdesc->nb;
+
     /* WARNING: This has to be removed when padding will be removed */
 #if defined(HAVE_MPI)
     if ( storage == matrix_Lapack ) {
@@ -61,12 +71,6 @@ void tiled_matrix_desc_init( tiled_matrix_desc_t *tdesc,
         }
     }
 #endif
-
-    /* Large matrix derived parameters */
-    /* tdesc->lm1 = (lm/mb); */
-    /* tdesc->ln1 = (ln/nb); */
-    tdesc->lmt = (lm%mb==0) ? (lm/mb) : (lm/mb+1);
-    tdesc->lnt = (ln%nb==0) ? (ln/nb) : (ln/nb+1);
 
     /* Submatrix parameters */
     tdesc->i = i;
@@ -154,13 +158,13 @@ int tiled_matrix_data_read(tiled_matrix_desc_t *tdesc, char *filename) {
                     buf = ddesc->data_of( ddesc, i, j );
                     ret = fread(buf, eltsize, tdesc->bsiz, tmpf );
                     if ( ret !=  tdesc->bsiz ) {
-                        fprintf(stderr, "ERROR: The read on tile(%d, %d) read %d elements instead of %d\n", 
+                        fprintf(stderr, "ERROR: The read on tile(%d, %d) read %d elements instead of %d\n",
                                 i, j, ret, tdesc->bsiz);
                         return -1;
                     }
                 }
             }
-    } else {        
+    } else {
         for (i = 0 ; i < tdesc->mt ; i++)
             for ( j = 0 ; j< tdesc->nt ; j++) {
                 if ( ddesc->rank_of( ddesc, i, j ) == myrank ) {
@@ -168,7 +172,7 @@ int tiled_matrix_data_read(tiled_matrix_desc_t *tdesc, char *filename) {
                     for (k=0; k<tdesc->nb; k++) {
                         ret = fread(buf, eltsize, tdesc->mb, tmpf );
                         if ( ret !=  tdesc->mb ) {
-                            fprintf(stderr, "ERROR: The read on tile(%d, %d) read %d elements instead of %d\n", 
+                            fprintf(stderr, "ERROR: The read on tile(%d, %d) read %d elements instead of %d\n",
                                     i, j, ret, tdesc->mb);
                             return -1;
                         }
@@ -194,9 +198,9 @@ typedef struct tile_coordinate{
 } tile_coordinate_t;
 
 typedef struct info_tiles{
-    int th_id;    
+    int th_id;
     tiled_matrix_desc_t * Ddesc;
-    tile_coordinate_t * tiles;    
+    tile_coordinate_t * tiles;
     unsigned int nb_elements;
     unsigned int starting_position;
     unsigned long long int seed;
@@ -260,11 +264,11 @@ static void rand_dist_matrix(tiled_matrix_desc_t * Mdesc, int mtype, unsigned lo
                         if (NULL == tiles) {
                             perror("cannot generate random matrix\n");
                             exit(-1);
-                        }                                
+                        }
                     }
                     tiles[pos].row = i;
                     tiles[pos].col = j;
-                    pos++;                        
+                    pos++;
                 }
             }
         }
@@ -313,13 +317,13 @@ static void rand_dist_matrix(tiled_matrix_desc_t * Mdesc, int mtype, unsigned lo
         pthread_attr_setscope(&thread_attr, PTHREAD_SCOPE_SYSTEM);
 #ifdef __linux
         pthread_setconcurrency(Mdesc->super.cores);
-#endif            
+#endif
         threads = malloc((Mdesc->super.cores - 1) * sizeof(pthread_t));
         if (NULL == threads) {
             perror("No memory for generating matrix\n");
             exit(-1);
         }
-                
+
         for ( c = 1 ; c < Mdesc->super.cores ; c++) {
             pthread_create( &(threads[c-1]),
                             &thread_attr,
@@ -342,7 +346,7 @@ static void rand_dist_matrix(tiled_matrix_desc_t * Mdesc, int mtype, unsigned lo
 
 void generate_tiled_zero_mat(tiled_matrix_desc_t * Mdesc)
 {
-    
+
     rand_dist_matrix(Mdesc, 2, 0);
 }
 

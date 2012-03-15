@@ -98,6 +98,13 @@ inline_c{WHITE}*\%\{([^\%]|(\%[^\}]))+\%\}                                      
                           yylval.string = extern_code( yytext + start, strlen(yytext)-start-2 );
 			  return EXTERN_DECL;
                       }
+<properties>inline_c{WHITE}*\%\{([^\%]|(\%[^\}]))+\%\}                                      {
+                          int start;
+                          for(start = 8; yytext[start] != '{'; start++) /* nothing */ ;
+			  start++;
+                          yylval.string = extern_code( yytext + start, strlen(yytext)-start-2 );
+			  return EXTERN_DECL;
+                      }
 SIMCOST               { return SIMCOST; }
 <*>"/*"               { yy_push_state(comment);                            }
 <comment>[^*\n]*      {  /* Eat up non '*'s */                             } 
@@ -129,7 +136,19 @@ WO                    { yylval.number = JDF_VAR_TYPE_WRITE;
                         return PROPERTIES_OFF;                             }
 <properties>[oO][nN]  { yylval.number = 1;
                         return INT;                                        }
-<properties>[oO][fF][fF] { yylval.number = 0;
+<properties>[tT][rR][uU][eE] {
+                        yylval.number = 1;
+                        return INT;                                        }
+<properties>[yY][eE][sS] {
+                        yylval.number = 1;
+                        return INT;                                        }
+<properties>[oO][fF][fF] {
+                        yylval.number = 0;
+                        return INT;                                        }
+<properties>[fF][aA][lL][sS][eE] {
+                        yylval.number = 0;
+                        return INT;                                        }
+<properties>[nN][oO] {  yylval.number = 0;
                         return INT;                                        }
 <*>"("                { return OPEN_PAR;                                   }
 <*>")"                { return CLOSE_PAR;                                  }

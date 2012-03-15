@@ -10,10 +10,11 @@
 #include "dague_config.h"
 
 #if defined(HAVE_CUDA)
-#include "linked_list.h"
-#include "dequeue.h"
+#include "list_item.h"
+#include "fifo.h"
+
 #include "profiling.h"
-#include "lifo.h"
+
 
 #include <cuda.h>
 #include <cuda_runtime_api.h>
@@ -57,21 +58,22 @@ typedef struct _gpu_device {
     int in_submit, in_waiting,
         exec_submit, exec_waiting,
         out_submit, out_waiting;
-    struct dague_fifo_t *fifo_pending_in;
-    struct dague_fifo_t *fifo_pending_exec;
-    struct dague_fifo_t *fifo_pending_out;
+    dague_list_t *fifo_pending_in;
+    dague_list_t *fifo_pending_exec;
+    dague_list_t *fifo_pending_out;
 #endif  /* DAGUE_GPU_STREAM_PER_TASK */
-    int id;
+    uint8_t index;
+    uint8_t device_index;
+    uint8_t major;
+    uint8_t minor;
     int executed_tasks;
-    int major;
-    int minor;
     volatile uint32_t mutex;
-    dague_dequeue_t pending;
+    dague_list_t pending;
     uint64_t transferred_data_in;
     uint64_t transferred_data_out;
     uint64_t required_data_in;
     uint64_t required_data_out;
-    dague_linked_list_t* gpu_mem_lru;
+    dague_list_t* gpu_mem_lru;
 #if defined(DAGUE_PROF_TRACE)
     dague_thread_profiling_t *profiling;
 #endif  /* defined(PROFILING) */
@@ -81,24 +83,27 @@ typedef struct _gpu_device {
     {                                                                   \
         cudaError_t __cuda_error = (cudaError_t) (ERROR);               \
         if( cudaSuccess != __cuda_error ) {                             \
-            printf( "%s:%d %s%s\n", __FILE__, __LINE__,                 \
-                    (STR), cudaGetErrorString(__cuda_error) );          \
+            WARNING(( "%s:%d %s%s\n", __FILE__, __LINE__,               \
+                    (STR), cudaGetErrorString(__cuda_error) ));         \
             CODE;                                                       \
         }                                                               \
     }
 
-extern gpu_device_t** gpu_devices;
+extern gpu_device_t** gpu_enabled_devices;
 int dague_gpu_init(int* puse_gpu, int dague_show_detailed_capabilities);
-    
+int dague_gpu_fini( void );
+
 /**
- * Enable GPU-compatible memory if possible
+ * Enable and disale GPU-compatible memory if possible
  */
 void dague_data_enable_gpu( int nbgpu );
 
 /**
- * returns not false iff dague_data_enable_gpu succeeded
+ * Returns the number of GPUs managed by the DAGuE runtime. This is
+ * different than the number of GPUs in the system, as they get
+ * enabled based on the GPU mask.
  */
-int dague_using_gpu(void);
+int dague_active_gpu(void);
 
 /**
  * allocate a buffer to hold the data using GPU-compatible memory if needed

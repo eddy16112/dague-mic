@@ -6,6 +6,8 @@
  */
 #include "dague_config.h"
 #include "dague.h"
+#include "dague_hwloc.h"
+#include "execution_unit.h"
 
 #include "common.h"
 #include "common_timing.h"
@@ -55,7 +57,7 @@ double time_elapsed = 0.0;
 double sync_time_elapsed = 0.0;
 
 /**********************************
- * Command line arguments 
+ * Command line arguments
  **********************************/
 void print_usage(void)
 {
@@ -85,10 +87,10 @@ void print_usage(void)
             " -B --LDB          : leading dimension of the matrix B (default: full)\n"
             " -C --LDC          : leading dimension of the matrix C (default: full)\n"
             " -i --IB           : inner blocking     (default: autotuned)\n"
-            " -t --NB           : columns in a tile  (default: autotuned)\n"
-            " -T --MB           : rows in a tile     (default: autotuned)\n"
-            " -s --SNB          : columns of tiles in a supertile (default: 1)\n"
-            " -S --SMB          : rows of tiles in a supertile (default: 1)\n"
+            " -t --MB           : rows in a tile     (default: autotuned)\n"
+            " -T --NB           : columns in a tile  (default: autotuned)\n"
+            " -s --SMB          : rows of tiles in a supertile (default: 1)\n"
+            " -S --SNB          : columns of tiles in a supertile (default: 1)\n"
             " -x --check        : verify the results\n"
             "\n"
             "    --qr_a         : Size of TS domain. (specific to xgeqrf_param)\n"
@@ -98,15 +100,17 @@ void print_usage(void)
             "    --treel        : Tree used for low level reduction inside nodes. (specific to xgeqrf_param)\n"
             "    --treeh        : Tree used for high level reduction between nodes, only if qr_p > 1. (specific to xgeqrf_param)\n"
             "                      (0: Flat, 1: Greedy, 2: Fibonacci, 3: Binary)\n"
+            " -y --butlvl       : Level of the Butterfly (starting from 0).\n"
             "\n"
             "    --dot          : create a dot output file (default: don't)\n"
             "\n"
             " -v --verbose      : extra verbose output\n"
             " -h --help         : this message\n"
            );
+    dague_usage();
 }
 
-#define GETOPT_STRING "c:o:g::p:P:q:Q:k::N:M:K:A:B:C:i:t:T:s:S:xv::hd:r:"
+#define GETOPT_STRING "c:o:g::p:P:q:Q:k::N:M:K:A:B:C:i:t:T:s:S:xv::hd:r:y:"
 
 #if defined(HAVE_GETOPT_LONG)
 static struct option long_options[] =
@@ -158,6 +162,9 @@ static struct option long_options[] =
     {"treel",       required_argument,  0, 'l'},
     {"treeh",       required_argument,  0, 'L'},
 
+    {"butlvl",      required_argument,  0, 'y'},
+    {"y",           required_argument,  0, 'y'},
+
     {"dot",         required_argument,  0, '.'},
 
     {"verbose",     optional_argument,  0, 'v'},
@@ -168,7 +175,7 @@ static struct option long_options[] =
 };
 #endif  /* defined(HAVE_GETOPT_LONG) */
 
-static void parse_arguments(int argc, char** argv, int* iparam) 
+static void parse_arguments(int argc, char** argv, int* iparam)
 {
     int opt = 0;
     int c;
@@ -182,12 +189,12 @@ static void parse_arguments(int argc, char** argv, int* iparam)
         c = getopt(argc, argv, GETOPT_STRING);
         (void) opt;
 #endif  /* defined(HAVE_GETOPT_LONG) */
-    
+
  //       printf("%c: %s = %s\n", c, long_options[opt].name, optarg);
         switch(c)
         {
             case 'c': iparam[IPARAM_NCORES] = atoi(optarg); break;
-            case 'o': 
+            case 'o':
                 if( !strcmp(optarg, "LFQ") )
                     iparam[IPARAM_SCHEDULER] = DAGUE_SCHEDULER_LFQ;
                 else if( !strcmp(optarg, "AP") )
@@ -218,7 +225,7 @@ static void parse_arguments(int argc, char** argv, int* iparam)
                 if(optarg)  iparam[IPARAM_PRIO] = atoi(optarg);
                 else        iparam[IPARAM_PRIO] = INT_MAX;
                 break;
-            
+
             case 'N': iparam[IPARAM_N] = atoi(optarg); break;
             case 'M': iparam[IPARAM_M] = atoi(optarg); break;
             case 'K': iparam[IPARAM_K] = atoi(optarg); break;
@@ -226,27 +233,31 @@ static void parse_arguments(int argc, char** argv, int* iparam)
             case 'B': iparam[IPARAM_LDB] = atoi(optarg); break;
             case 'C': iparam[IPARAM_LDC] = atoi(optarg); break;
             case 'i': iparam[IPARAM_IB] = atoi(optarg); break;
-            case 't': iparam[IPARAM_NB] = atoi(optarg); break;
-            case 'T': iparam[IPARAM_MB] = atoi(optarg); break;
-            case 's': iparam[IPARAM_SNB] = atoi(optarg); break;
-            case 'S': iparam[IPARAM_SMB] = atoi(optarg); break;
-            case 'x': iparam[IPARAM_CHECK] = 1; iparam[IPARAM_VERBOSE] = max(2, iparam[IPARAM_VERBOSE]); break; 
+            case 't': iparam[IPARAM_MB] = atoi(optarg); break;
+            case 'T': iparam[IPARAM_NB] = atoi(optarg); break;
+            case 's': iparam[IPARAM_SMB] = atoi(optarg); break;
+            case 'S': iparam[IPARAM_SNB] = atoi(optarg); break;
+            case 'x': iparam[IPARAM_CHECK] = 1; iparam[IPARAM_VERBOSE] = max(2, iparam[IPARAM_VERBOSE]); break;
 
+                /* HQR parameters */
             case '0': iparam[IPARAM_QR_TS_SZE]    = atoi(optarg); break;
             case '1': iparam[IPARAM_QR_HLVL_SZE]  = atoi(optarg); break;
-            case 'd': iparam[IPARAM_QR_DOMINO] = atoi(optarg) ? 1 : 0; break;
-            case 'r': iparam[IPARAM_QR_TSRR] = atoi(optarg) ? 1 : 0; break;
+            case 'd': iparam[IPARAM_QR_DOMINO]    = atoi(optarg) ? 1 : 0; break;
+            case 'r': iparam[IPARAM_QR_TSRR]      = atoi(optarg) ? 1 : 0; break;
             case 'l': iparam[IPARAM_LOWLVL_TREE]  = atoi(optarg); break;
             case 'L': iparam[IPARAM_HIGHLVL_TREE] = atoi(optarg); break;
 
+                /* Butterfly parameters */
+            case 'y': iparam[IPARAM_BUT_LEVEL] = atoi(optarg); break;
+
             case '.': iparam[IPARAM_DOT] = 1; dot_filename = strdup(optarg); break;
 
-            case 'v': 
+            case 'v':
                 if(optarg)  iparam[IPARAM_VERBOSE] = atoi(optarg);
                 else        iparam[IPARAM_VERBOSE] = 2;
                 break;
             case 'h': print_usage(); exit(0);
-            
+
             case '?': /* getopt_long already printed an error message. */
                 exit(1);
             default:
@@ -254,21 +265,10 @@ static void parse_arguments(int argc, char** argv, int* iparam)
         }
     } while(-1 != c);
     int verbose = iparam[IPARAM_RANK] ? 0 : iparam[IPARAM_VERBOSE];
-    
-    /* Set some sensible default to the number of cores */
-    if(iparam[IPARAM_NCORES] <= 0)
-    {
-        iparam[IPARAM_NCORES] = sysconf(_SC_NPROCESSORS_ONLN);
-        if(iparam[IPARAM_NCORES] == -1)
-        {
-            perror("sysconf(_SC_NPROCESSORS_ONLN)\n");
-            iparam[IPARAM_NCORES] = 1;
-        }
-        if(verbose) 
-            fprintf(stderr, "+++ cores detected      : %d\n", iparam[IPARAM_NCORES]);
-    }
+
     if(iparam[IPARAM_NGPUS] < 0) iparam[IPARAM_NGPUS] = 0;
-    
+
+
     /* Check the process grid */
     if(0 == iparam[IPARAM_P])
         iparam[IPARAM_P] = iparam[IPARAM_NNODES];
@@ -280,19 +280,10 @@ static void parse_arguments(int argc, char** argv, int* iparam)
         fprintf(stderr, "xxx the process grid PxQ (%dx%d) is larger than the number of nodes (%d)!\n", iparam[IPARAM_P], iparam[IPARAM_Q], iparam[IPARAM_NNODES]);
         exit(2);
     }
-    if(verbose && (pqnp < iparam[IPARAM_NNODES])) 
+    if(verbose && (pqnp < iparam[IPARAM_NNODES]))
     {
         fprintf(stderr, "!!! the process grid PxQ (%dx%d) is smaller than the number of nodes (%d). Some nodes are idling!\n", iparam[IPARAM_P], iparam[IPARAM_Q], iparam[IPARAM_NNODES]);
     }
-    if(verbose > 1) fprintf(stderr, "+++ nodes x cores + gpu : %d x %d + %d (%d+%d)\n"
-                                    "+++ P x Q               : %d x %d (%d/%d)\n",
-                                    iparam[IPARAM_NNODES],
-                                    iparam[IPARAM_NCORES],
-                                    iparam[IPARAM_NGPUS],
-                                    iparam[IPARAM_NNODES] * iparam[IPARAM_NCORES],
-                                    iparam[IPARAM_NNODES] * iparam[IPARAM_NGPUS],
-                                    iparam[IPARAM_P], iparam[IPARAM_Q],
-                                    pqnp, iparam[IPARAM_NNODES]); 
 
     /* Set matrices dimensions to default values if not provided */
     /* Search for N as a bare number if not provided by -N */
@@ -308,7 +299,7 @@ static void parse_arguments(int argc, char** argv, int* iparam)
     }
     if(0 == iparam[IPARAM_M]) iparam[IPARAM_M] = iparam[IPARAM_N];
     if(0 == iparam[IPARAM_K]) iparam[IPARAM_K] = iparam[IPARAM_N];
-     
+
     /* Set some sensible defaults for the leading dimensions */
     if(-'m' == iparam[IPARAM_LDA]) iparam[IPARAM_LDA] = iparam[IPARAM_M];
     if(-'n' == iparam[IPARAM_LDA]) iparam[IPARAM_LDA] = iparam[IPARAM_N];
@@ -322,30 +313,50 @@ static void parse_arguments(int argc, char** argv, int* iparam)
 
     /* Set no defaults for IB, NB, MB, the algorithm have to do it */
     assert(iparam[IPARAM_IB]); /* check that defaults have been set */
-    if(iparam[IPARAM_MB] <= 0 && iparam[IPARAM_NB] > 0)
-        iparam[IPARAM_MB] = iparam[IPARAM_NB];
-    if(iparam[IPARAM_NB] < 0) iparam[IPARAM_NB] = -iparam[IPARAM_NB];
-    if(iparam[IPARAM_MB] == 0) iparam[IPARAM_MB] = iparam[IPARAM_NB];
+    if(iparam[IPARAM_NB] <= 0 && iparam[IPARAM_MB] > 0)
+        iparam[IPARAM_NB] = iparam[IPARAM_MB];
     if(iparam[IPARAM_MB] < 0) iparam[IPARAM_MB] = -iparam[IPARAM_MB];
+    if(iparam[IPARAM_NB] == 0) iparam[IPARAM_NB] = iparam[IPARAM_MB];
+    if(iparam[IPARAM_NB] < 0) iparam[IPARAM_NB] = -iparam[IPARAM_NB];
     if(iparam[IPARAM_IB] > 0)
     {
-        if(iparam[IPARAM_NB] % iparam[IPARAM_IB])
+        if(iparam[IPARAM_MB] % iparam[IPARAM_IB])
         {
-            fprintf(stderr, "xxx IB=%d does not divide NB=%d or MB=%d\n", iparam[IPARAM_IB], iparam[IPARAM_NB], iparam[IPARAM_MB]);
+            fprintf(stderr, "xxx IB=%d does not divide MB=%d or NB=%d\n", iparam[IPARAM_IB], iparam[IPARAM_MB], iparam[IPARAM_NB]);
  //           exit(2);
         }
     }
 
-
-    /* No supertiling by default */    
+    /* No supertiling by default */
     if(0 == iparam[IPARAM_SNB]) iparam[IPARAM_SNB] = 1;
     if(0 == iparam[IPARAM_SMB]) iparam[IPARAM_SMB] = 1;
 
-    if(verbose) 
+
+}
+
+static void print_arguments(int* iparam)
+{
+    int verbose = iparam[IPARAM_RANK] ? 0 : iparam[IPARAM_VERBOSE];
+
+    if(verbose)
+        fprintf(stderr, "+++ cores detected      : %d\n", iparam[IPARAM_NCORES]);
+
+    if(verbose > 1) fprintf(stderr, "+++ nodes x cores + gpu : %d x %d + %d (%d+%d)\n"
+                            "+++ P x Q               : %d x %d (%d/%d)\n",
+                            iparam[IPARAM_NNODES],
+                            iparam[IPARAM_NCORES],
+                            iparam[IPARAM_NGPUS],
+                            iparam[IPARAM_NNODES] * iparam[IPARAM_NCORES],
+                            iparam[IPARAM_NNODES] * iparam[IPARAM_NGPUS],
+                            iparam[IPARAM_P], iparam[IPARAM_Q],
+                            iparam[IPARAM_Q] * iparam[IPARAM_P], iparam[IPARAM_NNODES]);
+
+    if(verbose)
     {
-        fprintf(stderr, "+++ N x M x K|NRHS      : %d x %d x %d\n",
-                        iparam[IPARAM_N], iparam[IPARAM_M], iparam[IPARAM_K]);
+        fprintf(stderr, "+++ M x N x K|NRHS      : %d x %d x %d\n",
+                iparam[IPARAM_M], iparam[IPARAM_N], iparam[IPARAM_K]);
     }
+
     if(verbose > 1)
     {
         if(iparam[IPARAM_LDB] && iparam[IPARAM_LDC])
@@ -355,24 +366,27 @@ static void parse_arguments(int argc, char** argv, int* iparam)
         else
             fprintf(stderr, "+++ LDA                 : %d\n", iparam[IPARAM_LDA]);
     }
+
     if(verbose)
     {
         if(iparam[IPARAM_IB] > 0)
-            fprintf(stderr, "+++ NB x MB , IB        : %d x %d , %d\n", 
-                            iparam[IPARAM_NB], iparam[IPARAM_MB], iparam[IPARAM_IB]);
+            fprintf(stderr, "+++ MB x NB , IB        : %d x %d , %d\n",
+                            iparam[IPARAM_MB], iparam[IPARAM_NB], iparam[IPARAM_IB]);
         else
-            fprintf(stderr, "+++ NB x MB             : %d x %d\n", 
-                            iparam[IPARAM_NB], iparam[IPARAM_MB]);
+            fprintf(stderr, "+++ MB x NB             : %d x %d\n",
+                    iparam[IPARAM_MB], iparam[IPARAM_NB]);
 
         if(iparam[IPARAM_SNB] * iparam[IPARAM_SMB] != 1)
-            fprintf(stderr, "+++ SNB x SMB           : %d x %d\n", iparam[IPARAM_SNB], iparam[IPARAM_SMB]);
+            fprintf(stderr, "+++ SMB x SNB           : %d x %d\n", iparam[IPARAM_SMB], iparam[IPARAM_SNB]);
     }
 }
+
+
 
 static void iparam_default(int* iparam)
 {
     /* Just in case someone forget to add the initialization :) */
-    memset(iparam, 0, IPARAM_SIZEOF * sizeof(int)); 
+    memset(iparam, 0, IPARAM_SIZEOF * sizeof(int));
     iparam[IPARAM_NNODES] = 1;
     iparam[IPARAM_NGPUS] = -1;
     iparam[IPARAM_QR_DOMINO] = 1;
@@ -429,7 +443,7 @@ dague_context_t* setup_dague(int argc, char **argv, int *iparam)
     int provided;
     MPI_Init_thread(&argc, &argv, MPI_THREAD_SERIALIZED, &provided);
     MPI_Comm_size(MPI_COMM_WORLD, &iparam[IPARAM_NNODES]);
-    MPI_Comm_rank(MPI_COMM_WORLD, &iparam[IPARAM_RANK]); 
+    MPI_Comm_rank(MPI_COMM_WORLD, &iparam[IPARAM_RANK]);
 #else
     iparam[IPARAM_NNODES] = 1;
     iparam[IPARAM_RANK] = 0;
@@ -439,12 +453,20 @@ dague_context_t* setup_dague(int argc, char **argv, int *iparam)
     if(iparam[IPARAM_RANK] > 0 && verbose < 4) verbose = 0;
 
 #ifdef HAVE_MPI
-    if(verbose && (provided != MPI_THREAD_SERIALIZED))
+    if((verbose > 2) && (provided != MPI_THREAD_SERIALIZED))
         fprintf(stderr, "!!! DAGuE formally needs MPI_THREAD_SERIALIZED, but your MPI does not provide it. This is -usually- fine nonetheless\n");
-#endif 
-    
+#endif
+
     TIME_START();
     dague_context_t* ctx = dague_init(iparam[IPARAM_NCORES], &argc, &argv);
+    /* If the number of cores has not been defined as a parameter earlier
+     update it with the default parameter computed in dague_init. */
+    if(iparam[IPARAM_NCORES] <= 0)
+    {
+        iparam[IPARAM_NCORES] = ctx->nb_cores;
+    }
+    print_arguments(iparam);
+
 #if defined(HAVE_CUDA)
     if(iparam[IPARAM_NGPUS] > 0)
     {
@@ -464,14 +486,14 @@ dague_context_t* setup_dague(int argc, char **argv, int *iparam)
 #else
     (void)dot_filename;
     if(iparam[IPARAM_DOT] != 0) {
-        fprintf(stderr, 
+        fprintf(stderr,
                 "************************************************************************************************\n"
                 "*** Warning: dot generation requested, but DAGUE configured with DAGUE_PROF_GRAPHER disabled ***\n"
                 "************************************************************************************************\n");
     }
 #endif
 
-    dague_set_scheduler( ctx, dague_schedulers_array[ iparam[IPARAM_SCHEDULER] ] );  
+    dague_set_scheduler( ctx, dague_schedulers_array[ iparam[IPARAM_SCHEDULER] ] );
 
     if(verbose > 2) TIME_PRINT(iparam[IPARAM_RANK], ("DAGuE initialized\n"));
     return ctx;
@@ -488,9 +510,16 @@ void cleanup_dague(dague_context_t* dague, int *iparam)
 #else
     asprintf(&filename, "%s.profile", argvzero);
 #endif
-    dague_profiling_dump_xml(filename);
+    dague_profiling_dump_dbp(filename);
     free(filename);
 #endif  /* DAGUE_PROF_TRACE */
+#if defined(HAVE_CUDA)
+    if( iparam[IPARAM_NGPUS] > 0 ) {
+        if( 0 != dague_gpu_fini() ) {
+            fprintf(stderr, "xxx DAGuE is unable to finalize the CUDA environment.\n");
+        }
+    }
+#endif  /* defined(HAVE_CUDA) */
     dague_fini(&dague);
 
 #if defined(DAGUE_PROF_GRAPHER)
@@ -502,6 +531,6 @@ void cleanup_dague(dague_context_t* dague, int *iparam)
 #endif
 #ifdef HAVE_MPI
     MPI_Finalize();
-#endif    
+#endif
 }
 

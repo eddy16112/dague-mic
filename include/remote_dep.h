@@ -21,15 +21,11 @@ typedef void* dague_remote_dep_datatype_t;
 
 #include "dague_description_structures.h"
 #include "lifo.h"
-#include "execution_unit.h"
 #include "dague.h"
-#include "arena.h"
-#include "datarepo.h"
 
 #define DAGUE_ACTION_DEPS_MASK                  0x00FF
 #define DAGUE_ACTION_RELEASE_LOCAL_DEPS         0x0100
 #define DAGUE_ACTION_RELEASE_LOCAL_REFS         0x0200
-#define DAGUE_ACTION_NO_PLACEHOLDER             0x0800
 #define DAGUE_ACTION_SEND_INIT_REMOTE_DEPS      0x1000
 #define DAGUE_ACTION_SEND_REMOTE_DEPS           0x2000
 #define DAGUE_ACTION_RECV_INIT_REMOTE_DEPS      0x4000
@@ -39,6 +35,7 @@ typedef struct remote_dep_wire_activate_t
 {
     remote_dep_datakey_t deps;
     remote_dep_datakey_t which;
+    remote_dep_datakey_t tag;
     uint32_t             object_id;
     uint32_t             function_id;
     assignment_t locals[MAX_LOCAL_COUNT];
@@ -52,19 +49,20 @@ typedef struct remote_dep_wire_get_t
 } remote_dep_wire_get_t;
 
 struct remote_dep_output_param {
-/** Never change this structure without understanding the 
+/** Never change this structure without understanding the
   *   "subtle" relation with remote_deps_allocation_init in
   *  remote_dep.c
-  */ 
+  */
     void*                 data;
     struct dague_arena_t* type;
+    uint32_t              nbelt;
     uint32_t*             rank_bits;
     uint32_t              count;
 };
 
 struct dague_remote_deps_t {
     dague_list_item_t               item;
-    struct dague_atomic_lifo_t*     origin;  /**< The memory arena where the data pointer is comming from */
+    struct dague_lifo_t*     origin;  /**< The memory arena where the data pointer is comming from */
     struct dague_object*            dague_object;  /**< dague object generating this data transfer */
     remote_dep_wire_activate_t      msg;     /**< A copy of the message control */
     int                             root;    /**< The root of the control message */
@@ -76,26 +74,17 @@ struct dague_remote_deps_t {
                                                            * the control sequence (only used for control messages) */
     struct remote_dep_output_param  output[1];
 };
-/* { item .. remote_dep_fw_mask (points to fw_mask_bitfield), 
- *   output[0] .. output[max_deps < MAX_PARAM_COUNT], 
+/* { item .. remote_dep_fw_mask (points to fw_mask_bitfield),
+ *   output[0] .. output[max_deps < MAX_PARAM_COUNT],
  *   (max_dep_count x (np+31)/32 uint32_t) rank_bits
  *   ((np+31)/32 x uint32_t) fw_mask_bitfield } */
 
 
 
-/* Gives pointers to expr_t allowing for evaluation of GRID predicates, needed 
- * by the precompiler only */
-int dague_remote_dep_get_rank_preds(const dague_object_t *dague_object,
-                                    const expr_t **predicates,
-                                    const expr_t **rowpred,
-                                    const expr_t **colpred, 
-                                    const symbol_t **rowsize,
-                                    const symbol_t **colsize);
-
 #if defined(DISTRIBUTED)
 
 typedef struct {
-    dague_atomic_lifo_t freelist;
+    dague_lifo_t freelist;
     uint32_t            max_dep_count;
     uint32_t            max_nodes_number;
     uint32_t            elem_size;
@@ -106,14 +95,15 @@ extern dague_remote_dep_context_t dague_remote_dep_context;
 void remote_deps_allocation_init(int np, int max_deps);
 void remote_deps_allocation_fini(void);
 
-static inline dague_remote_deps_t* remote_deps_allocation( dague_atomic_lifo_t* lifo )
+static inline dague_remote_deps_t* remote_deps_allocation( dague_lifo_t* lifo )
 {
-    dague_remote_deps_t* remote_deps = (dague_remote_deps_t*)dague_atomic_lifo_pop(lifo);
+    dague_remote_deps_t* remote_deps = (dague_remote_deps_t*)dague_lifo_pop(lifo);
     uint32_t i, rank_bit_size;
 
     if( NULL == remote_deps ) {
         char *ptr;
         remote_deps = (dague_remote_deps_t*)calloc(1, dague_remote_dep_context.elem_size);
+        DAGUE_LIST_ITEM_CONSTRUCT(remote_deps);
         remote_deps->origin = lifo;
         ptr = (char*)(&(remote_deps->output[dague_remote_dep_context.max_dep_count]));
         rank_bit_size = sizeof(uint32_t) * ((dague_remote_dep_context.max_nodes_number + 31) / 32);
@@ -143,6 +133,9 @@ int dague_remote_dep_off(dague_context_t* context);
 /* Poll for remote completion of tasks that would enable some work locally */
 int dague_remote_dep_progress(dague_execution_unit_t* eu_context);
 
+/* Inform the communication engine from the creation of new objects */
+int dague_remote_dep_new_object(dague_object_t* obj);
+
 /* Send remote dependencies to target processes */
 int dague_remote_dep_activate(dague_execution_unit_t* eu_context,
                                 const dague_execution_context_t* origin,
@@ -152,16 +145,18 @@ int dague_remote_dep_activate(dague_execution_unit_t* eu_context,
 /* Memcopy a particular data using datatype specification */
 void dague_remote_dep_memcpy(dague_execution_unit_t* eu_context,
                              dague_object_t* dague_object,
-                             void *dst, dague_arena_chunk_t *src, 
-                             const dague_remote_dep_datatype_t datatype);
+                             void *dst, dague_arena_chunk_t *src,
+                             const dague_remote_dep_datatype_t datatype,
+                             int nbelt);
 
-#else 
+#else
 # define dague_remote_dep_init(ctx) (1)
 # define dague_remote_dep_fini(ctx) (0)
 # define dague_remote_dep_on(ctx)   (0)
 # define dague_remote_dep_off(ctx)  (0)
 # define dague_remote_dep_progress(ctx) (0)
 # define dague_remote_dep_activate(ctx, o, r, c) (-1)
+# define dague_remote_dep_new_object(obj) (0)
 #endif /* DISTRIBUTED */
 
 #endif /* __USE_REMOTE_DEP_H__ */

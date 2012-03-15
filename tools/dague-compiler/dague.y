@@ -1,6 +1,6 @@
 %{
 /*
- * Copyright (c) 2009      The University of Tennessee and The University
+ * Copyright (c) 2009-2012 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
  */
@@ -30,7 +30,7 @@ static void yyerror(const char *str)
     fprintf(stderr, "parse error at line %d: %s\n", current_lineno, str);
 }
 
-int yywrap(void); 
+int yywrap(void);
 
 int yywrap(void)
 {
@@ -39,7 +39,11 @@ int yywrap(void)
 
 #define new(type)  (type*)calloc(1, sizeof(type))
 
-static jdf_def_list_t* jdf_create_properties_list( const char* name, int default_int, const char* default_char, jdf_def_list_t* next )
+jdf_def_list_t*
+jdf_create_properties_list( const char* name,
+                            int default_int,
+                            const char* default_char,
+                            jdf_def_list_t* next )
 {
     jdf_def_list_t* property;
     jdf_expr_t *e;
@@ -106,7 +110,7 @@ static jdf_data_entry_t* jdf_find_or_create_data(jdf_t* jdf, const char* dname)
     /* Chain it with the other globals */
     global->next = jdf->globals;
     jdf->globals = global;
-    
+
     return data;
 }
 
@@ -164,9 +168,9 @@ static jdf_data_entry_t* jdf_find_or_create_data(jdf_t* jdf, const char* dname)
 %type <number>DEPENDENCY_TYPE
 
 %token VAR ASSIGNMENT EXTERN_DECL COMMA OPEN_PAR CLOSE_PAR BODY STRING SIMCOST
-%token COLON SEMICOLON DEPENDENCY_TYPE ARROW QUESTION_MARK PROPERTIES_ON PROPERTIES_OFF 
+%token COLON SEMICOLON DEPENDENCY_TYPE ARROW QUESTION_MARK PROPERTIES_ON PROPERTIES_OFF
 %token EQUAL NOTEQUAL LESS LEQ MORE MEQ AND OR XOR NOT INT
-%token PLUS MINUS TIMES DIV MODULO SHL SHR RANGE 
+%token PLUS MINUS TIMES DIV MODULO SHL SHR RANGE
 
 %nonassoc EQUAL NOTEQUAL RANGE QUESTION_MARK COLON
 %nonassoc LESS LEQ MORE MEQ
@@ -247,7 +251,7 @@ jdf:            jdf function
                         current_jdf.inline_c_functions = inline_c_functions;
                         inline_c_functions = NULL;
                     }
-                } 
+                }
         |       jdf VAR properties
                 {
                     jdf_global_entry_t *g, *e = new(jdf_global_entry_t);
@@ -264,13 +268,22 @@ jdf:            jdf function
                         for(g = current_jdf.globals; g->next != NULL; g = g->next)
                             /* nothing */ ;
                         g->next = e;
-                    }                
+                    }
                     if( NULL != inline_c_functions ) {
                         /* Every inline functions declared here where within the context of globals only (no assignment) */
                         for(el = inline_c_functions; NULL != el->next; el = el->next) /* nothing */ ;
                         el->next = current_jdf.inline_c_functions;
                         current_jdf.inline_c_functions = inline_c_functions;
                         inline_c_functions = NULL;
+                    }
+                }
+        | jdf properties
+                {
+                    jdf_def_list_t *p;
+                    if( NULL != $2 ) {
+                        for(p = $2; p->next != NULL; p = p->next) /*nothing*/ ;
+                        p->next = current_jdf.global_properties;
+                        current_jdf.global_properties = $2;
                     }
                 }
         |
@@ -357,25 +370,25 @@ varlist:        VAR COMMA varlist
                 }
          ;
 
-execution_space: 
-                VAR ASSIGNMENT expr_range execution_space
+execution_space:
+                VAR properties ASSIGNMENT expr_range execution_space
                 {
                     jdf_def_list_t *l = new(jdf_def_list_t);
-                    l->name   = $1;
-                    l->expr   = $3;
-                    l->lineno = current_lineno;
-                    l->next   = $4;
-
+                    l->name       = $1;
+                    l->expr       = $4;
+                    l->lineno     = current_lineno;
+                    l->next       = $5;
+                    l->properties = $2;
                     $$ = l;
                 }
-         |      VAR ASSIGNMENT expr_range 
+         |      VAR properties ASSIGNMENT expr_range
                 {
                     jdf_def_list_t *l = new(jdf_def_list_t);
-                    l->name   = $1;
-                    l->expr   = $3;
-                    l->lineno = current_lineno;
-                    l->next   = NULL;
-
+                    l->name       = $1;
+                    l->expr       = $4;
+                    l->lineno     = current_lineno;
+                    l->next       = NULL;
+                    l->properties = $2;
                     $$ = l;
                 }
          ;
@@ -409,11 +422,11 @@ partitioning:   COLON VAR OPEN_PAR expr_list CLOSE_PAR
                       data->nbparams = nbparams;
                       data->lineno = current_lineno;
                   }
-                  $$ = c;                  
+                  $$ = c;
               }
          ;
 
-dataflow_list:  dataflow dataflow_list 
+dataflow_list:  dataflow dataflow_list
                 {
                     $1->next = $2;
                     $$ = $1;
@@ -425,7 +438,7 @@ dataflow_list:  dataflow dataflow_list
          ;
 
 optional_access_type :
-                DEPENDENCY_TYPE 
+                DEPENDENCY_TYPE
                 {
                     $$ = $1;
                 }
@@ -449,50 +462,86 @@ dependencies:  dependency dependencies
                    $1->next = $2;
                    $$ = $1;
                }
-        | 
+        |
                {
                    $$ = NULL;
                }
        ;
 
-dependency:   ARROW guarded_call properties 
+dependency:   ARROW guarded_call properties
               {
                   struct jdf_name_list *g, *e, *prec;
                   jdf_dep_t *d = new(jdf_dep_t);
-                  jdf_expr_t* expr;
+                  jdf_expr_t *expr_simple, *expr_complex;
                   jdf_def_list_t* property;
 
                   d->type = $1;
                   d->guard = $2;
-                  if( NULL == $3 ) {
-                      $3 = jdf_create_properties_list( "type", 0, "DEFAULT", NULL );
-                  }
-                  $2->properties = $3;
 
-                  expr = jdf_find_property( $3, "type", &property );
-                  assert( NULL != expr );
-                  if( (JDF_VAR != expr->op) && (JDF_STRING != expr->op) ) {
-                      printf("Warning: Incorrect value for the \"type\" property defined at line %d\n", property->lineno );
-                  } else {
-                      for(prec = NULL, g = current_jdf.datatypes; g != NULL; g = g->next) {
-                          if( 0 == strcmp(expr->jdf_var, g->name) ) {
-                              break;
+                  expr_simple = jdf_find_property( $3, "type", &property );
+                  expr_complex = jdf_find_property( $3, "arena_index", &property );
+
+                  /* If neither is defined, we define the old simple DEFAULT arena */
+                  property = NULL;
+                  if( NULL == expr_simple && NULL == expr_complex ) {
+                      property = jdf_create_properties_list( "type", 0, "DEFAULT", NULL );
+                      expr_simple = jdf_find_property( property, "type", &property );
+                  }
+                  if( NULL == property )
+                      property = $3;
+                  else
+                      property->next = $3;
+                  $2->properties = property;
+
+                  if( NULL != expr_simple ) {
+                      if( NULL != expr_complex ) {
+                          jdf_fatal(current_lineno, "Dependency defined with both properties type and arena_index\n");
+                          YYERROR;
+                      }
+                      /* Simple old type */
+                      if( JDF_STRING == expr_simple->op ||
+                          JDF_VAR == expr_simple->op ) {
+                          /* Old way: [type = SOMETHING] -> define the DAGUE_ARENA_SOMETHING arena index */
+                          d->datatype.simple = 1;
+                          for(prec = NULL, g = current_jdf.datatypes; g != NULL; g = g->next) {
+                              if( 0 == strcmp(expr_simple->jdf_var, g->name) ) {
+                                  break;
+                              }
+                              prec = g;
                           }
-                          prec = g;
-                      }
-                  }
-                  if( NULL == g ) {
-                      e = new(struct jdf_name_list);
-                      e->name = strdup(expr->jdf_var);
-                      e->next = NULL;
-                      if( NULL != prec ) {
-                          prec->next = e;
+                          if( NULL == g ) {
+                              e = new(struct jdf_name_list);
+                              e->name = strdup(expr_simple->jdf_var);
+                              e->next = NULL;
+                              if( NULL != prec ) {
+                                  prec->next = e;
+                              } else {
+                                  current_jdf.datatypes = e;
+                              }
+                          }
+                          d->datatype.u.simple_name = strdup(expr_simple->jdf_var);
                       } else {
-                          current_jdf.datatypes = e;
+                          /* Let's allow [type = inline_c %{ ... %}], even if it should really be [arena_index = inline_c %{ ... %} ] */
+                          expr_complex = expr_simple;
+                          expr_simple = NULL;
                       }
                   }
-                  d->datatype_name = strdup(expr->jdf_var);
+                  if( NULL != expr_complex ) {
+                      assert(NULL == expr_simple);
+                      d->datatype.simple = 0;
+                      d->datatype.u.complex_expr = expr_complex;
+                  }
+
+                  expr_simple = jdf_find_property( d->guard->properties, "nb_elt", &property );
+                  if( NULL == expr_simple ) {
+                      d->datatype.nb_elt = new(jdf_expr_t);
+                      d->datatype.nb_elt->op = JDF_CST;
+                      d->datatype.nb_elt->jdf_cst = 1;
+                  } else {
+                      d->datatype.nb_elt = expr_simple;
+                  }
                   d->lineno = current_lineno;
+
                   $$ = d;
               }
        ;
@@ -561,7 +610,7 @@ call:         VAR VAR OPEN_PAR expr_list_range CLOSE_PAR
                   c->var = NULL;
                   c->func_or_mem = $1;
                   c->parameters = $3;
-                  $$ = c;                  
+                  $$ = c;
                   data = jdf_find_or_create_data(&current_jdf, $1);
                   JDF_COUNT_LIST_ENTRIES($3, jdf_expr_t, next, nbparams);
                   if( data->nbparams != -1 ) {
@@ -722,7 +771,7 @@ expr_simple:  expr_simple EQUAL expr_simple
                   e->op = JDF_NOT;
                   e->jdf_ua = $2;
                   $$ = e;
-              }      
+              }
        |      OPEN_PAR expr_simple CLOSE_PAR
               {
                   $$ = $2;

@@ -61,6 +61,7 @@ enum iparam_t {
   IPARAM_QR_HLVL_SZE,  /* Size of the high level tree           (specific to xgeqrf_param) */
   IPARAM_QR_DOMINO,    /* Enable/disable the domino between the upper and the lower tree (specific to xgeqrf_param) */
   IPARAM_QR_TSRR,      /* Enable/disable the round-robin on TS domain */
+  IPARAM_BUT_LEVEL,    /* Butterfly level */
   IPARAM_DOT,          /* Do we require to output the DOT file? */
   IPARAM_SIZEOF
 };
@@ -68,7 +69,7 @@ enum iparam_t {
 void iparam_default_facto(int* iparam);
 void iparam_default_solve(int* iparam);
 void iparam_default_gemm(int* iparam);
-void iparam_default_ibnbmb(int* iparam, int ib, int nb, int mb); 
+void iparam_default_ibnbmb(int* iparam, int ib, int nb, int mb);
 
 #define PASTE_CODE_IPARAM_LOCALS(iparam) \
   int rank  = iparam[IPARAM_RANK];\
@@ -96,19 +97,20 @@ void iparam_default_ibnbmb(int* iparam, int ib, int nb, int mb);
   int loud  = iparam[IPARAM_VERBOSE];\
   int scheduler = iparam[IPARAM_SCHEDULER];\
   int nb_local_tasks = 0;                                               \
+  int butterfly_level = iparam[IPARAM_BUT_LEVEL];\
   (void)rank;(void)nodes;(void)cores;(void)gpus;(void)prio;(void)P;(void)Q;(void)M;(void)N;(void)K;(void)NRHS; \
   (void)LDA;(void)LDB;(void)LDC;(void)IB;(void)MB;(void)NB;(void)MT;(void)NT;(void)SMB;(void)SNB;(void)check;(void)loud;\
-  (void)scheduler;(void)nb_local_tasks;
+  (void)scheduler;(void)nb_local_tasks; (void)butterfly_level;
 
 /* Define a double type which not pass through the precision generation process */
 typedef double DagDouble_t;
 #define PASTE_CODE_FLOPS( FORMULA, PARAMS ) \
   double gflops, flops = FORMULA PARAMS;
-  
+
 #if defined(PRECISION_z) || defined(PRECISION_c)
 #define PASTE_CODE_FLOPS_COUNT(FADD,FMUL,PARAMS) \
   double gflops, flops = (2. * FADD PARAMS + 6. * FMUL PARAMS);
-#else 
+#else
 #define PASTE_CODE_FLOPS_COUNT(FADD,FMUL,PARAMS) \
   double gflops, flops = (FADD PARAMS + FMUL PARAMS);
 #endif
@@ -140,7 +142,7 @@ void cleanup_dague(dague_context_t* dague, int *iparam);
  * no way to correctly define them without borderline effects.
  */
 #undef max
-#undef min 
+#undef min
 static inline int max(int a, int b) { return a > b ? a : b; }
 static inline int min(int a, int b) { return a < b ? a : b; }
 
@@ -168,7 +170,7 @@ static inline int min(int a, int b) { return a < b ? a : b; }
     SYNC_TIME_START();                                                  \
     TIME_START();                                                       \
     dague_progress(DAGUE);                                              \
-    if(loud) TIME_PRINT(rank, (#KERNEL " computed %d tasks,\trate %f task/s\n", \
+    if(loud > 2) TIME_PRINT(rank, (#KERNEL " computed %d tasks,\trate %f task/s\n", \
                                nb_local_tasks,                          \
                                nb_local_tasks/time_elapsed));           \
     SYNC_TIME_PRINT(rank, (#KERNEL " computation N= %d NB= %d : %f gflops\n", N, NB, \
