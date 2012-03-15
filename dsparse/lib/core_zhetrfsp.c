@@ -80,8 +80,8 @@ static void core_zhetf2sp(dague_int_t  n,
         
         alpha = 1. / (*tmp);
         cblas_zscal(n-k-1, CBLAS_SADDR( alpha ), tmp1, 1 );
-        alpha = -(*tmp);
 
+        alpha = -(*tmp);
         cblas_zher(CblasColMajor, (CBLAS_UPLO)CblasLower, 
                    n-k-1, (double)alpha, 
                    tmp1,        1, 
@@ -122,8 +122,8 @@ static void core_zhetrfsp(dague_int_t  n,
       
         blocksize = min(MAXSIZEOFBLOCKS, n-k*MAXSIZEOFBLOCKS);
         tmp  = A+(k*MAXSIZEOFBLOCKS)*(stride+1); /* Lk,k     */
-        tmp1 = tmp+ blocksize;                   /* Lk+1,k   */
-        tmp2 = tmp1 + stride* blocksize;         /* Lk+1,k+1 */
+        tmp1 = tmp  + blocksize;                 /* Lk+1,k   */
+        tmp2 = tmp1 + blocksize * stride;        /* Lk+1,k+1 */
         
         /* Factorize the diagonal block Akk*/
         core_zhetf2sp(blocksize, tmp, stride, nbpivot, criteria);

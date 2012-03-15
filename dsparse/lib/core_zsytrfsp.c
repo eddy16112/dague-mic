@@ -80,8 +80,8 @@ static void core_zsytf2sp(dague_int_t  n,
         
         alpha = 1. / (*tmp);
         cblas_zscal(n-k-1, CBLAS_SADDR( alpha ), tmp1, 1 );
-        alpha = -(*tmp);
 
+        alpha = -(*tmp);
         /* TODO: replace by SYR but [cz]syr exists only in LAPACK */
 /*         LAPACKE_zsyr_work(LAPACK_COL_MAJOR, 'l',  */
 /*                           n-k-1, (double)(alpha),  */
@@ -123,8 +123,8 @@ static void core_zsytrfsp(dague_int_t  n,
       
         blocksize = min(MAXSIZEOFBLOCKS, n-k*MAXSIZEOFBLOCKS);
         tmp  = A+(k*MAXSIZEOFBLOCKS)*(stride+1); /* Lk,k     */
-        tmp1 = tmp+ blocksize;                   /* Lk+1,k   */
-        tmp2 = tmp1 + stride* blocksize;         /* Lk+1,k+1 */
+        tmp1 = tmp  + blocksize;                 /* Lk+1,k   */
+        tmp2 = tmp1 + blocksize * stride;        /* Lk+1,k+1 */
         
         /* Factorize the diagonal block Akk*/
         core_zsytf2sp(blocksize, tmp, stride, nbpivot, criteria);
@@ -136,8 +136,8 @@ static void core_zsytrfsp(dague_int_t  n,
             /* Compute the column Lk+1k */
             /** Compute Lk+1,k*Dk,k      */
             cblas_ztrsm(CblasColMajor,
-                        (CBLAS_SIDE)CblasRight, (CBLAS_UPLO)CblasLower,
-                        (CBLAS_TRANSPOSE)CblasTrans, (CBLAS_DIAG)CblasUnit,
+                        CblasRight, CblasLower,
+                        CblasTrans, CblasUnit,
                         matrixsize, blocksize,
                         CBLAS_SADDR(zone), tmp,  stride,
                                            tmp1, stride);
@@ -155,7 +155,7 @@ static void core_zsytrfsp(dague_int_t  n,
             
             /* Update Ak+1k+1 = Ak+1k+1 - (Lk+1k*Dk,k)*Lk+1kT */
             cblas_zgemm(CblasColMajor,
-                        (CBLAS_TRANSPOSE)CblasNoTrans, (CBLAS_TRANSPOSE)CblasTrans,
+                        CblasNoTrans, CblasTrans,
                         matrixsize, matrixsize, blocksize,
                         CBLAS_SADDR(mzone), work, matrixsize,
                                             tmp1, stride,
@@ -203,8 +203,8 @@ void core_zsytrfsp1d(Dague_Complex64_t *L,
         
         /* Three terms version, no need to keep L and L*D */
         cblas_ztrsm(CblasColMajor,
-                    (CBLAS_SIDE)CblasRight, (CBLAS_UPLO)CblasLower,
-                    (CBLAS_TRANSPOSE)CblasTrans, (CBLAS_DIAG)CblasUnit,
+                    CblasRight, CblasLower,
+                    CblasTrans, CblasUnit,
                     dimb, dima,
                     CBLAS_SADDR(zone), L,  stride,
                                        fL, stride);

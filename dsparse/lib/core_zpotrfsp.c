@@ -67,6 +67,7 @@ static void core_zpotf2sp(dague_int_t  n,
             (*nbpivot)++;
 	}
 
+        /* Hermitian matrices, so imaginary part should be 0 */
         if ( creal(*tmp) < 0. )
         {
             errorPrint("Negative diagonal term\n");
@@ -78,8 +79,7 @@ static void core_zpotf2sp(dague_int_t  n,
         
         alpha = 1. / (*tmp);
         cblas_zscal(n-k-1, CBLAS_SADDR( alpha ), tmp1, 1 );
-        alpha = -(*tmp);
-
+ 
         cblas_zher(CblasColMajor, CblasLower,  
                    n-k-1, -1., 
                    tmp1,        1, 

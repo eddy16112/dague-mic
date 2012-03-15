@@ -137,22 +137,22 @@ static void core_zgetrfsp(dague_int_t  n,
         Aij = Ukj + blocksize;
         
         /* Factorize the diagonal block Akk*/
-        core_zgetf2sp( blocksize, blocksize, Akk, stride, nbpivot, criteria );
+        core_zgetf2sp( tempm, blocksize, Akk, stride, nbpivot, criteria );
         
         matrixsize = tempm - blocksize;
         if ( matrixsize > 0 ) {
 
             /* Compute the column Ukk+1 */
             cblas_ztrsm(CblasColMajor,
-                        (CBLAS_SIDE)CblasLeft, (CBLAS_UPLO)CblasLower,
-                        (CBLAS_TRANSPOSE)CblasNoTrans, (CBLAS_DIAG)CblasUnit,
+                        CblasLeft, CblasLower,
+                        CblasNoTrans, CblasUnit,
                         blocksize, matrixsize,
                         CBLAS_SADDR(zone), Akk, stride,
                                            Ukj, stride);
 
             /* Update Ak+1,k+1 = Ak+1,k+1 - Lk+1,k*Uk,k+1 */
             cblas_zgemm(CblasColMajor,
-                        (CBLAS_TRANSPOSE)CblasNoTrans, (CBLAS_TRANSPOSE)CblasNoTrans,
+                        CblasNoTrans, CblasNoTrans,
                         matrixsize, matrixsize, blocksize,
                         CBLAS_SADDR(mzone), Lik, stride,
                                             Ukj, stride,
