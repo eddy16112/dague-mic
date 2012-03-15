@@ -313,6 +313,7 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
     pastix_data->sopar.espilondiag = criteria;
     
     dspctxt->desc->pastix_data = pastix_data;
+    dspctxt->rhsdesc->pastix_data = pastix_data;
 
     /*D_Ddump_all(&(pastix_data->solvmatr), DUMP_CSC);*/
 
@@ -499,8 +500,7 @@ void sparse_vector_zinit( sparse_context_t *dspctxt )
     Z_buildUpdoVect(pastix_data,
                     NULL,
                     dspctxt->rhs,
-                    0);
-    
+                    0);    
     return;
 }
 
