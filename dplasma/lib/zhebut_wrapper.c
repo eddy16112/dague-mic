@@ -14,7 +14,7 @@
 #include "dplasma.h"
 #include "dplasma/lib/dplasmatypes.h"
 #include "dplasma/lib/dplasmaaux.h"
-#include "dplasma/lib/memory_pool.h"
+#include "memory_pool.h"
 
 #include "dplasma/lib/butterfly_map.h"
 #include "dplasma/lib/zhebut.h"
