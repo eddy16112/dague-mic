@@ -183,8 +183,9 @@ void sparse_matrix_init( sparse_matrix_desc_t *desc,
     desc->super.keydim = NULL; /* Initialized when the matrix is read */
 #endif /* DAGUE_PROF_TRACE */
 
-    desc->mtype   = mtype;
-    desc->typesze = sparse_matrix_size_of( mtype );
+    desc->mtype       = mtype;
+    desc->typesze     = sparse_matrix_size_of( mtype );
+    desc->pastix_data = NULL;
 
     DEBUG(("sparse_matrix_init: desc = %p, mtype = %zu, \n"
            "\tnodes = %u, cores = %u, myrank = %u\n",
