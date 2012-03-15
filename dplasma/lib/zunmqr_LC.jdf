@@ -16,10 +16,10 @@ extern "C" %{
 
 #include "dague.h"
 #include "data_distribution.h"
+#include "memory_pool.h"
+
 #include "data_dist/matrix/precision.h"
 #include "data_dist/matrix/matrix.h"
-
-#include "memory_pool.h"
 #include "dplasma/lib/dplasmajdf.h"
 
 %}
