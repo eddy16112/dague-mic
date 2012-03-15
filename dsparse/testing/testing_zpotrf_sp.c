@@ -34,7 +34,9 @@ int main(int argc, char ** argv)
 
     /* Initialize DAGuE */
     dague = setup_dague(argc, argv, iparam, sparam);
-    if( dague->nb_nodes != 1 ) {
+    PASTE_CODE_IPARAM_LOCALS(iparam);
+
+    if( nodes != 1 ) {
         fprintf(stderr, 
                 "Check that the absorbant property of the JDF refer only local tiles\n"
                 "and remove this warning in %s at line %d...\n",
@@ -42,8 +44,6 @@ int main(int argc, char ** argv)
         cleanup_dague(dague, iparam, sparam);
         return 1;
     }
-    PASTE_CODE_IPARAM_LOCALS(iparam);
-
     /* initializing matrix structure */
     PASTE_CODE_INIT_CONTEXT( dspctxt, factotype );
 
