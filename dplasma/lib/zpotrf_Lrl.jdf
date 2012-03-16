@@ -35,10 +35,10 @@ extern "C" %{
 extern int *gpu_counter;
 #endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
 
-#define MYGEMM
-#define MYHERK
-#define MYTRSM
-#define MYPOTRF
+//#define MYGEMM
+//#define MYHERK
+//#define MYTRSM
+//#define MYPOTRF
 
 #define KERNEL_POTRF	1
 #define KERNEL_TRSM		2
