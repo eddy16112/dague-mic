@@ -564,13 +564,7 @@ typedef struct {
     char func[16];
 } dague_profile_remote_dep_mpi_info_t;
 
-static int  dague_profile_remote_dep_mpi_info_to_string(void *info, char *text, size_t size)
-{
-    int res;
-    dague_profile_remote_dep_mpi_info_t nfo = *(dague_profile_remote_dep_mpi_info_t*)info;
-    res = snprintf(text, size, "%d -> %d: %s", nfo.rank_src, nfo.rank_dst, nfo.func);
-    return res;
-}
+static char dague_profile_remote_dep_mpi_info_to_string[] = "";
 
 static void remote_dep_mpi_profiling_init(void)
 {
@@ -597,7 +591,7 @@ static void remote_dep_mpi_profiling_init(void)
     for(i = 0; i < DEP_NB_CONCURENT; i++) {
         MPIsnd_prof[i] = dague_profiling_thread_init( 2*1024*1024, "MPI isend(req=%d)", i);
         MPIrcv_prof[i] = dague_profiling_thread_init( 2*1024*1024, "MPI irecv(req=%d)", i);
-    }    
+    }
 }
 
 #define TAKE_TIME_WITH_INFO(PROF, KEY, I, src, dst, ctx) do {           \
@@ -650,7 +644,6 @@ static dague_remote_deps_t* dep_activate_buff[DEP_NB_CONCURENT];
 #define datakey_dtt MPI_LONG
 #define datakey_count 3
 static remote_dep_wire_get_t dep_get_buff[DEP_NB_CONCURENT];
-static size_t dep_mpi_eager_limit;
 static size_t dep_mpi_short_limit;
 
 /* Pointers are converted to long to be used as keys to fetch data in the get
@@ -728,7 +721,6 @@ static int remote_dep_mpi_init(dague_context_t* context)
 
     dep_pending_recv_array = (dague_remote_deps_t**)calloc(DEP_NB_CONCURENT, sizeof(dague_remote_deps_t*));
     dep_pending_put_array = (dague_dep_wire_get_fifo_elem_t**)calloc(DEP_NB_CONCURENT, sizeof(dague_dep_wire_get_fifo_elem_t*));
-    dep_mpi_eager_limit = RDEP_MSG_EAGER_LIMIT;
     dep_mpi_short_limit = RDEP_MSG_SHORT_LIMIT;
     remote_dep_mpi_profiling_init();
     return 0;
@@ -811,7 +803,7 @@ static int remote_dep_mpi_send_dep(dague_execution_unit_t* eu_context, int rank,
         }
         remote_dep_complete_one_and_cleanup(deps);
     }
-    remote_dep_mpi_put_short(eu_context, msg, rank); 
+    remote_dep_mpi_put_short(eu_context, msg, rank);
     return 1;
 }
 
@@ -929,7 +921,7 @@ static void remote_dep_mpi_put_short( dague_execution_unit_t* eu_context, remote
         /* we can't process it now, push it first in queue, and
          * progress rdv to make room */
         dague_list_item_t* item = (dague_list_item_t*)wireget;
-        while( (dague_list_item_t*)wireget == item ) { 
+        while( (dague_list_item_t*)wireget == item ) {
             dague_ulist_push_front(&dep_put_fifo, item);
             remote_dep_mpi_progress(eu_context);
             item = dague_ulist_pop_front(&dep_put_fifo);
@@ -983,7 +975,7 @@ static void remote_dep_mpi_put_start(dague_execution_unit_t* eu_context, dague_d
     char type_name[MPI_MAX_OBJECT_NAME];
     int len;
 #endif
-    
+
     (void)eu_context;
     DEBUG_MARK_CTL_MSG_GET_RECV(item->peer, (void*)task, task);
 
@@ -1116,7 +1108,7 @@ static void remote_dep_mpi_recv_activate( dague_execution_unit_t* eu_context, da
             if(deps) remote_dep_mpi_get_start(eu_context, deps, i );
             break;
         }
-    }    
+    }
 }
 
 static void remote_dep_mpi_save_activate( dague_execution_unit_t* eu_context, int i, MPI_Status* status )
@@ -1153,7 +1145,7 @@ static void remote_dep_mpi_new_object( dague_execution_unit_t* eu_context, dague
 #if defined(DAGUE_DEBUG_VERBOSE2)
     char tmp[128];
 #endif
-    DAGUE_ULIST_ITERATOR(&dep_activates_noobj_fifo, item, 
+    DAGUE_ULIST_ITERATOR(&dep_activates_noobj_fifo, item,
     {
         dague_remote_deps_t* deps = (dague_remote_deps_t*) item;
         if( deps->msg.object_id != obj->object_id ) {
@@ -1215,18 +1207,18 @@ static void remote_dep_mpi_get_start(dague_execution_unit_t* eu_context, dague_r
         TAKE_TIME_WITH_INFO(MPIrcv_prof[i], MPI_Data_pldr_sk, i+k, from,
                             eu_context->master_context->my_rank, deps->msg);
 #  endif /* defined(DAGUE_PROF_TRACE) */
-        MPI_Irecv(ADATA(data), nbdtt, 
-                  dtt, from, msg.tag+k, dep_comm, 
+        MPI_Irecv(ADATA(data), nbdtt,
+                  dtt, from, msg.tag+k, dep_comm,
                   &dep_put_rcv_req[i*MAX_PARAM_COUNT+k]);
         DEBUG_MARK_DTA_MSG_START_RECV(from, data, msg.tag+k);
 #endif
     }
     if(msg.which)
     {
-        TAKE_TIME_WITH_INFO(MPIctl_prof, MPI_Data_ctl_sk, get, 
+        TAKE_TIME_WITH_INFO(MPIctl_prof, MPI_Data_ctl_sk, get,
                             from, eu_context->master_context->my_rank, (*task));
         DAGUE_STATACC_ACCUMULATE_MSG(counter_control_messages_sent, datakey_count, datakey_dtt);
-        MPI_Send(&msg, datakey_count, datakey_dtt, from, 
+        MPI_Send(&msg, datakey_count, datakey_dtt, from,
                  REMOTE_DEP_GET_DATA_TAG, dep_comm);
         assert(NULL == dep_pending_recv_array[i]);
         dep_pending_recv_array[i] = deps;
@@ -1254,54 +1246,75 @@ static void remote_dep_mpi_get_end(dague_execution_unit_t* eu_context, dague_rem
     }
 }
 
-int remote_dep_bind_thread(dague_context_t* context){
-    int boundto;
-    /* if the index_core_free_mask doesn't exist, try to use core #nbcore, if it exists */
-    int free_core = context->nb_cores;
 
-#ifdef HAVE_HWLOC
+/* Bind the communication thread on an unused core if possible */
+int remote_dep_bind_thread(dague_context_t* context){
+    do_nano=1;
+
+#if defined(HAVE_HWLOC) && defined(HAVE_HWLOC_BITMAP)
+    char *str = NULL;
+
     if (context->comm_th_core >= 0) {
-	    /* Bind to the specified core */
-	    if(dague_bindthread(context->comm_th_core) == context->comm_th_core)
-	        STATUS(("Communication thread bound to physical core %d\n",  context->comm_th_core));
-	    else
-            WARNING(("Communication thread requested to be bound to %d, but it still floats\n", context->comm_th_core));
-        /* there is no guarantee the thread doesn't share the core. */
-        /* Aurelien: is there any way to figure out? */
-        do_nano = 1;
-        return 0;
-    } else if(context->comm_th_core == -2) {
+        /* Bind to the specified core */
+        if(dague_bindthread(context->comm_th_core) == context->comm_th_core) {
+            STATUS(("Communication thread bound to physical core %d\n",  context->comm_th_core));
+
+            /* Check if this core is not used by a computation thread */
+            if( hwloc_bitmap_isset(context->index_core_free_mask, context->comm_th_core) )
+                do_nano = 0;
+        } else {
+            /* There is no guarantee the thread doesn't share the core. Let do_nano to 1. */
+            WARNING(("Request to bind the communication thread on core %d failed.\n", context->comm_th_core));
+        }
+    } else if( context->comm_th_core == -2 ) {
         /* Bind to the specified mask */
-        char *str = NULL;
-#if !defined(HAVE_HWLOC_BITMAP)
-        hwloc_cpuset_asprintf(&str, context->comm_th_index_mask);
-#else
+        hwloc_cpuset_t free_common_cores;
+
+        /* reduce the mask to unused cores if any */
+        free_common_cores=hwloc_bitmap_alloc();
+        hwloc_bitmap_and(free_common_cores, context->index_core_free_mask, context->comm_th_index_mask);
+
+        if( !hwloc_bitmap_iszero(free_common_cores) ) {
+            hwloc_bitmap_copy(context->comm_th_index_mask, free_common_cores);
+
+            do_nano = 0;
+        }
         hwloc_bitmap_asprintf(&str, context->comm_th_index_mask);
-#endif
-        if (dague_bindthread_mask(context->comm_th_index_mask)==0)
-	        DEBUG(("Communication thread bound on the cpu mask %s\n", str));
-	    else
-            WARNING(("Communication thread requested to be bound on the cpu mask %s, but it still floats\n", str));
-        free(str);
-        /* in mask mode, we still float on many cores, so probably sharing with compute threads */
-	    do_nano = 1;
-        return 0;
+        hwloc_bitmap_free(free_common_cores);
+        if( dague_bindthread_mask(context->comm_th_index_mask) >= 0 ) {
+            DEBUG(("Communication thread bound on the index mask %s\n", str));
+        } else {
+            WARNING(("Communication thread requested to be bound on the cpu mask %s \n", str));
+            do_nano = 1;
+        }
     } else {
-	    /* no binding specified: bind on an available core if any
-	        (registered in index_core_free_mask) */
-#if defined(HAVE_HWLOC_BITMAP)
-	    free_core = hwloc_bitmap_next(context->index_core_free_mask, -1);
-#endif
+        /* no binding specified
+         * - bind on available cores if any,
+         * - let float otherwise
+         */
+
+        if( !hwloc_bitmap_iszero(context->index_core_free_mask) ) {
+            if( dague_bindthread_mask(context->index_core_free_mask) > -1 ){
+                hwloc_bitmap_asprintf(&str, context->index_core_free_mask);
+                DEBUG(("Communication thread bound on the cpu mask %s\n", str));
+                do_nano = 0;
+            }
+        }
     }
-#endif /* HAVE_HWLOC */
-    boundto = dague_bindthread(free_core);
-	if (boundto != free_core) {
-        do_nano = 1;
+#else /* NO HAVE_HWLOC */
+    /* If we don't have hwloc, try to bind the thread on the core #nbcore as the
+     * default strategy disributed the computation threads from core 0 to nbcore-1 */
+
+    int boundto = dague_bindthread(context->nb_cores);
+    if (boundto != context->nb_cores) {
         DEBUG(("Communication thread floats\n"));
     }
     else {
         do_nano = 0;
         DEBUG(("Communication thread bound to physical core %d\n", boundto));
     }
+#endif /* NO HAVE_HWLOC */
     return 0;
 }
+
+
