@@ -135,7 +135,7 @@ option(DAGUE_PROF_DRY_DEP
   "Disable calls to the actual data transport; remote dependencies are notified, but no data movement takes place" OFF)
 
 ### Dsparse options
-mark_as_advanced(DSPARSE_WITH_SOLVE)
+#mark_as_advanced(DSPARSE_WITH_SOLVE)
 cmake_dependent_option(DSPARSE_WITH_SOLVE
   "Activate the solve computed with DAGuE (requires BUILD_DSPARSE)" OFF "BUILD_DSPARSE" OFF)
 
