@@ -24,6 +24,7 @@ SCOTCH_DIR=${SCOTCH_DIR:="/opt/scotch"}
 if [ "x$USER" = "xbosilca" ]; then
   HWLOC_DIR="/home/bosilca/opt/"
   MPI_DIR="/home/bosilca/opt/mpi"
+  USER_OPTIONS+="-DGTG_FOUND=ON "
 elif [ "x$USER" = "xherault" ]; then
   #MPI="-DMPI_COMPILER=/usr/bin/mpicc"
   USER_OPTIONS+="-DDAGUE_Q2J=ON"

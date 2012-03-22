@@ -178,10 +178,12 @@ static int find_matching_event_in_profile(const dague_profiling_iterator_t *star
                 iterator_delete(it);
                 return 1;
             } else if ( e->event.id != 0 ) {
+#if 0
                 WARNING(("Event with ID %d appear in reverse order: start is at %d.%09d, end is at %d.%09d\n",
                          e->event.id, 
                          (int)ref->event.timestamp.tv_sec, (int)ref->event.timestamp.tv_nsec,
                          (int)e->event.timestamp.tv_sec, (int)e->event.timestamp.tv_nsec));
+#endif
             }
         }
         e = iterator_next( it );
@@ -192,7 +194,6 @@ static int find_matching_event_in_profile(const dague_profiling_iterator_t *star
 
 static void dump_whole_trace(int fd)
 {
-    const dague_profiling_output_t *event;
     const dague_thread_profiling_t *profile;
     dague_profiling_iterator_t *pit;
     dague_list_item_t *it;
@@ -213,13 +214,15 @@ static void dump_whole_trace(int fd)
         profile = (dague_thread_profiling_t*)it;
         pit = iterator_new( profile, fd );
 #if defined(DAGUE_DEBUG_VERBOSE1)
-        for( event = iterator_first( pit );
-             NULL != event;
-             event = iterator_next( pit ) ) {
-            dague_time_t zero = ZERO_TIME;
-            DEBUG(("TRACE %d/%lu on %p (timestamp %llu)\n", event->event.key, event->event.id, profile,
-                   diff_time(zero, event->event.timestamp)));
-
+        {
+            dague_profiling_output_t   *event;
+            for( event = iterator_first( pit );
+                 NULL != event;
+                 event = iterator_next( pit ) ) {
+                dague_time_t zero = ZERO_TIME;
+                DEBUG(("TRACE %d/%lu on %p (timestamp %llu)\n", event->event.key, event->event.id, profile,
+                       diff_time(zero, event->event.timestamp)));
+            }
         }
 #endif
         iterator_delete(pit);

@@ -85,7 +85,7 @@ subs = {
     ('S_Csc',    'D_Csc',    'C_Csc',    'Z_Csc'   ),
     ('S_Build',  'D_Build',  'C_Build',  'Z_Build' ),
     ('strdv', 'dtrdv', 'ctrdv', 'ztrdv'),
-    ('sytra1','sytra1','hetra1','hetra1'),
+    ('ssytr', 'dsytr', 'chetr', 'zhetr'),
     ('ssygst','dsygst','chegst','zhegst'),
     ('SSYGST','DSYGST','CHEGST','ZHEGST'),
     ('ssterf','dsterf','ssterf','dsterf'),
@@ -191,6 +191,7 @@ subs = {
     ('strsmpl','dtrsmpl','ctrsmpl','ztrsmpl'),
     ('STRSMPL','DTRSMPL','CTRSMPL','ZTRSMPL'),
     ('scsc2cblk','dcsc2cblk','ccsc2cblk','zcsc2cblk'),
+    ('slacpy','dlacpy','slacpy','dlacpy'),
     ('ger','ger','gerc','gerc'),
     ('ger','ger','geru','geru'),
     ('symm','symm','hemm','hemm'),
@@ -249,6 +250,11 @@ subs = {
     ('workspace_s', 'workspace_d', 'workspace_c', 'workspace_z'),
     # For PaStiX
     ('S_buildUpdoVect', 'D_buildUpdoVect', 'C_buildUpdoVect', 'Z_buildUpdoVect'),
+
+# Be carefull: don't put something matching the following line,
+# it matches dplasma_datatype (should be changed)
+#    ('plasma_s',    'plasma_d',    'plasma_s',    'plasma_d'   ),
+
   ],
   'tracing' : [
     ['plain','tau'],
