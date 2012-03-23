@@ -94,23 +94,23 @@ typedef struct sopthread_barrier {
     barrier  - sopthread_barrier structure associated with the synchronisation.
   
  */
-#define SYNCHRO_X_THREAD(nbthread, barrier)				\
-  {									\
-    int instance;							\
-    pthread_mutex_lock(&((barrier).sync_lock));				\
-    instance = (barrier).instance;					\
-    (barrier).blocked_threads++;					\
-    if ((barrier).blocked_threads == (nbthread))			\
-      {									\
-	(barrier).blocked_threads = 0;					\
-	(barrier).instance++;						\
-	pthread_cond_broadcast(&((barrier).sync_cond));			\
-      }									\
-    while (instance == (barrier).instance)				\
-      {									\
-	pthread_cond_wait(&((barrier).sync_cond), &((barrier).sync_lock)); \
-      }									\
-    pthread_mutex_unlock(&((barrier).sync_lock));			\
+#define SYNCHRO_X_THREAD(nbthread, barrier)                             \
+  {                                                                     \
+    int instance;                                                       \
+    pthread_mutex_lock(&((barrier).sync_lock));                         \
+    instance = (barrier).instance;                                      \
+    (barrier).blocked_threads++;                                        \
+    if ((barrier).blocked_threads == (nbthread))                        \
+      {                                                                 \
+        (barrier).blocked_threads = 0;                                  \
+        (barrier).instance++;                                           \
+        pthread_cond_broadcast(&((barrier).sync_cond));                 \
+      }                                                                 \
+    while (instance == (barrier).instance)                              \
+      {                                                                 \
+        pthread_cond_wait(&((barrier).sync_cond), &((barrier).sync_lock)); \
+      }                                                                 \
+    pthread_mutex_unlock(&((barrier).sync_lock));                       \
   }
  
 /*

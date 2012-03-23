@@ -35,7 +35,7 @@ void  Bubble_InitTree  (BubbleTree *, int);
 void  Bubble_Free      (BubbleTree *);
 int   Bubble_Add       (BubbleTree *, INT, INT, double, INT);
 void  Bubble_BuildTree (const BubbleTree *);
-void  Bubble_Print     (const BubbleTree *, const double *, FILE*);
+void  Bubble_Print     (const BubbleTree *, const double *, double, FILE*);
 
 #endif /* BULLES_H */
 

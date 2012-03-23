@@ -34,8 +34,6 @@ typedef struct pastix_data_t {
 #endif
   INT              gN;               /*+ global column number                                                +*/
   INT              n;                /*+ local column number                                                 +*/
-  int              procnbr;          /*+ Number of MPI tasks                                                 +*/
-  int              procnum;          /*+ Local MPI rank                                                      +*/
   INT             *iparm;            /*+ Vecteur de parametres entiers                                       +*/
   double          *dparm;            /*+ Vecteur de parametres floattant                                     +*/
   INT              n2;               /*+ Number of local columns                                             +*/
@@ -50,6 +48,14 @@ typedef struct pastix_data_t {
   int              malslv;           /*+ boolean indicating if solvmatr has been allocated                   +*/
   int              malcof;           /*+ boolean indicating if coeficients tabular(s) has(ve) been allocated +*/
   MPI_Comm         pastix_comm;      /*+ PaStiX MPI communicator                                             +*/
+  MPI_Comm         intra_node_comm;  /*+ PaStiX intra node MPI communicator                                     +*/
+  MPI_Comm         inter_node_comm;  /*+ PaStiX inter node MPI communicator                                     +*/
+  int              procnbr;          /*+ Number of MPI tasks                                                 +*/
+  int              procnum;          /*+ Local MPI rank                                                      +*/
+  int              intra_node_procnbr; /*+ Number of MPI tasks in node_comm                                    +*/
+  int              intra_node_procnum; /*+ Local MPI rank in node_comm                                         +*/
+  int              inter_node_procnbr; /*+ Number of MPI tasks in node_comm                                    +*/
+  int              inter_node_procnum; /*+ Local MPI rank in node_comm                                         +*/
   int             *bindtab;          /*+ Tabular giving for each thread a CPU to bind it too                 +*/
   INT              nschur;           /*+ Number of entries for the Schur complement.                         +*/
   INT             *listschur;        /*+ List of entries for the schur complement.                           +*/

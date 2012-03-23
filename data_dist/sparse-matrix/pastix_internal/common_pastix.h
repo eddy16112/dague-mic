@@ -1,30 +1,34 @@
-/* 
-   File: common_pastix.h
-
-   Part of a parallel direct block solver.
-   
-   These lines are the common data        
-   declarations for all modules.          
-
-   Authors:
-     Mathieu Faverge    - faverge@labri.fr
-     David    GOUDIN     - .
-     Pascal   HENON      - henon@labri.fr
-     Xavier   LACOSTE    - lacoste@labri.fr
-     Francois PELLEGRINI - .
-     Pierre   RAMET      - ramet@labri.fr
-     
-   Dates:
-     Version 0.0 - from 08 may 1998    
-                   to   08 jan 2001
-     Version 1.0 - from 06 jun 2002
-                   to   06 jun 2002
-*/
+/*
+ *  File: common_pastix.h
+ *
+ *  Part of a parallel direct block solver.
+ *
+ *  These lines are the common data
+ *  declarations for all modules.
+ *
+ *  Authors:
+ *    Mathieu Faverge    - faverge@labri.fr
+ *    David    GOUDIN     - .
+ *    Pascal   HENON      - henon@labri.fr
+ *    Xavier   LACOSTE    - lacoste@labri.fr
+ *    Francois PELLEGRINI - .
+ *    Pierre   RAMET      - ramet@labri.fr
+ *
+ *  Dates:
+ *    Version 0.0 - from 08 may 1998
+ *                  to   08 jan 2001
+ *    Version 1.0 - from 06 jun 2002
+ *                  to   06 jun 2002
+ */
 #ifndef COMMON_PASTIX_H
 #define COMMON_PASTIX_H
 #include "api.h"
 #include "debug.h"
 #include "errors.h"
+
+#if (defined DYNSCHED && defined WITH_STARPU)
+#error "STARPU and Dynsched are not compatible"
+#endif
 
 #ifdef __INTEL_COMPILER
 /* Ignore icc remark : "operands are evaluated in unspecified order"*/
@@ -55,9 +59,6 @@
 #ifdef OOC
 #ifndef MEMORY_USAGE
 #define MEMORY_USAGE
-#endif
-#ifndef NUMA_ALLOC /* OOC needs NUMA_ALLOC to have a vector of pointers on each cblk */
-#define NUMA_ALLOC
 #endif
 #endif
 
@@ -247,11 +248,11 @@
 #define FLOAT double complex
 #define ABS_FLOAT(x) cabs(x)
 #ifdef    _DCMPLX
-#define BLAS_FLOAT dcmplx 
+#define BLAS_FLOAT dcmplx
 #else  /* _DCMPLX */
 #define BLAS_FLOAT double complex
 #endif /* _DCMPLX */
-#define CONJ_FLOAT(x) conj(x) 
+#define CONJ_FLOAT(x) conj(x)
 #define FLOAT_MAX DBL_MAX
 #else  /* FORCE_DOUBLE */
 #define FLOAT float complex
@@ -312,147 +313,197 @@
 
 #define INTVALMAX     ((INT) (((UINT) 1 << (INTSIZEBITS - 1)) - 1))
 
-/*#include "redefine_functions.h"*/
+/* #include "redefine_functions.h" */
 
-/*
-**  Working definitions.
-*/
-#define memAlloca(size)                    alloca(size)
-#ifndef MEMORY_USAGE                            /* TODO : remove mutex protection in multi-thread mode */
+#define MEMORY_WRITE(mem) ( ((mem) < 1<<10) ?                           \
+                            ( (double)(mem) ) :                         \
+                            ( ( (mem) < 1<<20 ) ?                       \
+                              ( (double)(mem)/(double)(1<<10) ) :       \
+                              ( ((mem) < 1<<30 ) ?                      \
+                                ( (double)(mem)/(double)(1<<20) ) :     \
+                                ( (double)(mem)/(double)(1<<30) ))))
+#define MEMORY_UNIT_WRITE(mem) (((mem) < 1<<10) ?                       \
+                                "o" :                                   \
+                                ( ( (mem) < 1<<20 ) ?                   \
+                                  "Ko" :                                \
+                                  ( ( (mem) < 1<<30 ) ?                 \
+                                    "Mo" :                              \
+                                    "Go" )))
+
+#ifdef PRINT_ALL_MALLOC
+#define PRINT_ALLOC(ptr, size, file, line) do                         \
+    {                                                                 \
+      fprintf(stdout, "%s:%d allocation size %.3g %s : %p (%s)\n",    \
+              file, line, MEMORY_WRITE((size)),                       \
+              MEMORY_UNIT_WRITE((size)), ptr, #ptr);                  \
+    } while(0)
+
+#define PRINT_DEALLOC(ptr, file, line) do                               \
+    {                                                                   \
+      if (ptr != NULL) {                                                \
+        double * pda_memptr = (double*)(ptr);                           \
+        unsigned long pda_size;                                         \
+        pda_memptr --;                                                  \
+        pda_size = (unsigned long) pda_memptr[0];                       \
+        fprintf(stdout, "%s:%d"                                         \
+                " deallocation size %.3g %s : %p (%s)\n",               \
+                __FILE__, __LINE__,                                     \
+                MEMORY_WRITE(pda_size),                                 \
+                MEMORY_UNIT_WRITE(pda_size), ptr, #ptr);                \
+      }                                                                 \
+    } while(0)
+#else /* not PRINT_ALL_MALLOC */
+#define PRINT_ALLOC(ptr, size, file, line) do   \
+    {                                           \
+    } while(0)
+
+#define PRINT_DEALLOC(ptr, file, line) do       \
+    {                                           \
+    } while(0)
+#endif /* not PRINT_ALL_MALLOC */
+
+/* Working definitions. */
+#define memAlloca(size)                alloca(size)
+#ifndef MEMORY_USAGE   /* TODO : remove mutex protection in multi-thread mode */
 #ifdef X_ARCHpower_ibm_aix
-#define memAlloc(size)                     mymalloc(size, __FILE__,__LINE__)
+#define memAlloc(size)                 mymalloc(size, __FILE__,__LINE__)
 #else
-#define memAlloc(size)                     malloc(size)
+#define memAlloc(size)                 malloc(size)
 #endif
-#define memAlloca(size)                    alloca(size)
-#define memRealloc(ptr,size)               realloc((ptr),(size))
-#define memFree(ptr)                       ( free ((char *) (ptr)) , 0)
+#define memAlloca(size)                alloca(size)
+#define memRealloc(ptr,size)           realloc((ptr),(size))
+#define memFree(ptr)                   ( free ((char *) (ptr)) , 0)
 #else
-#define memAlloc(size)                     (memAlloc_func(size,__FILE__,__LINE__))
+#define memAlloc(size)                 (memAlloc_func(size,__FILE__,__LINE__))
 #endif
-#define memFree_null(ptr)                  ( memFree ((char *) (ptr)) , (ptr) = NULL , 0)
+#define memFree_null(ptr)                  do   \
+    {                                           \
+      PRINT_DEALLOC(ptr, __FILE__, __LINE__);   \
+      memFree ((char *) (ptr));                 \
+      (ptr) = NULL;                             \
+    } while(0)
 
-#define memFreea(ptr,module)               (0)           /* Freeing function if memAlloca implemented as malloc */
+/* Freeing function if memAlloca implemented as malloc */
+#define memFreea(ptr,module)           (0)
 #define memSet(ptr,val,siz)                memset((ptr),(val),(siz));
 #define memCpy(dst,src,siz)                memcpy((dst),(src),(siz));
 #define memMov(dst,src,siz)                memmove((dst),(src),(siz));
 
 #ifdef WARNINGS_MALLOC
-/*
-  Macro: MALLOC_EXTERN
-  
-  Allocate a space of size *size* x sizeof(*type*) 
-  at the adress indicated by ptr, using external *malloc*.
+#define CHECK_ALLOC(ptr, size, type)                                  \
+  do {                                                                \
+    if (ptr != NULL)                                                  \
+      errorPrintW("non NULL pointer in allocation (line=%d,file=%s)", \
+                  __LINE__,__FILE__);                                 \
+    if ((size) * sizeof(type))                                        \
+      errorPrintW("Allocation of size 0 (line=%d,file=%s)",           \
+                  __LINE__,__FILE__);                                 \
+  } while (0)
+#else  /* not WARNINGS_MALLOC */
+#define CHECK_ALLOC(ptr, size, type)                                  \
+  do {                                                                \
+  } while (0)
 
-  Parameters:
-    ptr   - address where to allocate.
-    size  - Number of elements to allocate.
-    types - Type of the elements to allocate.
-*/
-#define MALLOC_EXTERN(ptr, size, type)					\
-  {									\
-    if (ptr != NULL)							\
-      errorPrintW("non NULL pointer in allocation (line=%d,file=%s)",	\
-		   __LINE__,__FILE__);					\
-    if ((size) * sizeof(type))						\
-      errorPrintW("Allocation of size 0 (line=%d,file=%s)",		\
-		  __LINE__,__FILE__);					\
-    if (NULL == (ptr = (type *) malloc((size) * sizeof(type))))		\
-      {									\
-	MALLOC_ERROR(#ptr);						\
-      }									\
+#endif /* not WARNINGS_MALLOC */
+/*
+ * Macro: MALLOC_INTOREXTERN
+ *
+ * Choose between <MALLOC_INTERN> and <MALLOC_EXTERN>
+ * following flag_int.
+ *
+ * Parameters:
+ *   ptr      - address where to allocate.
+ *   size     - Number of elements to allocate.
+ *   types    - Type of the elements to allocate.
+ *   flag_int - API_YES for internal allocation, API_NO for external.
+ */
+#define MALLOC_INTOREXTERN(ptr, size, type, flag_int) \
+  do {						      \
+    if (flag_int == API_YES)			      \
+      {						      \
+	MALLOC_INTERN(ptr, size, type);		      \
+      }						      \
+    else					      \
+      {						      \
+	MALLOC_EXTERN(ptr, size, type);		      \
+      }						      \
+  } while (0)
+
+#define FREE_NULL_INTOREXT(ptr, flag_int)	      \
+  do {						      \
+    if (flag_int == API_YES)			      \
+      {						      \
+	memFree_null(ptr);			      \
+      }						      \
+    else					      \
+      {						      \
+	free(ptr);				      \
+	ptr = NULL;				      \
+      }						      \
+  } while (0)
+/*
+ * Macro: MALLOC_EXTERN
+ *
+ * Allocate a space of size *size* x sizeof(*type*)
+ * at the adress indicated by ptr, using external *malloc*.
+ *
+ * Parameters:
+ *   ptr   - address where to allocate.
+ *   size  - Number of elements to allocate.
+ *   types - Type of the elements to allocate.
+ */
+#define MALLOC_EXTERN(ptr, size, type)                                \
+  do {                                                                \
+    CHECK_ALLOC(ptr, size, type);                                     \
+    if (NULL == (ptr = (type *) malloc((size) * sizeof(type))))       \
+      {                                                               \
+        MALLOC_ERROR(#ptr);                                           \
+      }                                                               \
+  } while(0)
+
+
+/*
+ * Macro: MALLOC_INTERN
+ *
+ * Allocate a space of size *size* x sizeof(*type*)
+ * at the adress indicated by ptr, using internal *memAlloc*.
+ *
+ * Parameters:
+ *   ptr   - address where to allocate.
+ *   size  - Number of elements to allocate.
+ *   types - Type of the elements to allocate.
+ */
+#define MALLOC_INTERN(ptr, size, type)                                \
+  {                                                                   \
+    CHECK_ALLOC(ptr, size, type);                                     \
+    if (((size) * sizeof(type) > 0) &&                                \
+        (NULL == (ptr = (type *) memAlloc((size) * sizeof(type)))))   \
+      {                                                               \
+        MALLOC_ERROR(#ptr);                                           \
+      }                                                               \
+    PRINT_ALLOC(ptr, (size*sizeof(type)), __FILE__,__LINE__);         \
   }
 
-
 /*
-  Macro: MALLOC_INTERN
-  
-  Allocate a space of size *size* x sizeof(*type*) 
-  at the adress indicated by ptr, using internal *memAlloc*.
-
-  Parameters:
-    ptr   - address where to allocate.
-    size  - Number of elements to allocate.
-    types - Type of the elements to allocate.
-*/
-#define MALLOC_INTERN(ptr, size, type)					\
-  {									\
-    if (ptr != NULL)							\
-      errorPrintW("non NULL pointer in allocation (line=%d,file=%s)",	\
-		  __LINE__,__FILE__);					\
-    if ((size) * sizeof(type))						\
-      errorPrintW("Allocation of size 0 (line=%d,file=%s)",		\
-		  __LINE__,__FILE__);					\
-    if (((size) * sizeof(type) > 0) &&					\
-	(NULL == (ptr = (type *) memAlloc((size) * sizeof(type)))))	\
-      {									\
-	MALLOC_ERROR(#ptr);						\
-      }									\
-  }
-#else /* WARNINGS_MALLOC */
-/*
-  Macro: MALLOC_EXTERN
-  
-  Allocate a space of size *size* x sizeof(*type*) 
-  at the adress indicated by ptr, using external *malloc*.
-
-  Parameters:
-    ptr   - address where to allocate.
-    size  - Number of elements to allocate.
-    types - Type of the elements to allocate.
-*/
-#define MALLOC_EXTERN(ptr, size, type)					\
-  {									\
-    ptr = NULL;								\
-    if (((size) * sizeof(type) > 0) &&					\
-	(NULL == (ptr = (type *) malloc((size) * sizeof(type)))))	\
-      {									\
-	MALLOC_ERROR(#ptr);						\
-      }									\
-  }
-
-
-/*
-  Macro: MALLOC_INTERN
-  
-  Allocate a space of size *size* x sizeof(*type*) 
-  at the adress indicated by ptr, using internal *memAlloc*.
-
-  Parameters:
-    ptr   - address where to allocate.
-    size  - Number of elements to allocate.
-    types - Type of the elements to allocate.
-*/
-#define MALLOC_INTERN(ptr, size, type)					\
-  {									\
-    ptr = NULL;								\
-    if (((size) * sizeof(type) > 0) &&					\
-	(NULL == (ptr = (type *) memAlloc((size) * sizeof(type)))))	\
-      {									\
-	MALLOC_ERROR(#ptr);						\
-      }									\
-  }
-#endif /* WARNINGS_MALLOC */
-/*
-  Macro: FOPEN 
+  Macro: FOPEN
 
   Open a file and handle errors.
 
   Parameters:
-    FILE      - Stream (FILE*) to link to the file.
-    filenamne - String containing the path to the file.
-    mode      - String containing the opening mode. 
-  
+  FILE      - Stream (FILE*) to link to the file.
+  filenamne - String containing the path to the file.
+  mode      - String containing the opening mode.
+
 */
-#define FOPEN(FILE, filenamne, mode)					\
-  {									\
-    FILE = NULL;							\
-    if (NULL == (FILE = fopen(filenamne, mode)))			\
-      {									\
-	errorPrint("%s:%d Couldn't open file : %s with mode %s\n",	\
-		   __FILE__, __LINE__, filenamne, mode);		\
-	EXIT(MOD_UNKNOWN,FILE_ERR);					\
-      }									\
+#define FOPEN(FILE, filenamne, mode)                                \
+  {                                                                 \
+    FILE = NULL;                                                    \
+    if (NULL == (FILE = fopen(filenamne, mode)))                    \
+      {                                                             \
+        errorPrint("%s:%d Couldn't open file : %s with mode %s\n",  \
+                   __FILE__, __LINE__, filenamne, mode);            \
+        EXIT(MOD_UNKNOWN,FILE_ERR);                                 \
+      }                                                             \
   }
 /*
   Macro: FREAD
@@ -460,19 +511,19 @@
   Calls fread function and test his return value
 
   Parameters:
-    buff   - Memory area where to copy read data.
-    size   - Size of an element to read.
-    count  - Number of elements to read
-    stream - Stream to read from
- */
-#define FREAD(buff, size, count, stream)		\
-  {							\
-    if ( 0 == fread(buff, size, count, stream))		\
-      {							\
-	errorPrint("%s:%d fread error\n",		\
-		   __FILE__, __LINE__);			\
-	EXIT(MOD_UNKNOWN,FILE_ERR);			\
-      }							\
+  buff   - Memory area where to copy read data.
+  size   - Size of an element to read.
+  count  - Number of elements to read
+  stream - Stream to read from
+*/
+#define FREAD(buff, size, count, stream)        \
+  {                                             \
+    if ( 0 == fread(buff, size, count, stream)) \
+      {                                         \
+        errorPrint("%s:%d fread error\n",       \
+                   __FILE__, __LINE__);         \
+        EXIT(MOD_UNKNOWN,FILE_ERR);             \
+      }                                         \
   }
 /*
  * Other working definitions
@@ -488,7 +539,7 @@
 /** The clock type. **/
 
 typedef struct Clock_ {
-  double                    time[2];              /*+ The start and accumulated times +*/
+  double                    time[2];    /*+ The start and accumulated times +*/
 } Clock;
 
 /*
@@ -514,47 +565,51 @@ extern "C" {
 #endif
 
 #ifdef MEMORY_USAGE
-void *                      memAlloc_func       (size_t,char*,int);
-void *                      memRealloc          (void *, size_t);
-void                        memFree             (void *);
-unsigned long               memAllocGetCurrent  (void);
-unsigned long               memAllocGetMax      (void);
-void                        memAllocTraceReset  (void);
+  void *         memAlloc_func       (size_t,char*,int);
+  void *         memRealloc_func     (void *, size_t, char*, int);
+#define memRealloc(ptr,size)                      \
+  memRealloc_func(ptr, size, __FILE__, __LINE__)
+
+  void           memFree             (void *);
+  unsigned long  memAllocGetCurrent  (void);
+  unsigned long  memAllocGetMax      (void);
+  void           memAllocTraceReset  (void);
 #else
-void *                      mymalloc            (size_t,char*,int);
+  void *         mymalloc            (size_t,char*,int);
 #endif /* MEMORY_USAGE */
 #ifdef MEMORY_TRACE
-void                        memAllocTrace       (FILE *, double, int);
-void                        memAllocUntrace     ();
+  void           memAllocTrace       (FILE *, double, int);
+  void           memAllocUntrace     ();
 #else
-#define                     memAllocTrace(a, b, c) {}
-#define                     memAllocUntrace()      {}
+#define          memAllocTrace(a, b, c) {}
+#define          memAllocUntrace()      {}
 #endif
-void *                      memAllocGroup       (void **, ...);
-void *                      memReallocGroup     (void *, ...);
-void *                      memOffset           (void *, ...);
+  void *         memAllocGroup       (void **, ...);
+  void *         memReallocGroup     (void *, ...);
+  void *         memOffset           (void *, ...);
 
-void                        usagePrint          (FILE * const, const char ** const);
+  void           usagePrint          (FILE * const, const char ** const);
 
-void                        errorProg           (const char * const);
-void                        errorPrint          (const char * const, ...);
-void                        errorPrintW         (const char * const, ...);
+  void           errorProg           (const char * const);
+  void           errorPrint          (const char * const, ...);
+  void           errorPrintW         (const char * const, ...);
 
-int                         intLoad             (FILE * const, INT * const);
-int                         intSave             (FILE * const, const INT);
-void                        intAscn             (INT * restrict const, const INT, const INT);
-void                        intPerm             (INT * restrict const, const INT);
-void                        intRandInit         (void);
-INT                         intRandVal          (INT);
-void                        intSort1asc1        (void * const, const INT);
-void                        intSort2asc1        (void * const, const INT);
-void                        intSort2asc2        (void * const, const INT);
+  int            intLoad             (FILE * const, INT * const);
+  int            intSave             (FILE * const, const INT);
+  void           intAscn             (INT * restrict const,
+                                      const INT, const INT);
+  void           intPerm             (INT * restrict const, const INT);
+  void           intRandInit         (void);
+  INT            intRandVal          (INT);
+  void           intSort1asc1        (void * const, const INT);
+  void           intSort2asc1        (void * const, const INT);
+  void           intSort2asc2        (void * const, const INT);
 
-void                        clockInit           (Clock * const);
-void                        clockStart          (Clock * const);
-void                        clockStop           (Clock * const);
-double                      clockVal            (Clock * const);
-double                      clockGet            (void);
+  void           clockInit           (Clock * const);
+  void           clockStart          (Clock * const);
+  void           clockStop           (Clock * const);
+  double         clockVal            (Clock * const);
+  double         clockGet            (void);
 
 #ifdef X_ARCHalpha_compaq_osf1
 #ifndef USE_CXX
@@ -566,22 +621,22 @@ double                      clockGet            (void);
 **  The macro definitions.
 */
 
-#define clockInit(clk)              ((clk)->time[0]  = (clk)->time[1] = 0)
-#define clockStart(clk)             ((clk)->time[0]  = clockGet ())
-#define clockStop(clk)              ((clk)->time[1]  = clockGet ())
-#define clockVal(clk)               ((clk)->time[1] - (clk)->time[0])
+#define clockInit(clk)        ((clk)->time[0]  = (clk)->time[1] = 0)
+#define clockStart(clk)       ((clk)->time[0]  = clockGet ())
+#define clockStop(clk)        ((clk)->time[1]  = clockGet ())
+#define clockVal(clk)         ((clk)->time[1] - (clk)->time[0])
 
-#define intRandVal(ival)            ((INT) (((UINT) random ()) % ((UINT) (ival))))
+#define intRandVal(ival)      ((INT) (((UINT) random ()) % ((UINT) (ival))))
 
-#define FORTRAN(nu,nl,pl,pc)                     \
-void nu pl;                                      \
-void nl pl                                       \
-{ nu pc; }                                       \
-void nl##_ pl                                    \
-{ nu pc; }                                       \
-void nl##__ pl                                   \
-{ nu pc; }                                       \
-void nu pl
+#define FORTRAN(nu,nl,pl,pc)                    \
+  void nu pl;                                   \
+  void nl pl                                    \
+  { nu pc; }                                    \
+  void nl##_ pl                                 \
+  { nu pc; }                                    \
+  void nl##__ pl                                \
+  { nu pc; }                                    \
+  void nu pl
 
 #ifdef MARCEL
 #define marcel_printf(...) do {  } while(0)
@@ -598,98 +653,96 @@ void set_iparm(INT    *iparm, enum IPARM_ACCESS offset, INT    value);
 void set_dparm(double *dparm, enum DPARM_ACCESS offset, double value);
 
 /*
-   Function: qsortIntFloatAsc
+  Function: qsortIntFloatAsc
 
-   Sort 2 arrays simultaneously, the first array is an
-   array of INT and used as key for sorting.
-   The second array is an array of FLOAT.
+  Sort 2 arrays simultaneously, the first array is an
+  array of INT and used as key for sorting.
+  The second array is an array of FLOAT.
 
-   Parameters:
-     pbase       - Array of pointers to the first element of each array to sort.
-     total_elems - Number of element in each array.
+  Parameters:
+  pbase       - Array of pointers to the first element of each array to sort.
+  total_elems - Number of element in each array.
 
-   Returns:
-     Nothing
+  Returns:
+  Nothing
 
 */
 void qsortIntFloatAsc(void ** const pbase,
-		      const INT     total_elems);
+                      const INT     total_elems);
 
 /*
-   Function: qsort2IntFloatAsc
+  Function: qsort2IntFloatAsc
 
-   Sort 3 arrays simultaneously, the first array is an
-   array of INT and used as primary key for sorting.
-   The second array is an other array of INT used
-   as secondary key.
-   The third array is an array of FLOAT.
+  Sort 3 arrays simultaneously, the first array is an
+  array of INT and used as primary key for sorting.
+  The second array is an other array of INT used
+  as secondary key.
+  The third array is an array of FLOAT.
 
-   Parameters:
-     pbase       - Array of pointers to the first element of each array to sort.
-     total_elems - Number of element in each array.
+  Parameters:
+  pbase       - Array of pointers to the first element of each array to sort.
+  total_elems - Number of element in each array.
 
-   Returns:
-     Nothing
+  Returns:
+  Nothing
 
 */
 void qsort2IntFloatAsc(void ** const pbase,
-		       const INT     total_elems);
+                       const INT     total_elems);
 
 
 /*
-   Function: qsort2IntAsc
+  Function: qsort2IntAsc
 
-   Sort 2 arrays simultaneously, the first array is an
-   array of INT and used as primary key for sorting.
-   The second array is an other array of INT used
-   as secondary key.
+  Sort 2 arrays simultaneously, the first array is an
+  array of INT and used as primary key for sorting.
+  The second array is an other array of INT used
+  as secondary key.
 
-   Parameters:
-     pbase       - Array of pointers to the first element of each array to sort.
-     total_elems - Number of element in each array.
+  Parameters:
+  pbase       - Array of pointers to the first element of each array to sort.
+  total_elems - Number of element in each array.
 
-   Returns:
-     Nothing
+  Returns:
+  Nothing
 
 */
 void qsort2IntAsc(void ** const pbase,
-		  const INT     total_elems);
+                  const INT     total_elems);
 
 /*
-   Function: qsort2SmallIntAsc
+  Function: qsort2SmallIntAsc
 
-   Sort 2 arrays simultaneously, the first array is an
-   array of integers (int) and used as primary key for sorting.
-   The second array is an other array of int used
-   as secondary key.
+  Sort 2 arrays simultaneously, the first array is an
+  array of integers (int) and used as primary key for sorting.
+  The second array is an other array of int used
+  as secondary key.
 
-   Parameters:
-     pbase       - Array of pointers to the first element of each array to sort.
-     total_elems - Number of element in each array.
+  Parameters:
+  pbase       - Array of pointers to the first element of each array to sort.
+  total_elems - Number of element in each array.
 
-   Returns:
-     Nothing
+  Returns:
+  Nothing
 
 */
 void qsort2SmallIntAsc(void ** const pbase,
-		  const INT     total_elems);
-
-#define MEMORY_WRITE(mem) ((mem < 1<<10)?mem:((mem < 1<<20 )?mem/(1<<10):((mem < 1<<30 )?(double)mem/(double)(1<<20):(double)mem/(double)(1<<30))))
-#define MEMORY_UNIT_WRITE(mem) ((mem < 1<<10)?"o":((mem < 1<<20 )?"Ko":((mem < 1<<30 )?"Mo":"Go")))
+                       const INT     total_elems);
 
 
-/* 
- * Macro to write in file pastix.pid/fname 
- * Don't forget to close the FILE out after 
+
+/*
+ * Macro to write in file pastix.pid/fname
+ * Don't forget to close the FILE out after
  */
-#define OUT_OPENFILEINDIR(iparm, file, fname, mode)	\
-  {							\
-    char  outdirname[255];				\
-    char  outfilename[255];				\
-    sprintf(outdirname, "./pastix.%d", (int)(iparm)[IPARM_PID]);	\
-    mkdir(outdirname, 0755);				\
-    sprintf(outfilename, "%s/%s", outdirname, fname);	\
-    file = fopen(outfilename, mode);			\
+#define OUT_OPENFILEINDIR(iparm, file, fname, mode)               \
+  {                                                               \
+    char  outdirname[255];                                        \
+    char  outfilename[255];                                       \
+    sprintf(outdirname, "./pastix.%d", (int)(iparm)[IPARM_PID]);  \
+    mkdir(outdirname, 0755);                                      \
+    sprintf(outfilename, "%s/%s", outdirname, fname);             \
+    file = fopen(outfilename, mode);                              \
   }
 #define OUT_CLOSEFILEINDIR(file) fclose(file);
 

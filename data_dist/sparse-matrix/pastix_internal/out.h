@@ -8,6 +8,8 @@
     Xavier   LACOSTE - lacoste@labri.fr
     Pierre   RAMET   - ramet@labri.fr
 */
+#define OUT_STARPU_TP         " StarPU : Thread policy : %s\n"
+#define OUT_STARPU_STP        " StarPU : No thread policy, setting thread policy to : %s\n"
 #define OUT_ENTETE_LINE1      " +--------------------------------------------------------------------+\n"
 #define OUT_ENTETE_LINE2      " +              PaStiX : Parallel Sparse matriX package               +\n"
 #define OUT_ENTETE_LINE3      " +--------------------------------------------------------------------+\n"

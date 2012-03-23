@@ -22,7 +22,7 @@ typedef struct ooc_ ooc_t;
   tasks wich will be computed in current PaStiX call
 
   constants:
-  
+
   SOPALIN_ONLY       - Only runs factorisation.
   SOPALIN_UPDO       - Runs factorisation and up down.
   SOPALIN_UPDO_GMRES - Runs factorisation, up down and GMRES.
@@ -54,7 +54,7 @@ enum SOPALIN_TASK {
 /*
   struct: SopalinParam_
 
-  Parameters for factorisation, updown and reffinement. 
+  Parameters for factorisation, updown and reffinement.
  */
 typedef struct SopalinParam_ {
   double   epsilonraff;         /*+ epsilon to stop reffinement                      +*/
@@ -64,9 +64,9 @@ typedef struct SopalinParam_ {
   FLOAT   *transcsc;            /*+ transpose csc                                    +*/
   INT      itermax;             /*+ max number of iteration                          +*/
   INT      diagchange;          /*+ number of change of diag                         +*/
-  INT      gmresim;	        /*+ Krylov subspace size for GMRES                   +*/
-  INT      fakefact;	        /*+ Flag indicating if we want fake factorisation    +*/  
-  INT      usenocsc;	        /*+ Flag indicating if we want to use the intern CSC +*/
+  INT      gmresim;             /*+ Krylov subspace size for GMRES                   +*/
+  INT      fakefact;            /*+ Flag indicating if we want fake factorisation    +*/
+  INT      usenocsc;            /*+ Flag indicating if we want to use the intern CSC +*/
   int      factotype;           /*+ Type of factorization                            +*/
   int      symmetric;           /*+ Symmetric                                        +*/
   MPI_Comm pastix_comm;         /*+ MPI communicator                                 +*/
@@ -94,8 +94,8 @@ typedef struct SopalinParam_ {
 typedef struct Pastix_Allreduce_ {
   void *           sendbuf;        /*+ Sending buffer                  +*/
   void *           recvbuf;        /*+ receiving buffer                +*/
-  int              count;	   /*+ Number of elements to reduce    +*/
-  MPI_Datatype     datatype;	   /*+ MPI Datatype to reduce          +*/   
+  int              count;          /*+ Number of elements to reduce    +*/
+  MPI_Datatype     datatype;       /*+ MPI Datatype to reduce          +*/
   MPI_Op           op;             /*+ MPI operation                   +*/
 } Pastix_Allreduce_t;
 
@@ -105,7 +105,7 @@ typedef struct Pastix_Allreduce_ {
 /*   Données locales à chaque threads           */
 /*   nécessitant pas de mutex pour modification */
 /************************************************/
-/* 
+/*
    Struct: Thread_Data_
 
    Structure used to contain data local to each thread.
@@ -116,13 +116,13 @@ typedef struct Thread_Data_ {
   Clock            sop_clk_comm;             /*+ Communication clock                                 +*/
   INT              nbpivot;                  /*+ Number of pivoting performed                        +*/
   INT              flag_bind;                /*+ Indicate if threads are binded on processors        +*/
-#ifdef TRYLOCK   			       
+#ifdef TRYLOCK
   INT              ptbusy;                   /*+ Number of mutexes in use                            +*/
   INT              ptfree;                   /*+ Nomber of free mutexes                              +*/
   INT              ptwait;                   /*+ Nombre de cond_wait appele                          +*/
-#endif	         			       
-  INT              firstbloktab;             /*+ First block index to compute stride in maxbloktab   +*/ 
-  INT              stridebloktab;            /*+ Temporary tabulars maxblokttab's stride copy        +*/ 
+#endif
+  INT              firstbloktab;             /*+ First block index to compute stride in maxbloktab   +*/
+  INT              stridebloktab;            /*+ Temporary tabulars maxblokttab's stride copy        +*/
   FLOAT           *maxbloktab1;              /*+ Temporary tabular to add contributions              +*/
   FLOAT           *maxbloktab2;              /*+ Temporary tabular to add contributions (for LU)     +*/
   MPI_Request     *send_block_requests;      /*+ sent blocks requests                                +*/
@@ -136,12 +136,12 @@ typedef struct Thread_Data_ {
 #endif
   INT             *send_fanin_target;        /*+ sent fanins targets                                 +*/
   INT            **send_fanin_target_extra;  /*+ extra sent fanin targets                            +*/
-#ifdef TEST_IRECV			       
+#ifdef TEST_IRECV
   MPI_Request     *recv_fanin_request;       /*+ receiving fanin requests                            +*/
   MPI_Request     *recv_block_request;       /*+ receiving blocks requests                           +*/
   void           **recv_fanin_buffer;        /*+ fanin reception buffers                             +*/
   void           **recv_block_buffer;        /*+ blocks reception buffers                            +*/
-#endif					       
+#endif
   INT              maxsrequest_fanin;        /*+ Maximum number of send requests used                +*/
   INT              maxsrequest_block;        /*+ Maximum number of send requests used                +*/
 #ifndef FORCE_NOMPI
@@ -150,18 +150,18 @@ typedef struct Thread_Data_ {
 #endif
   void            *recv_buffer;              /*+ reception buffer                                    +*/
   int             *gtabsize;                 /*+ size of the data type to send                       +*/
-#ifndef NO_MPI_TYPE			       						             
+#ifndef NO_MPI_TYPE
   MPI_Aint        *gtaboffs;                 /*+ offsize of the data type to send                    +*/
   MPI_Datatype    *gtabtype;                 /*+ Type of data to send                                +*/
-#else 					       
+#else
   void           **gtaboffs;                 /*+ pointer to the data to send                         +*/
   int             *gtabtype;                 /*+ Size of the data to send                            +*/
   void           **send_fanin_buffer;        /*+ Fanins sending buffers                              +*/
   void           **send_block_buffer;        /*+ Blocks sending buffers                              +*/
   INT             *send_fanin_buffer_size;   /*+ Fanins sending buffers size                         +*/
   INT             *send_block_buffer_size;   /*+ Blocks sending buffers size                         +*/
-#endif /* NO_MPI_TYPE */		       
-#ifdef TRACE_SOPALIN 			       
+#endif /* NO_MPI_TYPE */
+#ifdef TRACE_SOPALIN
   FILE            *tracefile;                /*+ Tracing file for the solver                         +*/
   int              traceactive;              /*+ Flag indicating if trace is active                  +*/
   int              traceid;                  /*+ Flag indicating if trace is active                  +*/
@@ -171,8 +171,7 @@ typedef struct Thread_Data_ {
 #endif /* COMPACT_SMX */
 #ifdef PASTIX_DYNSCHED
   INT             esp;
-#ifdef PASTIX_REVERTSTEAL
-  faststack_t     stack;
+#ifndef PASTIX_DYNSCHED_WITH_TREE
   INT            *tabtravel;
 #endif
 #endif
@@ -182,9 +181,9 @@ typedef struct Thread_Data_ {
 /*          Sopalin Data                        */
 /*   Données Communes à tous les threads        */
 /************************************************/
-/* 
+/*
    Struct: Sopalin_Data_
-   
+
    Data common to all threads.
 */
 typedef struct Sopalin_Data_ {
@@ -194,59 +193,59 @@ typedef struct Sopalin_Data_ {
   Queue           *fanintgtsendqueue;        /*+ Fanins to send queue               +*/
   Queue           *blocktgtsendqueue;        /*+ Blocks to send queue               +*/
   INT             *taskmark;                 /*+ Task marking for 2D                +*/
-#ifdef TRACE_SOPALIN 								    
+#ifdef TRACE_SOPALIN
   FILE            *tracefile;                /*+ Tracing file for the solver        +*/
   double           timestamp;                /*+ Original time for trace            +*/
-#endif										    
-#if (defined COMPUTE_ALLOC) || (defined STATS_SOPALIN)				    
+#endif
+#if (defined COMPUTE_ALLOC) || (defined STATS_SOPALIN)
   INT              current_alloc;            /*+ Current allocated memory           +*/
-#endif										    
-#ifdef ALLOC_FTGT								    
+#endif
+#ifdef ALLOC_FTGT
   INT              max_alloc;                /*+ Maximum allocated memory           +*/
   INT              alloc_init;               /*+ Initial allocated memory           +*/
 #ifdef STATS_SOPALIN
-  pthread_mutex_t  mutex_alloc;		     /*+ Mutex on allocated memory variable +*/
+  pthread_mutex_t  mutex_alloc;              /*+ Mutex on allocated memory variable +*/
 #endif
 #endif
 #ifdef USE_CSC
   double volatile  critere;                  /*+ Stopping threshold for refinement   +*/
-  double volatile  stop;		     /*+ Flag to stop threads on refinement  +*/
-  double volatile  berr;		     /*+ Error in refinement                 +*/
-  double volatile  lberr;		     /*+ Last error in refinement            +*/
-  INT    volatile  raffnbr;		     /*+ Number of iterations in refinement  +*/
-  INT    volatile  count_iter;		     /*+ Number of iterations in refinement  +*/
-  INT    volatile  flag_gmres;		     /*+ Flag to continue in static pivoting +*/
-  INT    volatile  gmresout_flag;	     /*+ Flag for GMRES outter loop          +*/
-  INT    volatile  gmresin_flag;	     /*+ Flag for GMRES inner loop           +*/
+  double volatile  stop;                     /*+ Flag to stop threads on refinement  +*/
+  double volatile  berr;                     /*+ Error in refinement                 +*/
+  double volatile  lberr;                    /*+ Last error in refinement            +*/
+  INT    volatile  raffnbr;                  /*+ Number of iterations in refinement  +*/
+  INT    volatile  count_iter;               /*+ Number of iterations in refinement  +*/
+  INT    volatile  flag_gmres;               /*+ Flag to continue in static pivoting +*/
+  INT    volatile  gmresout_flag;            /*+ Flag for GMRES outter loop          +*/
+  INT    volatile  gmresin_flag;             /*+ Flag for GMRES inner loop           +*/
   double volatile  gmresro;                  /*+ Norm of GMRES residue               +*/
 #endif
 #ifdef SMP_SOPALIN
-  pthread_mutex_t *mutex_task;		     /*+ Mutex on each task                               +*/
-  pthread_cond_t  *cond_task;		     /*+ Cond for each task                               +*/
-  pthread_mutex_t *mutex_fanin;		     /*+ Mutex on each fanin                              +*/
-  pthread_cond_t  *cond_fanin;		     /*+ Cond for each fanin                              +*/
-  pthread_mutex_t *mutex_blok;		     /*+ Mutex on each block                              +*/
-  pthread_mutex_t *mutex_queue_fanin;	     /*+ Mutex on the fanins queue                        +*/
-  pthread_mutex_t *mutex_queue_block;	     /*+ Mutex on the blocks queue                        +*/
-#else /* SMP_SOPALIN */								                            
-  Queue            taskqueue;		     /*+ Task queue for NOSMP version                     +*/
-#endif										                            
+  pthread_mutex_t *mutex_task;               /*+ Mutex on each task                               +*/
+  pthread_cond_t  *cond_task;                /*+ Cond for each task                               +*/
+  pthread_mutex_t *mutex_fanin;              /*+ Mutex on each fanin                              +*/
+  pthread_cond_t  *cond_fanin;               /*+ Cond for each fanin                              +*/
+  pthread_mutex_t *mutex_blok;               /*+ Mutex on each block                              +*/
+  pthread_mutex_t *mutex_queue_fanin;        /*+ Mutex on the fanins queue                        +*/
+  pthread_mutex_t *mutex_queue_block;        /*+ Mutex on the blocks queue                        +*/
+#else /* SMP_SOPALIN */
+  Queue            taskqueue;                /*+ Task queue for NOSMP version                     +*/
+#endif
   sopthread_barrier_t barrier;               /*+ Threads synchronisation barrier                  +*/
-#ifdef THREAD_COMM								                            
+#ifdef THREAD_COMM
   pthread_mutex_t  mutex_comm;               /*+ Mutex on communication variables                 +*/
-  pthread_cond_t   cond_comm;	             /*+ Condition on step_comm                           +*/
-  int              step_comm;		     /*+ Current step indicator                           +*/
-#ifdef PASTIX_FUNNELED								                  	       
+  pthread_cond_t   cond_comm;                /*+ Condition on step_comm                           +*/
+  int              step_comm;                /*+ Current step indicator                           +*/
+#ifdef PASTIX_FUNNELED
   Pastix_Allreduce_t allreduce;              /*+ Data structure for MPi_Allreduce                 +*/
   Queue             *sendqueue;              /*+ Ready to send data queue                         +*/
-#endif										                  	       
-#endif /* THREAD_COMM */							                  	       
-#ifdef STORAGE									                  	       
-  FLOAT           *grhs;		     /*+ Data storage tabular                             +*/
-  volatile INT    *flagtab;		     /*+ Indicate received cblk in up step                +*/
-  pthread_mutex_t *mutex_flagtab;	     /*+ Mutex on flagtab                                 +*/
+#endif
+#endif /* THREAD_COMM */
+#ifdef STORAGE
+  FLOAT           *grhs;                     /*+ Data storage tabular                             +*/
+  volatile INT    *flagtab;                  /*+ Indicate received cblk in up step                +*/
+  pthread_mutex_t *mutex_flagtab;            /*+ Mutex on flagtab                                 +*/
   pthread_cond_t  *cond_flagtab;             /*+ cond on flagtab                                  +*/
-#endif										                  
+#endif
   volatile void   *ptr_raff[10];             /*+ pointers used in refinement                      +*/
   void           **ptr_csc;                  /*+ pointer to data used by each threads in csc_code +*/
   double          *common_flt;               /*+ Common pointer to share a float between threads  +*/
@@ -254,9 +253,9 @@ typedef struct Sopalin_Data_ {
   pthread_cond_t   cond_raff;                /*+ cond corresponding to mutex_raff                 +*/
 #ifdef PASTIX_DYNSCHED
   pthread_mutex_t *tasktab_mutex;            /*+ +*/
-  pthread_cond_t  *tasktab_cond;	     /*+ +*/
-  volatile INT    *tasktab_indice;	     /*+ +*/
-  volatile INT    *tasktab_nbthrd;	     /*+ +*/
+  pthread_cond_t  *tasktab_cond;             /*+ +*/
+  volatile INT    *tasktab_indice;           /*+ +*/
+  volatile INT    *tasktab_nbthrd;           /*+ +*/
   Queue           *taskqueue;                /*+ +*/
 #endif
 #ifdef OOC
@@ -264,12 +263,28 @@ typedef struct Sopalin_Data_ {
 #endif
 } Sopalin_Data_t;
 
+#ifdef WITH_STARPU
+struct starpu_trf_data_ {
+  INT              cblknum;
+  Sopalin_Data_t * sopalin_data;
+};
+typedef struct starpu_trf_data_ starpu_trf_data_t;
 
+struct starpu_gemm_data_ {
+  INT              cblknum;
+  INT              bloknum;
+  INT              fcblknum;
+  INT              nblocs;
+  Sopalin_Data_t * sopalin_data;
+  int           ** d_blocktab;
+};
+typedef struct starpu_gemm_data_ starpu_gemm_data_t;
+#endif
 /************************************************/
 /*     Fonctions publiques de sopalin3d         */
 /************************************************/
 /*
-  Functions: <Sopalin3d.c> functions declarations. 
+  Functions: <Sopalin3d.c> functions declarations.
  */
 void  Usopalin_launch           (SolverMatrix *, SopalinParam *, INT cas);
 void  Usopalin_thread           (SolverMatrix *, SopalinParam *);

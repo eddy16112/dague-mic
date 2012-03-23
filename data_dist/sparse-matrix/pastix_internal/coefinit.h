@@ -14,7 +14,7 @@
   Allocate matrix coefficients in coeftab and ucoeftab.
 
   Should be first called with me = -1 to allocated coeftab.
-  Then, in NUMA_ALLOC mode should be called with me set to thread ID 
+  Then, should be called with me set to thread ID 
   to allocate column blocks coefficients arrays.
   
   Parameters
@@ -36,8 +36,6 @@ void CoefMatrix_Allocate (SopalinParam    *sopar,
   Function: CoefMatrix_Init
 
   Init coeftab and ucoeftab coefficients.
-  
-  OOC only works with NUMA_ALLOC
 
   Parameters:
      datacode     - solverMatrix 

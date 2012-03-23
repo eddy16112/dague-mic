@@ -114,13 +114,8 @@ typedef struct SolverMatrix_ {
   INT                       coefnbr;              /*+ Number of coefficients                    +*/
   INT                       ftgtnbr;              /*+ Number of fanintargets                    +*/
   INT                       ftgtcnt;              /*+ Number of fanintargets to receive         +*/
-#ifdef NUMA_ALLOC
   FLOAT ** restrict         coeftab;              /*+ Coefficients access vector                +*/
   FLOAT ** restrict         ucoeftab;             /*+ Coefficients access vector                +*/
-#else
-  FLOAT *  restrict         coeftab;              /*+ Coefficients access vector                +*/
-  FLOAT *  restrict         ucoeftab;             /*+ Coefficients access vector                +*/
-#endif
   FanInTarget * restrict    ftgttab;              /*+ Fanintarget access vector                 +*/
   INT                       coefmax;              /*+ Working block max size (cblk coeff 1D)    +*/
   INT                       bpftmax;              /*+ Maximum of block size for btag to receive +*/

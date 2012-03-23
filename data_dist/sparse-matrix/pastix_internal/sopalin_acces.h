@@ -10,16 +10,32 @@
 #define SYMB_LROWNUM(x)   datacode->symbmtx.bloktab[x].lrownum
 #define SYMB_CBLKNUM(x)   datacode->symbmtx.bloktab[x].cblknum /*<0 if remote*/
 
+#define CBLK_BLOKNBR(x)   (SYMB_BLOKNUM(x+1) - SYMB_BLOKNUM(x))
+#define CBLK_COLNBR(x)    (SYMB_LCOLNUM(x) - SYMB_FCOLNUM(x) + 1)
+#define BLOK_ROWNBR(x)    (SYMB_LROWNUM(x) - SYMB_FROWNUM(x) + 1)
+#ifdef NAPA_SOPALIN /* ILU(k) */
+#define BLOCK_ISFACING(j,b)                           \
+  (((SYMB_FROWNUM(j)>=SYMB_FROWNUM(b)) &&             \
+    (SYMB_LROWNUM(j)<=SYMB_LROWNUM(b))) ||            \
+   ((SYMB_FROWNUM(j)<=SYMB_FROWNUM(b)) &&             \
+    (SYMB_LROWNUM(j)>=SYMB_LROWNUM(b))) ||            \
+   ((SYMB_FROWNUM(j)<=SYMB_FROWNUM(b)) &&             \
+    (SYMB_LROWNUM(j)>=SYMB_FROWNUM(b))) ||            \
+   ((SYMB_FROWNUM(j)<=SYMB_LROWNUM(b)) &&             \
+    (SYMB_LROWNUM(j)>=SYMB_LROWNUM(b))))
+#else
+#define BLOCK_ISFACING(j,b)                           \
+  ((SYMB_FROWNUM(j)>=SYMB_FROWNUM(b)) &&              \
+   (SYMB_LROWNUM(j)<=SYMB_LROWNUM(b)))
+#endif
+
+
+
 #define SOLV_SYMBMTX      datacode->symbmtx
 #define SOLV_CBLKTAB      datacode->cblktab
 #define SOLV_BLOKTAB      datacode->bloktab
-#ifdef NUMA_ALLOC   /* Si on est en NUMA_ALLOC, il nous faut le numero de bloc colonne */
 #define SOLV_COEFTAB(x)   datacode->coeftab[x]
 #define SOLV_UCOEFTAB(x)  datacode->ucoeftab[x]
-#else
-#define SOLV_COEFTAB(x)   datacode->coeftab
-#define SOLV_UCOEFTAB(x)  datacode->ucoeftab
-#endif
 #define SOLV_FTGTTAB      datacode->ftgttab
 #define SOLV_PROCNUM      datacode->clustnum
 #define SOLV_PROCNBR      datacode->clustnbr
@@ -197,3 +213,5 @@
 #define MAX_R_REQUESTS 1
 #endif
 
+#define TASK_TASK2ESP( __i ) ( -((__i) + 2) )
+#define TASK_ESP2TASK( __i ) ( -((__i) + 2) )
