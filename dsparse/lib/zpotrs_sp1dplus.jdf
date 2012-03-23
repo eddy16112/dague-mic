@@ -54,8 +54,6 @@ firstgemm = inline_c %{
     if ( lastblok > firstblok ) {
         dague_int_t fcblk   = SYMB_CBLKNUM(lastblok-1);                      /* Facing block column of the first extra-diagonal block */
         dague_int_t listptr = UPDOWN_GCBLK2LIST( UPDOWN_LOC2GLOB( fcblk ) ); /* Index in the global list of the column block receiving contribution */
-        fprintf(stderr, "k=%d, gcblk2list=%d, browk1=%d, lastbrow=%d, firstblok=%d, lastblok=%d, firstgemm=%ld\n",
-                k, gcblk2list, browk1, lastbrow, firstblok, lastblok, UPDOWN_LISTBLOK( UPDOWN_LISTPTR( listptr+1 ) -1 ));
         return UPDOWN_LISTPTR( listptr+1 ) -1;
     } else {  /* Last diagonal block -> no GEMM on this one */
         return -1;
@@ -75,8 +73,15 @@ RW   B <- ( gcblk2list < 0 ) ? B(k) : C GEMM_FORWARD( lastbrow )
 
 BODY
       DRYRUN(
-             /*core_zpotrfsp1d(A, datacode, k, descA->pastix_data->sopar.espilondiag );*/
-             /*TRSM( L, L , N, N, A, B )*/
+             int tempm = SYMB_LCOLNUM(k)-SYMB_FCOLNUM(k)+1;
+             int tempn = UPDOWN_SM2XNBR;
+             
+             /* Compute the contribution */
+             CORE_ztrsm( PlasmaLeft, PlasmaLower, PlasmaNoTrans, PlasmaNonUnit, 
+                         tempm, tempn,
+                         1.,  A, SOLV_STRIDE(k), 
+                              B, UPDOWN_SM2XSZE);
+
 	     );
       printlog(
                "thread %d solvedown_1dplus( cblknum=%d, browk1=%d, lastbrow=%d, firstblok=%d, lastblok=%d )\n",
@@ -111,17 +116,23 @@ RW    C <- ( prev == 0 ) ? B(fcblk) : C GEMM_FORWARD( prev )
 
 BODY
       if (!phony) {
-          Dague_Complex64_t *work = (Dague_Complex64_t *)dague_private_memory_pop( p_work );
-
           DRYRUN(
-                 //core_zpotrfsp1d_gemm(cblk, k, fcblk, A, C, work, datacode);
-                 /* GEMM ( N, N, A, B, C ); */
+                 Dague_Complex64_t *Aik = A + SOLV_COEFIND(k);
+                 Dague_Complex64_t *Cik = C + (SYMB_FROWNUM( k ) - SYMB_FCOLNUM(fcblk));
+
+                 int tempm = SYMB_LROWNUM(k)-SYMB_FROWNUM(k)+1;
+                 int tempn = UPDOWN_SM2XNBR;
+                 int tempk = SYMB_LCOLNUM(cblk)-SYMB_FCOLNUM(cblk)+1;
+
+                 CORE_zgemm( PlasmaNoTrans, PlasmaNoTrans, 
+                             tempm, tempn, tempk,
+                             1.,  Aik,  SOLV_STRIDE(cblk),
+                                  B,    UPDOWN_SM2XSZE,
+                             0.,  Cik,  UPDOWN_SM2XSZE);
                  );
           printlog(
                    "thread %d compute_1dgemm( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
                    context->eu_id, k, fcblk, cblk, prev, next);
-
-          dague_private_memory_push( p_work, (void *)work );
       } else {
           printlog(
                    "thread %d phony_gemm( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
@@ -173,8 +184,14 @@ RW   B <- ( lastblok == firstblok ) ? B TRSM_FORWARD( k ) : C GEMM_BACKWARD( bro
        
 BODY
       DRYRUN(
-             /*core_zpotrfsp1d(A, datacode, k, descA->pastix_data->sopar.espilondiag );*/
-             /*TRSM( L, L , N, N, A, B )*/
+             int tempm = SYMB_LCOLNUM(k)-SYMB_FCOLNUM(k)+1;
+             int tempn = UPDOWN_SM2XNBR;
+             
+             /* Compute the contribution */
+             CORE_ztrsm( PlasmaLeft, PlasmaLower, PlasmaConjTrans, PlasmaNonUnit, 
+                         tempm, tempn,
+                         1.,  A, SOLV_STRIDE(k), 
+                              B, UPDOWN_SM2XSZE);
 	     );
       printlog(
                "thread %d solvedown_1dplus( cblknum=%d )\n",
@@ -211,10 +228,18 @@ RW    C <- ( k == lastbrow  ) ?  B TRSM_FORWARD( cblk )  : C GEMM_BACKWARD( k+1 
 BODY
                                                          
     DRYRUN(
-           Dague_Complex64_t *work = (Dague_Complex64_t *)dague_private_memory_pop( p_work );
-           //core_zpotrfsp1d_gemm(cblk, k, fcblk, A, C, work, datacode);
-           /* GEMM ( N, N, A, B, C ); */
-           dague_private_memory_push( p_work, (void *)work );
+           Dague_Complex64_t *Aik = A + SOLV_COEFIND(bloknum);
+           Dague_Complex64_t *Bik = B + (SYMB_FROWNUM( bloknum ) - SYMB_FCOLNUM(fcblk));
+                                         
+           int tempm = SYMB_LCOLNUM(cblk)-SYMB_FCOLNUM(cblk)+1;
+           int tempn = UPDOWN_SM2XNBR;
+           int tempk = SYMB_LROWNUM(bloknum)-SYMB_FROWNUM(bloknum)+1;
+           
+           CORE_zgemm( PlasmaConjTrans, PlasmaNoTrans, 
+                       tempm, tempn, tempk,
+                       1.,  Aik,  SOLV_STRIDE(cblk),
+                            Bik,  UPDOWN_SM2XSZE,
+                       0.,  C,    UPDOWN_SM2XSZE);
            );
     printlog(
              "thread %d compute_1dgemm( k=%d, bloknum=%d, fcblk=%d, cblk=%d )\n",
