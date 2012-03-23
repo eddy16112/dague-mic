@@ -47,14 +47,16 @@ gcblk2list= inline_c %{ return UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( k )); %}
 /*browk     = inline_c %{ if ( gcblk2list != -1 ) return UPDOWN_LISTPTR( gcblk2list   ); else return -1; %}*/
 browk1    = inline_c %{ if ( gcblk2list != -1 ) return UPDOWN_LISTPTR( gcblk2list+1 ); else return -1; %}
 lastbrow  = inline_c %{ if (browk1 > 0) return UPDOWN_LISTBLOK(browk1-1); else return 0; %}
-firstblok = inline_c %{ return SYMB_BLOKNUM(k); %}
+firstblok = inline_c %{ return SYMB_BLOKNUM(k)+1; %}
 lastblok  = inline_c %{ return SYMB_BLOKNUM(k+1); %}
 
 firstgemm = inline_c %{ 
-    if ( k < cblknbr ) {
-        dague_int_t fcblk   = SYMB_CBLKNUM(firstblok+1);                     /* Facing block column of the first extra-diagonal block */
+    if ( lastblok > firstblok ) {
+        dague_int_t fcblk   = SYMB_CBLKNUM(lastblok-1);                      /* Facing block column of the first extra-diagonal block */
         dague_int_t listptr = UPDOWN_GCBLK2LIST( UPDOWN_LOC2GLOB( fcblk ) ); /* Index in the global list of the column block receiving contribution */
-        return UPDOWN_LISTBLOK( UPDOWN_LISTPTR( listptr+1 ) -1 );
+        fprintf(stderr, "k=%d, gcblk2list=%d, browk1=%d, lastbrow=%d, firstblok=%d, lastblok=%d, firstgemm=%ld\n",
+                k, gcblk2list, browk1, lastbrow, firstblok, lastblok, UPDOWN_LISTBLOK( UPDOWN_LISTPTR( listptr+1 ) -1 ));
+        return UPDOWN_LISTPTR( listptr+1 ) -1;
     } else {  /* Last diagonal block -> no GEMM on this one */
         return -1;
     }
@@ -67,8 +69,9 @@ firstgemm = inline_c %{
 /* C is A(k) if it's a leaf or get the cblk from the last update */
 READ A <- A(k)
 RW   B <- ( gcblk2list < 0 ) ? B(k) : C GEMM_FORWARD( lastbrow )
-       -> B GEMM_FORWARD(firstblok+1..lastblok-1)
-       -> (k == cblknbr) ? B TRSM_BACKWARD(k) : C GEMM_BACKWARD( firstgemm )
+       -> B GEMM_FORWARD(firstblok..lastblok-1)
+       /* If no extra diagonal blocks, send directly to TRSM, otherwise to GEMM */
+       -> (firstblok == lastblok) ? B TRSM_BACKWARD(k) : C GEMM_BACKWARD( firstgemm )
 
 BODY
       DRYRUN(
@@ -99,7 +102,7 @@ next   = inline_c %{ if (phony) return 0; else return sparse_matrix_get_listptr_
 :B(fcblk)
 
 // Parameters
-READ  A <- A(fcblk)
+READ  A <- A(cblk)
 READ  B <- phony ? B(fcblk) : B TRSM_FORWARD(cblk) /* B never comes from memory but we keep it for correctness of the code */
 RW    C <- ( prev == 0 ) ? B(fcblk) : C GEMM_FORWARD( prev )
         -> phony ? B(fcblk)/* B never go back to memory but we keep it for correctness of the code */
@@ -139,6 +142,24 @@ gcblk2list= inline_c %{ return UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( k )); %}
 firstbrow = inline_c %{ if ( gcblk2list != -1 ) return UPDOWN_LISTPTR( gcblk2list   ); else return -1; %}
 lastbrow  = inline_c %{ if ( gcblk2list != -1 ) return UPDOWN_LISTPTR( gcblk2list+1 )-1; else return -1; %}
 firstblok = inline_c %{ return SYMB_BLOKNUM(k)+1; %}
+lastblok  = inline_c %{ return SYMB_BLOKNUM(k+1); %}
+browk = inline_c %{ 
+    if (firstblok == lastblok)
+        return -1;
+    else {
+        dague_int_t fcblk       = SYMB_CBLKNUM( firstblok );
+        dague_int_t gfcblk2list = UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( fcblk ));
+        dague_int_t browfirst   = UPDOWN_LISTPTR( gfcblk2list );
+        dague_int_t browlast    = UPDOWN_LISTPTR( gfcblk2list + 1 );
+        int count;
+
+        for (count=browlast; count>browfirst; count--)
+            if (firstblok == UPDOWN_LISTBLOK(count-1)) return count;
+
+        assert(0);
+        return -1;
+    }
+%}
 
 // Parallel partitioning
 :B(k) // Should match SOLV_COEFTAB(k)
@@ -146,8 +167,9 @@ firstblok = inline_c %{ return SYMB_BLOKNUM(k)+1; %}
 // Parameters
 /* C is A(k) if it's a leaf or get the cblk from the last update */
 READ A <- A(k)
-RW   B -> ( gcblk2list < 0 ) ? B(k) : B GEMM_BACKWARD( firstbrow..lastbrow )
-       <- ( k == cblknbr ) ? B TRSM_FORWARD( k ) : C GEMM_BACKWARD(firstblok)
+RW   B <- ( lastblok == firstblok ) ? B TRSM_FORWARD( k ) : C GEMM_BACKWARD( browk )
+       -> B(k)
+       -> ( gcblk2list >= 0 ) ? B GEMM_BACKWARD( firstbrow..lastbrow )
        
 BODY
       DRYRUN(
