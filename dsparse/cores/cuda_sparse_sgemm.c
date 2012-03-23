@@ -46,7 +46,7 @@ static int OHM_M = 3;
 
 static void compute_best_unit( uint64_t length, float* updated_value, char** best_unit );
 
-#define DSPARSE_INDIVUAL_BLOCKTAB
+//#define DSPARSE_INDIVIDUAL_BLOCKTAB
 static inline int dague_imax(int a, int b) { return (a >= b) ? a : b; };
 
 static sparse_matrix_desc_t* UGLY_A;
@@ -74,9 +74,9 @@ int sparse_sgemm_cuda_init( dague_context_t* dague_context, sparse_matrix_desc_t
     char *env;
     int i, j, dindex;
     size_t sparse_size;
-#if !defined(DSPARSE_INDIVUAL_BLOCKTAB)
+#if !defined(DSPARSE_INDIVIDUAL_BLOCKTAB)
     my_tmp_int_t *blocktab;
-    size_t       blocktab_size;
+    size_t        blocktab_size;
 #endif
 
     UGLY_A = sparseA;
@@ -111,7 +111,7 @@ int sparse_sgemm_cuda_init( dague_context_t* dague_context, sparse_matrix_desc_t
      */
     sparse_size = SOLV_COEFMAX * sparse_matrix_size_of(sparseA->mtype);
     sparse_size = ((sparse_size +31)/32)*32;
-#if defined(DSPARSE_INDIVUAL_BLOCKTAB)
+#if defined(DSPARSE_INDIVIDUAL_BLOCKTAB)
     {
         int maxblockpercol, cblknum;
         int maxblocktabsize;
@@ -133,7 +133,7 @@ int sparse_sgemm_cuda_init( dague_context_t* dague_context, sparse_matrix_desc_t
     /*
      * Create the blocktab that will be transfered to the GPUs
      */
-#if !defined(DSPARSE_INDIVUAL_BLOCKTAB)
+#if !defined(DSPARSE_INDIVIDUAL_BLOCKTAB)
     {
         my_tmp_int_t iterblock;
 
@@ -218,7 +218,7 @@ int sparse_sgemm_cuda_init( dague_context_t* dague_context, sparse_matrix_desc_t
         /*
          * Transfer the blocktab before to allocate the chunks of memory
          */
-#if !defined(DSPARSE_INDIVUAL_BLOCKTAB)
+#if !defined(DSPARSE_INDIVIDUAL_BLOCKTAB)
         {
             status = (cudaError_t)cuMemAlloc( &(sparseA->d_blocktab[i]),
                                               blocktab_size );
@@ -434,7 +434,7 @@ int sparse_sgemm_cuda_fini(dague_context_t* dague_context)
         dague_list_destruct(gpu_device->fifo_pending_out);free( gpu_device->fifo_pending_out ); gpu_device->fifo_pending_out = NULL;
 #endif  /* !defined(DAGUE_GPU_STREAM_PER_TASK) */
 
-#if !defined(DSPARSE_INDIVUAL_BLOCKTAB)
+#if !defined(DSPARSE_INDIVIDUAL_BLOCKTAB)
         cuMemFree(UGLY_A->d_blocktab[i]);
 #endif
 
@@ -442,7 +442,7 @@ int sparse_sgemm_cuda_fini(dague_context_t* dague_context)
         active_devices++;
     }
 
-#if !defined(DSPARSE_INDIVUAL_BLOCKTAB)
+#if !defined(DSPARSE_INDIVIDUAL_BLOCKTAB)
     free(UGLY_A->d_blocktab);
 #endif
 
@@ -650,7 +650,7 @@ gpu_sgemm_internal_submit( gpu_device_t* gpu_device,
     d_A = gpu_elem_A->gpu_mem;
     d_C = gpu_elem_C->gpu_mem;
 
-#if defined(DSPARSE_INDIVUAL_BLOCKTAB)
+#if defined(DSPARSE_INDIVIDUAL_BLOCKTAB)
     {
         int bloknbr, j, b, return_code, how_many = 0;
         int * blok_idx;
@@ -754,7 +754,7 @@ gpu_sgemm_internal_submit( gpu_device_t* gpu_device,
     n = SYMB_LROWNUM(bloknum) - SYMB_FROWNUM(bloknum) + 1;
     k = SYMB_LCOLNUM(cblknum) - SYMB_FCOLNUM(cblknum) + 1;
 
-#if !defined(DSPARSE_INDIVUAL_BLOCKTAB)
+#if !defined(DSPARSE_INDIVIDUAL_BLOCKTAB)
     d_C = d_C + ((SYMB_FROWNUM(bloknum) - SYMB_FCOLNUM(fcblknum))*SOLV_STRIDE(fcblknum)) *TYPE_SIZE(this_task);
 #endif
 
@@ -771,7 +771,7 @@ gpu_sgemm_internal_submit( gpu_device_t* gpu_device,
     CU_PUSH_FLOAT(   gpu_device->hcuFunction, offset, alpha );
     CU_PUSH_FLOAT(   gpu_device->hcuFunction, offset, beta );
     CU_PUSH_INT(     gpu_device->hcuFunction, offset, bloknbr);
-#if defined(DSPARSE_INDIVUAL_BLOCKTAB)
+#if defined(DSPARSE_INDIVIDUAL_BLOCKTAB)
     d_facing_blok_idx = d_blok_idx + bloknbr*sizeof(int);
     CU_PUSH_POINTER( gpu_device->hcuFunction, offset, d_blok_idx);
     CU_PUSH_POINTER( gpu_device->hcuFunction, offset, d_facing_blok_idx);
@@ -780,8 +780,8 @@ gpu_sgemm_internal_submit( gpu_device_t* gpu_device,
         my_tmp_int_t fblcknbr = SYMB_BLOKNUM(fcblknum+1) - SYMB_BLOKNUM(fcblknum);
         CUdeviceptr d_blocktab, d_fbloktab;
         
-        d_blocktab = UGLY_A->d_blocktab[gpu_device->id] + 2 * bloknum                * sizeof(my_tmp_int_t);
-        d_fbloktab = UGLY_A->d_blocktab[gpu_device->id] + 2 * SYMB_BLOKNUM(fcblknum) * sizeof(my_tmp_int_t);
+        d_blocktab = UGLY_A->d_blocktab[gpu_device->index] + 2 * bloknum                * sizeof(my_tmp_int_t);
+        d_fbloktab = UGLY_A->d_blocktab[gpu_device->index] + 2 * SYMB_BLOKNUM(fcblknum) * sizeof(my_tmp_int_t);
 
         CU_PUSH_POINTER( gpu_device->hcuFunction, offset, d_blocktab );
         CU_PUSH_INT(     gpu_device->hcuFunction, offset, fblcknbr   );

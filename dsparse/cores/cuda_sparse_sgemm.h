@@ -26,6 +26,8 @@ int sparse_gpu_sgemm( dague_execution_unit_t* eu_context,
 typedef struct _memory_elem memory_elem_t;
 typedef struct _gpu_elem gpu_elem_t;
 
+typedef int my_tmp_int_t;
+
 struct _gpu_elem {
     dague_list_item_t item;
     int lock;
