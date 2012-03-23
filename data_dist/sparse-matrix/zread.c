@@ -452,14 +452,18 @@ void sparse_matrix_zclean( sparse_context_t *dspctxt )
 
         for(itercblk=0; itercblk<cblknbr; itercblk++) {
             free( pastix_data->solvmatr.coeftab[itercblk] );
+            pastix_data->solvmatr.coeftab[itercblk] = NULL;
         }
         free( pastix_data->solvmatr.coeftab );
+        pastix_data->solvmatr.coeftab = NULL;
 
         if ( pastix_data->sopar.transcsc != NULL ) {
             for(itercblk=0; itercblk<cblknbr; itercblk++) {
                 free( pastix_data->solvmatr.ucoeftab[itercblk] );
+                pastix_data->solvmatr.ucoeftab[itercblk] = NULL;
             }
             free( pastix_data->solvmatr.ucoeftab );
+            pastix_data->solvmatr.ucoeftab = NULL;
         }
     }
     pastix_data->malcof = 0;
@@ -479,7 +483,13 @@ void sparse_matrix_zclean( sparse_context_t *dspctxt )
 	     iparm, 
 	     dparm);
 
-    
+    free( dspctxt->colptr  );
+    free( dspctxt->rows    );
+    free( dspctxt->values  );
+    free( dspctxt->permtab );
+    free( dspctxt->peritab );
+    free( dspctxt->rhs     );
+
     return;
 }
 
@@ -497,15 +507,23 @@ void sparse_vector_zinit( sparse_context_t *dspctxt )
 
     pastix_data->solvmatr.updovct.sm2xnbr = 1;
     pastix_data->solvmatr.updovct.sm2xtab = malloc( pastix_data->solvmatr.updovct.sm2xnbr *
-                                        pastix_data->solvmatr.updovct.sm2xsze *
-                                        dspctxt->rhsdesc->typesze );
-
+                                                    pastix_data->solvmatr.updovct.sm2xsze *
+                                                    dspctxt->rhsdesc->typesze );
+    
     pastix_data->malsmx = 1;
     
     Z_buildUpdoVect(pastix_data,
                     NULL,
                     dspctxt->rhs,
                     0);    
+
+    /* Save B for reffinment */
+    pastix_data->sopar.b = malloc( pastix_data->solvmatr.updovct.sm2xnbr *
+                                   pastix_data->solvmatr.updovct.sm2xsze *
+                                   dspctxt->rhsdesc->typesze );
+    memcpy(pastix_data->sopar.b, pastix_data->solvmatr.updovct.sm2xtab,
+           pastix_data->solvmatr.updovct.sm2xsze*sizeof(FLOAT));
+
     return;
 }
 
