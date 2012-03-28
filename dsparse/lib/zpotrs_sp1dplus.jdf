@@ -18,6 +18,7 @@ extern "C" %{
 #include "dsparse/lib/core_z.h"
 
 #define PRECISION_z
+#undef printf
 
 %}
 
@@ -44,22 +45,11 @@ TRSM_FORWARD(k)
 // Execution space
 k = 0..cblknbr
 gcblk2list= inline_c %{ return UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( k )); %}
-/*browk     = inline_c %{ if ( gcblk2list != -1 ) return UPDOWN_LISTPTR( gcblk2list   ); else return -1; %}*/
+firstblok = inline_c %{ return SYMB_BLOKNUM(k); %}      // diagonal 
+lastblok  = inline_c %{ return SYMB_BLOKNUM(k+1)-1; %}  // last block of the column
 browk1    = inline_c %{ if ( gcblk2list != -1 ) return UPDOWN_LISTPTR( gcblk2list+1 ); else return -1; %}
 lastbrow  = inline_c %{ if (browk1 > 0) return UPDOWN_LISTBLOK(browk1-1); else return 0; %}
-firstblok = inline_c %{ return SYMB_BLOKNUM(k)+1; %}
-lastblok  = inline_c %{ return SYMB_BLOKNUM(k+1); %}
 
-firstgemm = inline_c %{ 
-    if ( lastblok > firstblok ) {
-        dague_int_t fcblk   = SYMB_CBLKNUM(lastblok-1);                      /* Facing block column of the first extra-diagonal block */
-        dague_int_t listptr = UPDOWN_GCBLK2LIST( UPDOWN_LOC2GLOB( fcblk ) ); /* Index in the global list of the column block receiving contribution */
-        return UPDOWN_LISTPTR( listptr+1 ) -1;
-    } else {  /* Last diagonal block -> no GEMM on this one */
-        return -1;
-    }
-    %}
-    
 // Parallel partitioning
 :B(k) // Should match SOLV_COEFTAB(k)
 
@@ -67,15 +57,14 @@ firstgemm = inline_c %{
 /* C is A(k) if it's a leaf or get the cblk from the last update */
 READ A <- A(k)
 RW   B <- ( gcblk2list < 0 ) ? B(k) : C GEMM_FORWARD( lastbrow )
-       -> B GEMM_FORWARD(firstblok..lastblok-1)
-       /* If no extra diagonal blocks, send directly to TRSM, otherwise to GEMM */
-       -> (firstblok == lastblok) ? B TRSM_BACKWARD(k) : C GEMM_BACKWARD( firstgemm )
+       -> B GEMM_FORWARD(firstblok+1..lastblok)
+       -> (firstblok == lastblok) ? B TRSM_BACKWARD(k) : B(k)
 
 BODY
       DRYRUN(
              int tempm = SYMB_LCOLNUM(k)-SYMB_FCOLNUM(k)+1;
              int tempn = UPDOWN_SM2XNBR;
-             
+
              /* Compute the contribution */
              CORE_ztrsm( PlasmaLeft, PlasmaLower, PlasmaNoTrans, PlasmaNonUnit, 
                          tempm, tempn,
@@ -83,6 +72,7 @@ BODY
                               B, UPDOWN_SM2XSZE);
 
 	     );
+
       printlog(
                "thread %d solvedown_1dplus( cblknum=%d, browk1=%d, lastbrow=%d, firstblok=%d, lastblok=%d )\n",
                context->eu_id, k, /*browk, */ browk1, lastbrow, firstblok, lastblok);
@@ -90,7 +80,7 @@ BODY
 END
 
 /**************************************************
- *                      GEMM_FORWARD                      *
+ *              GEMM_FORWARD                      *
  **************************************************/
 
 GEMM_FORWARD(k)
@@ -103,22 +93,25 @@ phony  = inline_c %{ return k == SYMB_BLOKNUM( cblk ); %}
 prev   = inline_c %{ if (phony) return 0; else return sparse_matrix_get_listptr_prev( descA, (dague_int_t)k, (dague_int_t)fcblk ); %}
 next   = inline_c %{ if (phony) return 0; else return sparse_matrix_get_listptr_next( descA, (dague_int_t)k, (dague_int_t)fcblk ); %}
 
-// Parallel partitioning
+// Parallel partitioning: empty if SYMB_LROWNUM(k)==SYMB_FCOLNUM(fcblk)
 :B(fcblk)
 
 // Parameters
 READ  A <- A(cblk)
-READ  B <- phony ? B(fcblk) : B TRSM_FORWARD(cblk) /* B never comes from memory but we keep it for correctness of the code */
+READ  B <- phony ? B(fcblk) : B TRSM_FORWARD(cblk) // B never comes from memory but we keep it for correctness of the code 
 RW    C <- ( prev == 0 ) ? B(fcblk) : C GEMM_FORWARD( prev )
-        -> phony ? B(fcblk)/* B never go back to memory but we keep it for correctness of the code */
+        -> phony ? B(fcblk)                        // B never go back to memory but we keep it for correctness of the code 
         -> ((!phony) && (next == 0)) ? B TRSM_FORWARD( fcblk )
         -> ((!phony) && (next != 0)) ? C GEMM_FORWARD( next )
 
 BODY
       if (!phony) {
+
           DRYRUN(
-                 Dague_Complex64_t *Aik = A + SOLV_COEFIND(k);
-                 Dague_Complex64_t *Cik = C + (SYMB_FROWNUM( k ) - SYMB_FCOLNUM(fcblk));
+                 /* shifting to a off-diagonal block within this column */
+                 Dague_Complex64_t *Aik = ((Dague_Complex64_t*)A) + SOLV_COEFIND(k);
+                 /* shifting to a sub-block within the block */
+                 Dague_Complex64_t *Cik = ((Dague_Complex64_t*)C) + (SYMB_FROWNUM( k ) - SYMB_FCOLNUM(fcblk)); 
 
                  int tempm = SYMB_LROWNUM(k)-SYMB_FROWNUM(k)+1;
                  int tempn = UPDOWN_SM2XNBR;
@@ -126,9 +119,9 @@ BODY
 
                  CORE_zgemm( PlasmaNoTrans, PlasmaNoTrans, 
                              tempm, tempn, tempk,
-                             1.,  Aik,  SOLV_STRIDE(cblk),
-                                  B,    UPDOWN_SM2XSZE,
-                             0.,  Cik,  UPDOWN_SM2XSZE);
+                             -1.,  Aik,  SOLV_STRIDE(cblk),
+                                   B,    UPDOWN_SM2XSZE,
+                             1.,   Cik,  UPDOWN_SM2XSZE);
                  );
           printlog(
                    "thread %d compute_1dgemm( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
@@ -145,6 +138,7 @@ END
 /**************************************************
  *                TRSM_BACKWARD                    *
  **************************************************/
+
 TRSM_BACKWARD(k)
 
 // Execution space
@@ -155,17 +149,17 @@ lastbrow  = inline_c %{ if ( gcblk2list != -1 ) return UPDOWN_LISTPTR( gcblk2lis
 firstblok = inline_c %{ return SYMB_BLOKNUM(k)+1; %}
 lastblok  = inline_c %{ return SYMB_BLOKNUM(k+1); %}
 browk = inline_c %{ 
-    if (firstblok == lastblok)
-        return -1;
-    else {
+    {
+        if (firstblok == lastblok) return -1;
+
         dague_int_t fcblk       = SYMB_CBLKNUM( firstblok );
         dague_int_t gfcblk2list = UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( fcblk ));
         dague_int_t browfirst   = UPDOWN_LISTPTR( gfcblk2list );
         dague_int_t browlast    = UPDOWN_LISTPTR( gfcblk2list + 1 );
         int count;
 
-        for (count=browlast; count>browfirst; count--)
-            if (firstblok == UPDOWN_LISTBLOK(count-1)) return count;
+        for (count=browlast-1; count>=browfirst; count--)
+            if (firstblok == UPDOWN_LISTBLOK(count)) return count;
 
         assert(0);
         return -1;
@@ -176,18 +170,19 @@ browk = inline_c %{
 :B(k) // Should match SOLV_COEFTAB(k)
 
 // Parameters
-/* C is A(k) if it's a leaf or get the cblk from the last update */
+// C is A(k) if it's a leaf or get the cblk from the last update 
 READ A <- A(k)
 RW   B <- ( lastblok == firstblok ) ? B TRSM_FORWARD( k ) : C GEMM_BACKWARD( browk )
-       -> B(k)
        -> ( gcblk2list >= 0 ) ? B GEMM_BACKWARD( firstbrow..lastbrow )
+       -> B(k)
        
 BODY
+
       DRYRUN(
              int tempm = SYMB_LCOLNUM(k)-SYMB_FCOLNUM(k)+1;
              int tempn = UPDOWN_SM2XNBR;
              
-             /* Compute the contribution */
+             // Compute the contribution 
              CORE_ztrsm( PlasmaLeft, PlasmaLower, PlasmaConjTrans, PlasmaNonUnit, 
                          tempm, tempn,
                          1.,  A, SOLV_STRIDE(k), 
@@ -199,6 +194,7 @@ BODY
 
 END
 
+
 /**************************************************
  *                      GEMM_BACKWARD                      *
  **************************************************/
@@ -209,11 +205,48 @@ GEMM_BACKWARD(k)
 k = 0..browsize
 bloknum= inline_c %{ return UPDOWN_LISTBLOK(k); %}
 fcblk  = inline_c %{ return SYMB_CBLKNUM(bloknum); %}
-cblk   = inline_c %{ return sparse_matrix_get_lcblknum( descA, (dague_int_t)bloknum ); %}// TODO: store cblknum in symbblok
+cblk   = inline_c %{ return sparse_matrix_get_lcblknum( descA, (dague_int_t)bloknum ); %}
+firstblok = inline_c %{ return SYMB_BLOKNUM(cblk)+1; %}
+lastblok  = inline_c %{ return SYMB_BLOKNUM(cblk+1); %}
 
 gcblk2list= inline_c %{ return UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( fcblk )); %}
 firstbrow = inline_c %{ assert( gcblk2list != -1 ); return UPDOWN_LISTPTR( gcblk2list   ); %}
 lastbrow  = inline_c %{ assert( gcblk2list != -1 ); return UPDOWN_LISTPTR( gcblk2list+1 )-1; %}
+prev = inline_c %{ 
+    {
+        if( bloknum == lastblok-1 ) return -1;
+
+        dague_int_t fcblk       = SYMB_CBLKNUM( bloknum+1 );
+        dague_int_t gfcblk2list = UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( fcblk ));
+        dague_int_t browfirst   = UPDOWN_LISTPTR( gfcblk2list );
+        dague_int_t browlast    = UPDOWN_LISTPTR( gfcblk2list + 1 );
+        int count;
+
+        for (count=browfirst; count<browlast; count++)
+            if (bloknum+1 == UPDOWN_LISTBLOK(count)) return count;
+
+        printf( " prev(%d) failed\n",cblk );
+        assert(0);
+    }
+    return -1;
+%}
+next = inline_c %{ 
+    {
+        if( bloknum == firstblok ) return -1;
+
+        dague_int_t fcblk       = SYMB_CBLKNUM( bloknum-1 );
+        dague_int_t gfcblk2list = UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB( fcblk ));
+        dague_int_t browfirst   = UPDOWN_LISTPTR( gfcblk2list );
+        dague_int_t browlast    = UPDOWN_LISTPTR( gfcblk2list + 1 );
+        int count;
+
+        for (count=browfirst; count<browlast; count++)
+            if (bloknum-1 == UPDOWN_LISTBLOK(count)) return count;
+
+        assert(0);
+    }
+    return -1;
+%}
 
 // Parallel partitioning
 :B(cblk)
@@ -222,14 +255,14 @@ lastbrow  = inline_c %{ assert( gcblk2list != -1 ); return UPDOWN_LISTPTR( gcblk
 READ  A <- A(cblk)
 READ  B <- B TRSM_BACKWARD(fcblk) 
 
-RW    C <- ( k == lastbrow  ) ?  B TRSM_FORWARD( cblk )  : C GEMM_BACKWARD( k+1 )
-        -> ( k == firstbrow ) ?  B TRSM_BACKWARD( cblk ) : C GEMM_BACKWARD( k-1 )
+RW    C <- ( bloknum == lastblok-1 ) ?  B( cblk )               : C GEMM_BACKWARD( prev )
+        -> ( bloknum == firstblok  ) ?  B TRSM_BACKWARD( cblk ) : C GEMM_BACKWARD( next )
 
 BODY
-                                                         
+         
     DRYRUN(
-           Dague_Complex64_t *Aik = A + SOLV_COEFIND(bloknum);
-           Dague_Complex64_t *Bik = B + (SYMB_FROWNUM( bloknum ) - SYMB_FCOLNUM(fcblk));
+           Dague_Complex64_t *Aik = ((Dague_Complex64_t*)A) + SOLV_COEFIND(bloknum);
+           Dague_Complex64_t *Bik = ((Dague_Complex64_t*)B) + (SYMB_FROWNUM( bloknum ) - SYMB_FCOLNUM(fcblk));
                                          
            int tempm = SYMB_LCOLNUM(cblk)-SYMB_FCOLNUM(cblk)+1;
            int tempn = UPDOWN_SM2XNBR;
@@ -237,11 +270,12 @@ BODY
            
            CORE_zgemm( PlasmaConjTrans, PlasmaNoTrans, 
                        tempm, tempn, tempk,
-                       1.,  Aik,  SOLV_STRIDE(cblk),
-                            Bik,  UPDOWN_SM2XSZE,
-                       0.,  C,    UPDOWN_SM2XSZE);
+                       -1.,  Aik,  SOLV_STRIDE(cblk),
+                             Bik,  UPDOWN_SM2XSZE,
+                        1.,  C,    UPDOWN_SM2XSZE);
            );
     printlog(
              "thread %d compute_1dgemm( k=%d, bloknum=%d, fcblk=%d, cblk=%d )\n",
              context->eu_id, k, bloknum, fcblk, cblk);
 END
+
