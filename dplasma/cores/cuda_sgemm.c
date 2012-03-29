@@ -1055,7 +1055,7 @@ int gpu_sgemm( dague_execution_unit_t* eu_context,
       **Rectangular Mesh **
 
        1. Fact, number of tile,GEMMs is come from Matrix size and tile size
-       	- we may have to change m,n in every tile size/ matrix size
+        - we may have to change m,n in every tile size/ matrix size
        2. m and n is assign the size of squares which're going to mark over the
      * triangular bunch of GEMMs
      * 3. m % (?) == (?) and n % (?) == (?) marks which tile is gonna be executed on CPU
@@ -1067,8 +1067,8 @@ int gpu_sgemm( dague_execution_unit_t* eu_context,
      * chance is lower that 1:6 or 1:8 becasue we pile up this square on to triangular
      *
      * Why this method ?
-     * 	 - try to finish "each bunch of GEMMs" as soon as poosible with GPU+CPU
-     * 	 - plus "balancing" between CPU/GPU
+     *   - try to finish "each bunch of GEMMs" as soon as poosible with GPU+CPU
+     *   - plus "balancing" between CPU/GPU
      */
     if( ((m % OHM_M) == 0) && ( (n % OHM_N) == 0) ){
         dague_atomic_inc_32b( &(cpu_counter) );
@@ -1140,7 +1140,7 @@ int gpu_sgemm( dague_execution_unit_t* eu_context,
     waiting = (waiting + 1) % gpu_device->max_streams;
 
     gpu_device->executed_tasks++;
-/*	dague_atomic_dec_32b( &(gpu_device->workload) );*/
+/*  dague_atomic_dec_32b( &(gpu_device->workload) );*/
     rc = dague_atomic_dec_32b( &(gpu_device->mutex) );
     if( 0 == rc ) {  /* I was the last one */
         status = (cudaError_t)cuCtxPopCurrent(NULL);
@@ -1224,7 +1224,7 @@ int gpu_mark_data_usage( dague_gpu_data_map_t* gpu_map,
     memory_elem_t* this_elem;
 
     if( (NULL == gpu_map) || (NULL == gpu_map->data_map) ||
-        (NULL == (this_elem = gpu_map->data_map[col * gpu_map->tiled_matrix->lnt + row])) ) {
+        (NULL == (this_elem = gpu_map->data_map[col * gpu_map->tiled_matrix->lmt + row])) ) {
         /* Data not on the GPU. Nothing to do */
         return 0;
     }
@@ -1246,7 +1246,7 @@ int gpu_data_tile_write_owner( dague_gpu_data_map_t* gpu_map,
     int i;
 
     if( (NULL == gpu_map) || (NULL == gpu_map->data_map) ||
-        (NULL == (this_elem = gpu_map->data_map[col * gpu_map->tiled_matrix->lnt + row])) ) {
+        (NULL == (this_elem = gpu_map->data_map[col * gpu_map->tiled_matrix->lmt + row])) ) {
         return -1;
     }
     for( i = 0; i < ndevices; i++ ) {
@@ -1269,7 +1269,7 @@ int gpu_data_get_tile( dague_gpu_data_map_t* gpu_map,
     if( (NULL == gpu_map) || (NULL == gpu_map->data_map) )
         return -1;
 
-    where_from = &(gpu_map->data_map[col * gpu_map->tiled_matrix->lnt + row]);
+    where_from = &(gpu_map->data_map[col * gpu_map->tiled_matrix->lmt + row]);
     if( NULL == (this_elem = *where_from) ) {
         this_elem = (memory_elem_t*)calloc(1, sizeof(memory_elem_t) + (ndevices-1) * sizeof(gpu_elem_t*));
         this_elem->col = col;

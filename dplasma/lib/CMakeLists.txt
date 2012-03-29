@@ -31,7 +31,14 @@ set(JDF
   zlaswp.jdf
   zpotrf_rl.jdf zpotrf_ll.jdf
   zpotrf_Url.jdf zpotrf_Lrl.jdf
+<<<<<<< local
   zgetrf.jdf
+=======
+  zgebut.jdf
+  zhebut.jdf
+  zgetrf.jdf zhetrf.jdf
+  ztrdsm.jdf
+>>>>>>> other
   zgetrf_incpiv.jdf zgetrf_incpiv_sd.jdf
   ztrsmpl.jdf ztrsmpl_sd.jdf
   zgeqrf.jdf
@@ -89,9 +96,16 @@ set(SOURCES
   zlansy_wrapper.c
   # Lapack
   zpotrf_wrapper.c
+<<<<<<< local
+=======
+  zhebut_wrapper.c
+  zhetrs_wrapper.c
+>>>>>>> other
   zpotrs_wrapper.c
   zposv_wrapper.c
   zgetrf_wrapper.c
+  zhetrf_wrapper.c
+  ztrdsm_wrapper.c
   zgetrs_wrapper.c
   zgesv_wrapper.c
   zgetrf_incpiv_wrapper.c

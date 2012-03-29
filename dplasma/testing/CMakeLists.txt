@@ -13,7 +13,11 @@ set(TESTS
   testing_ztrmm.c
   testing_ztrsm.c
   testing_zpotrf.c
+<<<<<<< local
   #testing_zhebut.c
+=======
+  testing_zhebut.c
+>>>>>>> other
   testing_zposv.c
   testing_zgetrf.c
   testing_zgetrf_incpiv.c

@@ -40,13 +40,13 @@ extern dague_gpu_data_map_t *gpu_data_A;
 #define MYTRSM
 #define MYPOTRF
 
-#define KERNEL_POTRF	1
-#define KERNEL_TRSM		2
-#define KERNEL_HERK		3
-#define KERNEL_GEMM		4
+#define KERNEL_POTRF    1
+#define KERNEL_TRSM     2
+#define KERNEL_HERK     3
+#define KERNEL_GEMM     4
 
 #define SMALL_TILE_RATE 5
-#define SMALL_TILE_THRESHOLD	192
+#define SMALL_TILE_THRESHOLD    192
 
 typedef struct {
     dague_execution_unit_t *context;
@@ -157,7 +157,7 @@ BODY
         dague_set_complete_callback(dague_zpotrf, complete_recursive_dague_callback, (void *)potrf_cb_data);
         dague_enqueue(context->master_context, dague_zpotrf);
  //       printf("POTRF DAGUE\n");
-		return -1;
+        return -1;
 
     } else {
         DRYRUN(
@@ -438,11 +438,11 @@ BODY
     int ldan = BLKLDD( descA, n );
 
 #ifdef HAVE_CUDA
-	//printf("HAVE_CUDA OK\n");
+    //printf("HAVE_CUDA OK\n");
 #endif
 
 #ifdef PRECISION_s
-	//printf("PRECISION_s OK\n");
+    //printf("PRECISION_s OK\n");
 #endif
 
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
