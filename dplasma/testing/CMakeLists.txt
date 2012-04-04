@@ -13,11 +13,7 @@ set(TESTS
   testing_ztrmm.c
   testing_ztrsm.c
   testing_zpotrf.c
-<<<<<<< local
-  #testing_zhebut.c
-=======
   testing_zhebut.c
->>>>>>> other
   testing_zposv.c
   testing_zgetrf.c
   testing_zgetrf_incpiv.c
@@ -31,12 +27,7 @@ set(TESTS
   testing_zheev.c
   #testing_zgesvd.c
 )
-if (MPI_FOUND)
-      set( TESTS
-           $TESTS
-           testing_zhebut.c)
-      endif (MPI_FOUND)
-      if( DPLASMA_DEBUG_QR_PIVGEN )
+if( DPLASMA_DEBUG_QR_PIVGEN )
   list(APPEND TESTS testing_zpivgen.c)
   include(TestsQRPivgen.cmake)
 endif()
