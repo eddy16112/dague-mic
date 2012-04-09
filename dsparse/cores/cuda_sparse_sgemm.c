@@ -365,10 +365,10 @@ int sparse_sgemm_cuda_fini(dague_context_t* dague_context)
     gpu_device_t* gpu_device;
     int total = 0, *gpu_counter, i, j, active_devices = 0;
     uint64_t *transferred_in, *transferred_out;
-    uint64_t *total_data_in  = 0;
-    uint64_t *total_data_out = 0;
-    uint64_t *total_required_in  = 0;
-    uint64_t *total_required_out = 0;
+    uint64_t total_data_in  = 0;
+    uint64_t total_data_out = 0;
+    uint64_t total_required_in  = 0;
+    uint64_t total_required_out = 0;
     uint64_t *required_in, *required_out;
     float gtotal = 0.0, best_data_in, best_data_out;
     char *data_in_unit, *data_out_unit;
@@ -464,7 +464,7 @@ int sparse_sgemm_cuda_fini(dague_context_t* dague_context)
         total_required_in  += required_in[i];
         total_required_out += required_out[i];
     }
-    if( 0 == total_data_in ) total_data_in = 1;
+    if( 0 == total_data_in )  total_data_in  = 1;
     if( 0 == total_data_out ) total_data_out = 1;
     gtotal = (float)total + (float)cpu_counter;
     printf("------------------------------------------------------------------------------\n");
@@ -487,7 +487,7 @@ int sparse_sgemm_cuda_fini(dague_context_t* dague_context)
     printf("|All GPUs |%10d | %6.2f |%10.2f%2s | %6.2f |%10.2f%2s | %6.2f |\n",
            total, (total/gtotal)*100.00,
            best_data_in,  data_in_unit,  ((double)total_data_in  / (double)total_required_in ) * 100.0,
-           best_data_out, data_out_unit, ((double)total_data_in  / (double)total_required_out) * 100.0);
+           best_data_out, data_out_unit, ((double)total_data_out / (double)total_required_out) * 100.0);
     printf("|All CPUs |%10u | %6.2f |%10.2f%2s | %6.2f |%10.2f%2s | %6.2f |\n",
            cpu_counter, (cpu_counter / gtotal)*100.00,
            0.0, " ", 0.0, 0.0, " ", 0.0);
