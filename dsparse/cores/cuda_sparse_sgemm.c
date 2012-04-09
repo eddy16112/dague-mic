@@ -263,8 +263,9 @@ int sparse_sgemm_cuda_init( dague_context_t* dague_context, sparse_matrix_desc_t
             gpu_elem_t* gpu_elem;
             cudaError_t cuda_status;
 
-            if( nb_allocations > (uint32_t)((SYMB_CBLKNBR) >> 1) )
+            if( nb_allocations > (uint32_t)(SYMB_CBLKNBR) )
                 break;
+
             gpu_elem = (gpu_elem_t*)malloc(sizeof(gpu_elem_t));
             DAGUE_LIST_ITEM_CONSTRUCT(gpu_elem);
 
@@ -363,7 +364,11 @@ int sparse_sgemm_cuda_fini(dague_context_t* dague_context)
     gpu_elem_t* gpu_elem;
     gpu_device_t* gpu_device;
     int total = 0, *gpu_counter, i, j, active_devices = 0;
-    uint64_t *transferred_in, *transferred_out, total_data_in = 0, total_data_out = 0;
+    uint64_t *transferred_in, *transferred_out;
+    uint64_t *total_data_in  = 0;
+    uint64_t *total_data_out = 0;
+    uint64_t *total_required_in  = 0;
+    uint64_t *total_required_out = 0;
     uint64_t *required_in, *required_out;
     float gtotal = 0.0, best_data_in, best_data_out;
     char *data_in_unit, *data_out_unit;
@@ -456,6 +461,8 @@ int sparse_sgemm_cuda_fini(dague_context_t* dague_context)
         total += gpu_counter[i];
         total_data_in  += transferred_in[i];
         total_data_out += transferred_out[i];
+        total_required_in  += required_in[i];
+        total_required_out += required_out[i];
     }
     if( 0 == total_data_in ) total_data_in = 1;
     if( 0 == total_data_out ) total_data_out = 1;
@@ -466,12 +473,12 @@ int sparse_sgemm_cuda_fini(dague_context_t* dague_context)
     for( i = 0; i < ndevices; i++ ) {
         gpu_device = gpu_active_devices[i];
 
-        compute_best_unit( transferred_in[i],  &best_data_in, &data_in_unit );
+        compute_best_unit( transferred_in[i],  &best_data_in,  &data_in_unit  );
         compute_best_unit( transferred_out[i], &best_data_out, &data_out_unit );
         printf("|GPU:  %2d |%10d | %6.2f |%10.2f%2s | %6.2f |%10.2f%2s | %6.2f |\n",
                gpu_device->device_index, gpu_counter[i], (gpu_counter[i]/gtotal)*100.00,
-               best_data_in, data_in_unit, (((float)transferred_in[i]) / required_in[i]) * 100.0,
-               best_data_out, data_out_unit, (((float)transferred_out[i]) / required_out[i]) * 100.0 );
+               best_data_in,  data_in_unit,  (((double)transferred_in[i])  / (double)required_in[i] ) * 100.0,
+               best_data_out, data_out_unit, (((double)transferred_out[i]) / (double)required_out[i]) * 100.0 );
         gpu_active_devices[i] = NULL;
     }
     printf("|---------|-----------|--------|-------------|--------|-------------|--------|\n");
@@ -479,8 +486,8 @@ int sparse_sgemm_cuda_fini(dague_context_t* dague_context)
     compute_best_unit( total_data_out, &best_data_out, &data_out_unit );
     printf("|All GPUs |%10d | %6.2f |%10.2f%2s | %6.2f |%10.2f%2s | %6.2f |\n",
            total, (total/gtotal)*100.00,
-           best_data_in, data_in_unit, 100.0,
-           best_data_out, data_out_unit, 100.0);
+           best_data_in,  data_in_unit,  ((double)total_data_in  / (double)total_required_in ) * 100.0,
+           best_data_out, data_out_unit, ((double)total_data_in  / (double)total_required_out) * 100.0);
     printf("|All CPUs |%10u | %6.2f |%10.2f%2s | %6.2f |%10.2f%2s | %6.2f |\n",
            cpu_counter, (cpu_counter / gtotal)*100.00,
            0.0, " ", 0.0, 0.0, " ", 0.0);
@@ -558,6 +565,8 @@ gpu_sgemm_internal_push( gpu_device_t* gpu_device,
     A = ADATA(aA);
     C = ADATA(aC);
 
+    assert ( !phony );
+
 #if defined(DAGUE_PROF_TRACE)
     if( dague_cuda_trackable_events & DAGUE_PROFILE_CUDA_TRACK_DATA_IN )
         dague_profiling_trace( gpu_device->profiling, dague_cuda_movein_key_start, (unsigned long)this_task, NULL );
@@ -568,7 +577,8 @@ gpu_sgemm_internal_push( gpu_device_t* gpu_device,
      */
     DEBUG3(("Request Data of cblk %d on GPU\n", cblknum));
     cblk_size = CBLK_SIZE(cblknum) * TYPE_SIZE(this_task);
-    on_gpu = sparse_gpu_data_is_on_gpu(gpu_device, gpu_data_A, DAGUE_READ, cblknum, &gpu_elem_A);
+    on_gpu = sparse_gpu_data_is_on_gpu(gpu_device, gpu_data_A,
+                                       DAGUE_READ, cblknum, &gpu_elem_A);
     gpu_elem_A->memory_elem->memory = A;
     d_A = gpu_elem_A->gpu_mem;
     gpu_device->required_data_in += cblk_size;
@@ -603,6 +613,8 @@ gpu_sgemm_internal_push( gpu_device_t* gpu_device,
     d_C = gpu_elem_C->gpu_mem;
     gpu_elem_C->memory_elem->memory = C;
     gpu_device->required_data_in += cblk_size;
+
+    assert( (prev!=0 && on_gpu) || (prev==0 && !on_gpu) );
     if( !on_gpu ) {
         /* Push C into the GPU */
         status = (cudaError_t)cuMemcpyHtoDAsync( d_C, C, cblk_size, stream );
@@ -649,6 +661,8 @@ gpu_sgemm_internal_submit( gpu_device_t* gpu_device,
     gpu_elem_C = (gpu_elem_t *)this_task->data[1].gpu_data;
     d_A = gpu_elem_A->gpu_mem;
     d_C = gpu_elem_C->gpu_mem;
+
+    assert ( !phony );
 
 #if defined(DSPARSE_INDIVIDUAL_BLOCKTAB)
     {
@@ -861,11 +875,14 @@ gpu_sgemm_internal_pop( gpu_device_t* gpu_device,
     d_C = gpu_elem_C->gpu_mem;
     C = ADATA(aC);
 
+    assert ( !phony );
+
     cblk_size = CBLK_SIZE(fcblknum) * TYPE_SIZE(this_task);
 
     /* Pop C from the GPU */
     gpu_device->required_data_out += cblk_size;
     if( (next == 0) ) {
+
         DEBUG3(("Request out of GPU for C(%d)\n", fcblknum));
 #if defined(DAGUE_PROF_TRACE)
         if( dague_cuda_trackable_events & DAGUE_PROFILE_CUDA_TRACK_DATA_OUT )
@@ -1600,6 +1617,9 @@ int sparse_gpu_data_is_on_gpu( gpu_device_t* gpu_device,
         if( this_elem != gpu_elem->memory_elem ) {
             if( NULL != gpu_elem->memory_elem ) {
                 memory_elem_t* old_mem = gpu_elem->memory_elem;
+                /* Keep this printf as long as the bug is not fixed */
+                fprintf(stderr, "WARNING: SCREWED UP. Repurpose memory elem %p cblk %d\n",
+                        old_mem, cblk);
                 old_mem->gpu_elems[gpu_device->index] = NULL;
             }
             gpu_elem->type = 0;
