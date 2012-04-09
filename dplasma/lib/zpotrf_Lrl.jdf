@@ -35,10 +35,10 @@ extern int *gpu_counter;
 extern dague_gpu_data_map_t *gpu_data_A;
 #endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
 
-#define MYGEMM
-#define MYHERK
-#define MYTRSM
-#define MYPOTRF
+//#define MYGEMM
+//#define MYHERK
+//#define MYTRSM
+//#define MYPOTRF
 
 #define KERNEL_POTRF    1
 #define KERNEL_TRSM     2
@@ -47,6 +47,7 @@ extern dague_gpu_data_map_t *gpu_data_A;
 
 #define SMALL_TILE_RATE 5
 #define SMALL_TILE_THRESHOLD    192
+#define GPU_TILE_THRESHOLD      192
 
 typedef struct {
     dague_execution_unit_t *context;
@@ -128,7 +129,7 @@ BODY
     int ldak = BLKLDD( descA, k );
 
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
-    if (tempkm > 310) {
+    if (tempkm > GPU_TILE_THRESHOLD) {
         gpu_mark_data_usage( gpu_data_A, DAGUE_READ | DAGUE_WRITE, k, k );
     }
 #endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
@@ -222,7 +223,7 @@ BODY
     int ldak = BLKLDD( descA, k );
     int ldam = BLKLDD( descA, m );
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
-    if (tempmm > 310 || descA.nb > 310) {
+    if (tempmm > GPU_TILE_THRESHOLD || descA.nb > GPU_TILE_THRESHOLD) {
         gpu_mark_data_usage( gpu_data_A, DAGUE_READ, k, k );
         gpu_mark_data_usage( gpu_data_A, DAGUE_READ | DAGUE_WRITE, m, k );
     }
@@ -332,7 +333,7 @@ BODY
     int ldam = BLKLDD( descA, m );
 
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
-    if (tempmm > 310 || descA.mb > 310) {
+    if (tempmm > GPU_TILE_THRESHOLD || descA.mb > GPU_TILE_THRESHOLD) {
         gpu_mark_data_usage( gpu_data_A, DAGUE_READ, m, k );
         gpu_mark_data_usage( gpu_data_A, DAGUE_READ | DAGUE_WRITE, m, m );
     }
@@ -446,7 +447,7 @@ BODY
 #endif
 
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
-     if (tempmm > 310 || descA.mb > 310) {
+     if (tempmm > GPU_TILE_THRESHOLD || descA.mb > GPU_TILE_THRESHOLD) {
          gpu_mark_data_usage( gpu_data_A, DAGUE_READ, m, k );
          gpu_mark_data_usage( gpu_data_A, DAGUE_READ, n, k );
 
