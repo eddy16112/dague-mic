@@ -638,13 +638,13 @@ extern "C" {
   { nu pc; }                                    \
   void nu pl
 
-#ifdef MARCEL
-#define marcel_printf(...) do {  } while(0)
-/* #define marcel_printf(...) marcel_fprintf(stderr, __VA_ARGS__) */
-#else
-#define printf(...) do {  } while(0)
-/* #define printf(...) fprintf(stderr, __VA_ARGS__) */
-#endif
+/* #ifdef MARCEL */
+/* #define marcel_printf(...) do {  } while(0) */
+/* /\* #define marcel_printf(...) marcel_fprintf(stderr, __VA_ARGS__) *\/ */
+/* #else */
+/* #define printf(...) do {  } while(0) */
+/* /\* #define printf(...) fprintf(stderr, __VA_ARGS__) *\/ */
+/* #endif */
 
 void api_dumparm(FILE *stream, INT *iparm, double *dparm);
 int  api_dparmreader(char * filename, double *dparmtab);
