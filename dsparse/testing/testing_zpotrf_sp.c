@@ -10,14 +10,9 @@
 #include "common.h"
 #include "data_dist/sparse-matrix/sparse-matrix.h"
 
-//#include "data_dist/sparse-matrix/pastix_internal/pastix_internal.h"
-
-//#define DUMP_SOLV 0x2
 int sparse_sgemm_cuda_init( dague_context_t* context, sparse_matrix_desc_t *tileA );
 int sparse_sgemm_cuda_fini( dague_context_t* dague_context );
-void func(void) {
-    assert(0);
-}
+
 int main(int argc, char ** argv)
 {
     dague_context_t* dague;
@@ -25,6 +20,7 @@ int main(int argc, char ** argv)
     int   iparam[IPARAM_SIZEOF];
     char *sparam[SPARAM_SIZEOF];
     DagDouble_t flops, gflops;
+    Dague_Complex64_t *rhssaved = NULL;
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
     iparam[IPARAM_NGPUS] = 0;
 #endif
@@ -59,6 +55,11 @@ int main(int argc, char ** argv)
     /* Read the matrix files */
     flops = sparse_matrix_zrdmtx( &dspctxt );
     
+    if ( check ) {
+        rhssaved = malloc(dspctxt.n * sizeof(Dague_Complex64_t));
+        memcpy(rhssaved, dspctxt.rhs, dspctxt.n * sizeof(Dague_Complex64_t));
+    }
+
     /* load the GPU kernel */
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
     if(iparam[IPARAM_NGPUS] > 0)
@@ -75,7 +76,6 @@ int main(int argc, char ** argv)
 
     /* Initialize the matrix */
     dsparse_zcsc2cblk( dague, &ddescA );
-/*     D_Udump_all( &(ddescA.pastix_data->solvmatr), DUMP_SOLV ); */
 
     if ( loud && rank == 0 ) {
       printf("Number of floating points operations: %g GFLOPs\n", flops/1.e9);
@@ -120,8 +120,6 @@ int main(int argc, char ** argv)
     
     if(loud > 2) printf("Done.\n");
         
-/*     D_Udump_all( &(ddescA.pastix_data->solvmatr), DUMP_SOLV ); */
-
     if( check ) {
 #if defined(DSPARSE_WITH_SOLVE)
         switch ( factotype ) {
@@ -135,6 +133,38 @@ int main(int argc, char ** argv)
         }
 #endif
         sparse_matrix_zcheck( &dspctxt );
+        
+        {
+            int i, j, ncol = dspctxt.n;
+            Dague_Complex64_t *ax     = malloc(ncol*sizeof(Dague_Complex64_t));
+            Dague_Complex64_t *values = (Dague_Complex64_t*)dspctxt.values;
+            Dague_Complex64_t *rhs    = (Dague_Complex64_t*)dspctxt.rhs;
+            double norm1, norm2;
+
+            memset(ax, 0, ncol*sizeof(Dague_Complex64_t));
+            for (i= 0; i < ncol; i++)
+                {
+                    for (j = dspctxt.colptr[i]-1; j < dspctxt.colptr[i+1] - 1; j++)
+                        {
+                            ax[ dspctxt.rows[j]-1 ] += values[j] * rhs[i];
+                            if ((MTX_ISSYM(dspctxt.type) == 1) && (i != (dspctxt.rows[j]-1)))
+                                {
+                                    ax[i] += values[j] * rhs[ dspctxt.rows[j] - 1 ];
+                                }
+                        }
+                }
+            norm1 = 0.;
+            norm2 = 0.;
+            for (i= 0; i < ncol; i++)
+                {
+                    norm1 += (double)( (ax[i] - rhssaved[i]) * conj(ax[i] - rhssaved[i]) );
+                    norm2 += (double)( rhssaved[i] * conj(rhssaved[i]) );
+                }
+            
+            fprintf(stdout, "Precision : ||ax-b||/||b|| = %.20lg\n", sqrt(norm1/norm2));
+            free(ax);
+            free(rhssaved);
+        }
     }
     sparse_matrix_zclean( &dspctxt );
     
