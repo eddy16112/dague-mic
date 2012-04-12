@@ -193,6 +193,7 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
     iparm[IPARM_RHS_MAKING]    = API_RHS_B; /* RHS initialize to rhs[i] = i by read_matrix */
     iparm[IPARM_START_TASK]    = API_TASK_ORDERING;
     iparm[IPARM_END_TASK]      = API_TASK_ANALYSE;
+    iparm[IPARM_ABS]           = 1;
 
     iparm[IPARM_SYM] = (MTX_ISSYM(dspctxt->type) ? API_SYM_YES : API_SYM_NO);
     iparm[IPARM_MATRIX_VERIFICATION] = API_NO;
