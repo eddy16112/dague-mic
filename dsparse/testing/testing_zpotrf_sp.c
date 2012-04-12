@@ -120,6 +120,8 @@ int main(int argc, char ** argv)
     
     if(loud > 2) printf("Done.\n");
         
+    /* dsparse_zdumpmat( dague, &ddescA ); */
+
     if( check ) {
 #if defined(DSPARSE_WITH_SOLVE)
         switch ( factotype ) {
