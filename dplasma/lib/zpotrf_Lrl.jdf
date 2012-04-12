@@ -114,6 +114,7 @@ RW T <- (k == 0) ? A(k, k) : T HERK(k-1, k)
      -> T TRSM(k+1..descA.mt-1, k)
      -> A(k, k)
 
+/*
 ; inline_c %{
     if (descA.mb == SMALL_TILE_THRESHOLD) {
 //        printf("small\n");
@@ -122,6 +123,9 @@ RW T <- (k == 0) ? A(k, k) : T HERK(k-1, k)
         return (k >= (descA.mt - PRI_CHANGE)) ? (descA.mt - k) * (descA.mt - k) * (descA.mt - k) : 1000000000;
     } 
 %}
+*/
+
+; (k >= (descA.mt - PRI_CHANGE)) ? (descA.mt - k) * (descA.mt - k) * (descA.mt - k) : 1000000000
 //; (k >= (descA.mt - PRI_CHANGE)) ? (descA.mt - k + 7) * (descA.mt - k + 2) * (descA.mt - k) / 6 : 0
 
 BODY
@@ -208,6 +212,7 @@ RW    C <- (k == 0) ? A(m, k) : C GEMM(k-1, m, k)
         -> B GEMM(k, m+1..descA.mt-1, m )
         -> A(m, k)
 
+/*
 ; inline_c %{
     if (descA.mb == SMALL_TILE_THRESHOLD) {
         return (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - k - m - 1) * (m - k) : 0x7fffffff-1; 
@@ -215,6 +220,9 @@ RW    C <- (k == 0) ? A(m, k) : C GEMM(k-1, m, k)
         return (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - k - m - 1) * (m - k) : 1000000000;
     } 
 %}
+*/
+
+; (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - k - m - 1) * (m - k) : 1000000000
 //;  (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m - k) * ((descA.mt - m - k + 1) / 2 + 2) - 1 + (descA.mt - m + 2) * (descA.mt - m + 1) * (descA.mt - m) / 6 : 0
 
 BODY
@@ -315,7 +323,7 @@ READ  A <- C TRSM(m, k)
 RW    T <- (k == 0)   ? A(m, m)    : T HERK(k-1, m)
         -> (m == k+1) ? T POTRF(m) : T HERK(k+1, m)
 
-
+/*
 ; inline_c %{
     if (descA.mb == SMALL_TILE_THRESHOLD) {
         return (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * (m - k) : 0x7fffffff-1;
@@ -323,8 +331,9 @@ RW    T <- (k == 0)   ? A(m, m)    : T HERK(k-1, m)
         return (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * (m - k) : 1000000000;
     }
 %}
+*/
 
-//; (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * (m - k) : 1000000000
+; (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * (m - k) : 1000000000
 //; (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m + 2) * (descA.mt - m + 1) * (descA.mt - m) / 6 + descA.mt - m + k + 1 : 0
 
 BODY
@@ -422,6 +431,7 @@ READ  B <- C TRSM(n, k)
 RW    C <- (k == 0)   ? A(m, n)      : C GEMM(k-1, m, n)
         -> (n == k+1) ? C TRSM(m, n) : C GEMM(k+1, m, n)
 
+/*
 ; inline_c %{
     if (descA.mb == SMALL_TILE_THRESHOLD) {
         return (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - m - n - 3) * (m - n) + 6 * (m - k) : 0x7fffffff-2;
@@ -429,8 +439,9 @@ RW    C <- (k == 0)   ? A(m, n)      : C GEMM(k-1, m, n)
         return (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - m - n - 3) * (m - n) + 6 * (m - k) : 1000000000;
     }
 %}
+*/
 
-//; (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - m - n - 3) * (m - n) + 6 * (m - k) : 1000000000
+; (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - m - n - 3) * (m - n) + 6 * (m - k) : 1000000000
 //;  (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m - n) * ((descA.mt - n - k + 1) / 2 + 2) - 1 + (descA.mt - m + 2) * (descA.mt - m + 1) * (descA.mt - m) / 6 + descA.mt - n + k + 1 : 0
 
 BODY
