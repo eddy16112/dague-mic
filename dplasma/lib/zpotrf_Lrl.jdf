@@ -160,6 +160,7 @@ BODY
         potrf_cb_data->A = (dague_ddesc_t *) small_descT;
         potrf_cb_data->cb_kernel_type = KERNEL_POTRF;
         dague_set_complete_callback(dague_zpotrf, complete_recursive_dague_callback, (void *)potrf_cb_data);
+        dague_set_priority( dague_zpotrf, 0x7fffffff);
         dague_enqueue(context->master_context, dague_zpotrf);
  //       printf("POTRF DAGUE\n");
         return -1;
@@ -273,6 +274,7 @@ BODY
         trsm_cb_data->B = (dague_ddesc_t *) small_descC;
         trsm_cb_data->cb_kernel_type = KERNEL_TRSM;
         dague_set_complete_callback(dague_ztrsm, complete_recursive_dague_callback, (void *)trsm_cb_data);
+        dague_set_priority( dague_ztrsm, 0x7fffffff-1);
         dague_enqueue(context->master_context, dague_ztrsm);
         return -1;
 
@@ -380,6 +382,7 @@ BODY
         herk_cb_data->B = (dague_ddesc_t *) small_descT;
         herk_cb_data->cb_kernel_type = KERNEL_HERK;
         dague_set_complete_callback(dague_zherk, complete_recursive_dague_callback, (void *)herk_cb_data);
+        dague_set_priority( dague_zherk, 0x7fffffff-1);
         dague_enqueue(context->master_context, dague_zherk);
         return -1;
 
@@ -478,7 +481,7 @@ BODY
                  fprintf(stderr, "Unable to disable GPU at runtime. Fatal error.\n");
                  exit(2);
              }
-             //fprintf(stderr, "#####continuing with the task on the cores\n");
+             fprintf(stderr, "#####continuing with the task on the cores\n");
              /* Continue with the task on the cores */
          }
          gpu_mark_data_usage( gpu_data_A, DAGUE_READ | DAGUE_WRITE, m, n );
@@ -527,6 +530,7 @@ MYCPU:
         gemm_cb_data->C = (dague_ddesc_t *) small_descC;
         gemm_cb_data->cb_kernel_type = KERNEL_GEMM;
         dague_set_complete_callback(dague_zgemm, complete_recursive_dague_callback, (void *)gemm_cb_data);
+        dague_set_priority( dague_zgemm, 0x7fffffff-2);
         dague_enqueue(context->master_context, dague_zgemm);
         return -1;
 

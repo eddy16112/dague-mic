@@ -717,11 +717,12 @@ int gpu_sgemm( dague_execution_unit_t* eu_context,
         *  - try to finish "each bunch of GEMMs" as soon as poosible with GPU+CPU
         *  - plus "balancing" between CPU/GPU
         **/
-
+		//printf("i am here\n");
+		/*
         if( ((m % OHM_M) == 0) && ( (n % OHM_N) == 0) ){
             dague_atomic_inc_32b( &(cpu_counter) );
             return -99;
-        }
+        }*/
 #endif  /* DPLASMA_ONLY_GPU */
         gpu_load[which_gpu] += n;  /* keep n -- not being used yet*/
 #endif  /* DPLASMA_SCHEDULING */
