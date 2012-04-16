@@ -67,6 +67,7 @@ subs = {
     ('#undef COMPLEX',      '#undef COMPLEX',      '#undef REAL',         '#undef REAL'         ),
     ('#define SINGLE',      '#define DOUBLE',      '#define SINGLE',      '#define DOUBLE'      ),
     ('#undef DOUBLE',       '#undef SINGLE',       '#undef DOUBLE',       '#undef SINGLE'       ),
+    ('float',               'double',              'cuFloatComplex',      'cuDoubleComplex'     ),
     ('float',               'double',              'Dague_Complex32_t',   'Dague_Complex64_t'   ),
     ('RealFloat',    'RealDouble',   'ComplexFloat', 'ComplexDouble'),
     ('float',               'double',              'float',               'double'              ),
