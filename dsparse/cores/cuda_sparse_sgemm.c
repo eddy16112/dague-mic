@@ -181,7 +181,7 @@ int sparse_sgemm_cuda_init( dague_context_t* dague_context, sparse_matrix_desc_t
         env = getenv("DAGUE_CUBIN_NOSTATIC");
         if( !env || (('1' != env[0]) && ('y' != env[0])) ) {
             void* dlh;
-            snprintf(module_path, FILENAME_MAX, "sparse_sgemm_kernel_N_T_64_16_4_16_4_SM%d%d",
+            snprintf(module_path, FILENAME_MAX, "sgemm_nt_SM%d%d",
                      gpu_device->major, gpu_device->minor);
             dlh = dlopen(NULL, RTLD_NOW);
             if(NULL == dlh) ERROR(("Error parsing static libs: %s\n", dlerror()));
@@ -192,7 +192,7 @@ int sparse_sgemm_cuda_init( dague_context_t* dague_context, sparse_matrix_desc_t
         /* If not found statically, cuload it */
         if(NULL == gpu_device->hcuFunction) {
             env = getenv("DAGUE_CUBIN_PATH");
-            snprintf(module_path, FILENAME_MAX, "%s/sparse_sgemm-sm_%1d%1d.cubin",
+            snprintf(module_path, FILENAME_MAX, "%s/dsparse-sm_%1d%1d_sgemm_fermi.cubin",
                      env?env:"../cores", gpu_device->major, gpu_device->minor);
             status = cuModuleLoad(&(gpu_device->hcuModule), module_path);
             DAGUE_CUDA_CHECK_ERROR( "(INIT) cuModuleLoad ", status,
@@ -201,7 +201,7 @@ int sparse_sgemm_cuda_init( dague_context_t* dague_context, sparse_matrix_desc_t
                                         continue;
                                     } );
             snprintf(module_path, FILENAME_MAX, 
-                     "sparse_sgemm_kernel_N_T_64_16_4_16_4_SM%d%d", 
+                     "sgemm_nt_SM%d%d", 
                      gpu_device->major, gpu_device->minor);
             DEBUG3(("CUDA MODULE %s\n", module_path));
             status = cuModuleGetFunction( &(gpu_device->hcuFunction), gpu_device->hcuModule, module_path );
