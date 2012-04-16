@@ -8,12 +8,23 @@ set(generated_headers "")
 #                 "dplasma_zcores.h"
 #                 PRECISIONS "s;d;c;z")
 ### Generate the dplasma wrappers for all required precisions 
-#set(SOURCES
-#  core_ztrdv.c
-#)
-precisions_rules_py(generated_files
-                 "${SOURCES}"
-                 PRECISIONS "${DPLASMA_PRECISIONS}")
+
+set(CUDA_SOURCES
+    zgemm_fermi.cu
+)
+precisions_rules_py(cuda_generated_files
+                    "${CUDA_SOURCES}"
+                    PRECISIONS "${DPLASMA_PRECISIONS}")
+
+set( CUDA_SOURCES
+     ${CUDA_SOURCES}
+     cuda_sparse_sgemm_kernel_bloktab.cu
+)
+
+set(CUDA_NVCC_FLAGS_11 -maxrregcount 32 -arch sm_11 -DCUDA_SM_VERSION=11 ${CUDA_NVCC_FLAGS_BACKUP})
+set(CUDA_NVCC_FLAGS_13 -maxrregcount 32 -arch sm_13 -DCUDA_SM_VERSION=13 ${CUDA_NVCC_FLAGS_BACKUP})
+set(CUDA_NVCC_FLAGS_20 -arch sm_20 -DCUDA_SM_VERSION=20 ${CUDA_NVCC_FLAGS_BACKUP})
+
 
 ### Generate the CUDA kernels if necessary
 if(CUDA_FOUND)
@@ -21,33 +32,51 @@ if(CUDA_FOUND)
     set(CUDA_PROPAGATE_HOST_FLAGS OFF)
     set(CUDA_NVCC_FLAGS_BACKUP ${CUDA_NVCC_FLAGS})
 
-    set(CUDA_NVCC_FLAGS -maxrregcount 32 -arch sm_11 -DCUDA_SM_VERSION=11 ${CUDA_NVCC_FLAGS_BACKUP})
-    cuda_add_library(sparse_sgemm-sm_11 cuda_sparse_sgemm_kernel_bloktab.cu)
-    install(TARGETS sparse_sgemm-sm_11 ARCHIVE DESTINATION lib)
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sparse_sgemm-sm_11_generated_cuda_sparse_sgemm_kernel_bloktab.cu.o.cubin.txt
-      DESTINATION lib
-      RENAME sparse_sgemm-sm_11.cubin)
+    foreach( _cudafile ${cuda_generated_files} )
+        string(REGEX REPLACE "\\.cu" "" _cudafilename ${_cudafile})
 
-    set(CUDA_NVCC_FLAGS -maxrregcount 32 -arch sm_13 -DCUDA_SM_VERSION=13 ${CUDA_NVCC_FLAGS_BACKUP})
-    cuda_add_library(sparse_sgemm-sm_13 cuda_sparse_sgemm_kernel_bloktab.cu)
-    install(TARGETS sparse_sgemm-sm_13 ARCHIVE DESTINATION lib)
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sparse_sgemm-sm_13_generated_cuda_sparse_sgemm_kernel_bloktab.cu.o.cubin.txt
-      DESTINATION lib
-      RENAME sparse_sgemm-sm_13.cubin)
+        set(SM11_FILES ${SM11_FILES} ${_cudafile})
+        set(SM13_FILES ${SM11_FILES} ${_cudafile})
+        set(SM20_FILES ${SM11_FILES} ${_cudafile})
 
-     set(CUDA_NVCC_FLAGS -arch sm_20 -DCUDA_SM_VERSION=20 ${CUDA_NVCC_FLAGS_BACKUP})
-     cuda_add_library(sparse_sgemm-sm_20 cuda_sparse_sgemm_kernel_bloktab.cu)
-     install(TARGETS sparse_sgemm-sm_20 ARCHIVE DESTINATION lib)
-     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sparse_sgemm-sm_20_generated_cuda_sparse_sgemm_kernel_bloktab.cu.o.cubin.txt
-       DESTINATION lib
-       RENAME sparse_sgemm-sm_20.cubin)
+    endforeach()
+
+#     set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS_11})
+#     cuda_add_library(dsparse-sm_11 ${SM11_FILES})
+#     install(TARGETS dsparse-sm_11 ARCHIVE DESTINATION lib)
+
+#     set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS_13})
+#     cuda_add_library(dsparse-sm_13 ${SM13_FILES})
+#     install(TARGETS dsparse-sm_13 ARCHIVE DESTINATION lib)
+
+    set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS_20})
+    cuda_add_library(dsparse-sm_20 ${SM20_FILES})
+    install(TARGETS dsparse-sm_20 ARCHIVE DESTINATION lib)
+
+
+    # Install cubin files
+    foreach( _cudafile ${cuda_generated_files} )
+        string(REGEX REPLACE "\\.cu" "" _cudafilename ${_cudafile})
+
+#         install(FILES ${CMAKE_CURRENT_BINARY_DIR}/dsparse-sm_11_generated_${_cudafile}.o.cubin.txt
+#                 DESTINATION lib
+#                 RENAME dsparse-sm_11_${_cudafilename}.cubin )
+
+#         install(FILES ${CMAKE_CURRENT_BINARY_DIR}/dsparse-sm_13_generated_${_cudafile}.o.cubin.txt
+#                 DESTINATION lib
+#                 RENAME dsparse-sm_13_${_cudafilename}.cubin )
+
+        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/dsparse-sm_20_generated_${_cudafile}.o.cubin.txt
+                DESTINATION lib
+                RENAME dsparse-sm_20_${_cudafilename}.cubin )
+    endforeach()
 
 #    cuda_build_clean_target()
     set(GPU_KERNEL_SOURCES cuda_sparse_sgemm.c)
-
+    
     set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS_BACKUP})
 else()
-  set(GPU_KERNEL_SOURCES "")
+    set(GPU_KERNEL_SOURCES "")
 endif()
 
 ### Generate the lib 
