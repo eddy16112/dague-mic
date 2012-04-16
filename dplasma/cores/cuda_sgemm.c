@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010      The University of Tennessee and The University
+ * Copyright (c) 2010-2012 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
  */
@@ -343,6 +343,10 @@ int sgemm_cuda_fini(dague_context_t* dague_context)
 #endif  /* !defined(DAGUE_GPU_STREAM_PER_TASK) */
         free(gpu_device->gpu_mem_lru); gpu_device->gpu_mem_lru = NULL;
         active_devices++;
+
+        status = (cudaError_t)cuCtxPopCurrent(NULL);
+        DAGUE_CUDA_CHECK_ERROR( "(INIT) cuCtxPopCurrent ", status,
+                                {continue;} );
     }
 
     gpu_data_map_fini(&gpu_data);
@@ -1234,6 +1238,7 @@ int gpu_mark_data_usage( dague_gpu_data_map_t* gpu_map,
                          int col, int row )
 {
     memory_elem_t* this_elem;
+//	printf("MARK:%d\n", ddescA(this_task)->mb);
 
     if( (NULL == gpu_map) || (NULL == gpu_map->data_map) ||
         (NULL == (this_elem = gpu_map->data_map[col * gpu_map->tiled_matrix->lmt + row])) ) {

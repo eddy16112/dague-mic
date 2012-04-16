@@ -160,7 +160,7 @@ BODY
         potrf_cb_data->A = (dague_ddesc_t *) small_descT;
         potrf_cb_data->cb_kernel_type = KERNEL_POTRF;
         dague_set_complete_callback(dague_zpotrf, complete_recursive_dague_callback, (void *)potrf_cb_data);
-        dague_set_priority( dague_zpotrf, 0x7fffffff);
+        dague_set_priority( dague_zpotrf, 0x7fffffff-1);
         dague_enqueue(context->master_context, dague_zpotrf);
  //       printf("POTRF DAGUE\n");
         return -1;
@@ -274,7 +274,7 @@ BODY
         trsm_cb_data->B = (dague_ddesc_t *) small_descC;
         trsm_cb_data->cb_kernel_type = KERNEL_TRSM;
         dague_set_complete_callback(dague_ztrsm, complete_recursive_dague_callback, (void *)trsm_cb_data);
-        dague_set_priority( dague_ztrsm, 0x7fffffff-1);
+        dague_set_priority( dague_ztrsm, 0x7fffffff-2);
         dague_enqueue(context->master_context, dague_ztrsm);
         return -1;
 
@@ -344,7 +344,7 @@ BODY
     int ldam = BLKLDD( descA, m );
 
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
-    if (tempmm > GPU_TILE_THRESHOLD || descA.mb > GPU_TILE_THRESHOLD) {
+   if (tempmm > GPU_TILE_THRESHOLD || descA.mb > GPU_TILE_THRESHOLD) {
         gpu_mark_data_usage( gpu_data_A, DAGUE_READ, m, k );
         gpu_mark_data_usage( gpu_data_A, DAGUE_READ | DAGUE_WRITE, m, m );
     }
@@ -382,7 +382,7 @@ BODY
         herk_cb_data->B = (dague_ddesc_t *) small_descT;
         herk_cb_data->cb_kernel_type = KERNEL_HERK;
         dague_set_complete_callback(dague_zherk, complete_recursive_dague_callback, (void *)herk_cb_data);
-        dague_set_priority( dague_zherk, 0x7fffffff-1);
+        dague_set_priority( dague_zherk, 0x7fffffff-2);
         dague_enqueue(context->master_context, dague_zherk);
         return -1;
 
@@ -444,7 +444,7 @@ RW    C <- (k == 0)   ? A(m, n)      : C GEMM(k-1, m, n)
 %}
 */
 
-; (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - m - n - 3) * (m - n) + 6 * (m - k) : 1000000000
+; (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - m - n - 3) * (m - n) + 6 * (m - k) : 2147483647
 //;  (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m - n) * ((descA.mt - n - k + 1) / 2 + 2) - 1 + (descA.mt - m + 2) * (descA.mt - m + 1) * (descA.mt - m) / 6 + descA.mt - n + k + 1 : 0
 
 BODY
@@ -461,6 +461,7 @@ BODY
 #endif
 
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
+	 printf("GEMM: %d\n", descA.mb);
      if (tempmm > GPU_TILE_THRESHOLD || descA.mb > GPU_TILE_THRESHOLD) {
          gpu_mark_data_usage( gpu_data_A, DAGUE_READ, m, k );
          gpu_mark_data_usage( gpu_data_A, DAGUE_READ, n, k );
@@ -530,7 +531,7 @@ MYCPU:
         gemm_cb_data->C = (dague_ddesc_t *) small_descC;
         gemm_cb_data->cb_kernel_type = KERNEL_GEMM;
         dague_set_complete_callback(dague_zgemm, complete_recursive_dague_callback, (void *)gemm_cb_data);
-        dague_set_priority( dague_zgemm, 0x7fffffff-2);
+        dague_set_priority( dague_zgemm, 0x7fffffff-3);
         dague_enqueue(context->master_context, dague_zgemm);
         return -1;
 
