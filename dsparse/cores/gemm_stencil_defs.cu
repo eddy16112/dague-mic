@@ -1,7 +1,7 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define TEXTURE_1D
+/*#define TEXTURE_1D*/
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -32,15 +32,12 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TEXTURE_1D
-#define fetch(A, m, n) tex_fetch(tex_ref_##A, coord_##A + n*LD##A+m)
+#define fetch(A, m, n) tex_fetch(tex_ref_##A, l##A + n*LD##A+m)
 #else
-#define fetch(A, m, n) offs_d##A[n*LD##A+m]
+#define fetch(A, m, n) l##A[n*LD##A+m]
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TEXTURE_1D
-
 #if defined(PRECISION_z)
 
 #define conj(A)          cuConj(A)
@@ -48,6 +45,8 @@
 #define mul(A, B)        cuCmul(A, B)
 #define fma(A, B, C) C = cuCfma(A, B, C)
 #define make_FloatingPoint(x, y) make_cuDoubleComplex(x, y);
+
+#if defined(TEXTURE_1D)
 
 static __device__
 FloatingPoint_t tex_fetch(texture<int4> tex_ref, int coord)
@@ -59,6 +58,8 @@ FloatingPoint_t tex_fetch(texture<int4> tex_ref, int coord)
 texture<int4, 1, cudaReadModeElementType> tex_ref_A;
 texture<int4, 1, cudaReadModeElementType> tex_ref_B;
 
+#endif/* defined(TEXTURE_1D) */
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 #elif defined(PRECISION_c)
 
@@ -67,6 +68,8 @@ texture<int4, 1, cudaReadModeElementType> tex_ref_B;
 #define mul(A, B)        cuCmulf(A, B)
 #define fma(A, B, C) C = cuCfmaf(A, B, C)
 #define make_FloatingPoint(x, y) make_cuFloatComplex(x, y);
+
+#if defined(TEXTURE_1D)
 
 static __device__
 FloatingPoint_t tex_fetch(texture<float2> tex_ref, int coord)
@@ -77,6 +80,8 @@ FloatingPoint_t tex_fetch(texture<float2> tex_ref, int coord)
 texture<float2, 1, cudaReadModeElementType> tex_ref_A;
 texture<float2, 1, cudaReadModeElementType> tex_ref_B;
 
+#endif/* defined(TEXTURE_1D) */
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 #elif defined(PRECISION_d)
 
@@ -85,6 +90,8 @@ texture<float2, 1, cudaReadModeElementType> tex_ref_B;
 #define mul(A, B)         (A*B)
 #define fma(A, B, C) C += (A*B)
 #define make_FloatingPoint(x, y) (x)
+
+#if defined(TEXTURE_1D)
 
 static __device__
 FloatingPoint_t tex_fetch(texture<int2> tex_ref, int coord)
@@ -96,6 +103,8 @@ FloatingPoint_t tex_fetch(texture<int2> tex_ref, int coord)
 texture<int2, 1, cudaReadModeElementType> tex_ref_A;
 texture<int2, 1, cudaReadModeElementType> tex_ref_B;
 
+#endif/* defined(TEXTURE_1D) */
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 #elif defined(PRECISION_s)
 
@@ -104,6 +113,8 @@ texture<int2, 1, cudaReadModeElementType> tex_ref_B;
 #define mul(A, B)         (A*B)
 #define fma(A, B, C) C += (A*B)
 #define make_FloatingPoint(x, y) (x)
+
+#if defined(TEXTURE_1D)
 
 static __device__
 FloatingPoint_t tex_fetch(texture<float> tex_ref, int coord)
@@ -114,8 +125,9 @@ FloatingPoint_t tex_fetch(texture<float> tex_ref, int coord)
 texture<float, 1, cudaReadModeElementType> tex_ref_A;
 texture<float, 1, cudaReadModeElementType> tex_ref_B;
 
-#endif
-
-#endif /* defined(TEXTURE_1D) */
+#endif/* defined(TEXTURE_1D) */
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+#endif
+
