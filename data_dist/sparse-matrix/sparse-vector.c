@@ -71,6 +71,7 @@ void *sparse_vector_data_of(struct dague_ddesc *mat, ... )
 #ifdef DAGUE_PROF_TRACE
 uint32_t sparse_vector_data_key(struct dague_ddesc *mat, ... )
 {
+    sparse_vector_desc_t *spmtx = (sparse_vector_desc_t*)mat;
     va_list ap;
     dague_int_t cblknum, bloknum;
     
@@ -86,8 +87,8 @@ int sparse_vector_key_to_string(struct dague_ddesc *mat, uint32_t datakey, char 
 {
     sparse_vector_desc_t *spmtx = (sparse_vector_desc_t*)mat;
     dague_int_t bloknum, cblknum;
-
     dague_int_t first, last, middle;
+    int res;
     
     first   = 0;
     last    = spmtx->pastix_data->solvmatr.symbmtx.cblknbr;
@@ -133,8 +134,8 @@ void sparse_vector_init( sparse_vector_desc_t *desc,
 #ifdef DAGUE_PROF_TRACE
     desc->super.data_key      = sparse_vector_data_key;
     desc->super.key_to_string = sparse_vector_key_to_string;
-    desc->super.key    = NULL; /* Initialized when the matrix is read */
-    desc->super.keydim = NULL; /* Initialized when the matrix is read */
+    desc->super.key_dim = NULL; /* Initialized when the matrix is read */
+    desc->super.key     = NULL; /* Initialized when the matrix is read */
 #endif /* DAGUE_PROF_TRACE */
 
     desc->mtype       = mtype;

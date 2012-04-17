@@ -101,9 +101,9 @@ uint32_t sparse_matrix_rank_of(struct dague_ddesc *mat, ... )
 
 void *sparse_matrix_data_of(struct dague_ddesc *mat, ... )
 {
+    sparse_matrix_desc_t *spmtx = (sparse_matrix_desc_t*)mat;
     va_list ap;
     dague_int_t cblknum, bloknum;
-    sparse_matrix_desc_t *spmtx = (sparse_matrix_desc_t*)mat;
 
     va_start(ap, mat);
     cblknum = va_arg(ap, unsigned int);
@@ -111,7 +111,7 @@ void *sparse_matrix_data_of(struct dague_ddesc *mat, ... )
     bloknum = spmtx->pastix_data->solvmatr.symbmtx.cblktab[cblknum].bloknum;
 
     return (char*)(spmtx->pastix_data->solvmatr.coeftab[cblknum])
-      + (size_t)(spmtx->typesze) * (size_t)(spmtx->pastix_data->solvmatr.bloktab[bloknum].coefind);
+        + (size_t)(spmtx->typesze) * (size_t)(spmtx->pastix_data->solvmatr.bloktab[bloknum].coefind);
 }
 
 #ifdef DAGUE_PROF_TRACE
@@ -119,6 +119,7 @@ uint32_t sparse_matrix_data_key(struct dague_ddesc *mat, ... )
 {
     va_list ap;
     dague_int_t cblknum, bloknum;
+    sparse_matrix_desc_t *spmtx = (sparse_matrix_desc_t*)mat;
     
     va_start(ap, mat);
     cblknum = va_arg(ap, unsigned int);
@@ -134,6 +135,7 @@ int sparse_matrix_key_to_string(struct dague_ddesc *mat, uint32_t datakey, char 
     dague_int_t bloknum, cblknum;
 
     dague_int_t first, last, middle;
+    int res;
     
     first   = 0;
     last    = spmtx->pastix_data->solvmatr.symbmtx.cblknbr;
@@ -179,8 +181,8 @@ void sparse_matrix_init( sparse_matrix_desc_t *desc,
 #ifdef DAGUE_PROF_TRACE
     desc->super.data_key      = sparse_matrix_data_key;
     desc->super.key_to_string = sparse_matrix_key_to_string;
-    desc->super.key    = NULL; /* Initialized when the matrix is read */
-    desc->super.keydim = NULL; /* Initialized when the matrix is read */
+    desc->super.key_dim = NULL; /* Initialized when the matrix is read */
+    desc->super.key     = NULL; /* Initialized when the matrix is read */
 #endif /* DAGUE_PROF_TRACE */
 
     desc->mtype       = mtype;
