@@ -6,6 +6,8 @@
  */
 #include "dague_config.h"
 #include "dague.h"
+#include "dague_hwloc.h"
+#include "execution_unit.h"
 
 #include "common.h"
 #include "common_timing.h"
@@ -45,7 +47,7 @@ double time_elapsed = 0.0;
 double sync_time_elapsed = 0.0;
 
 /**********************************
- * Command line arguments 
+ * Command line arguments
  **********************************/
 void print_usage(void)
 {
@@ -61,6 +63,8 @@ void print_usage(void)
             "                       GD  -- Global Dequeue\n"
             "                       LHQ -- Local Hierarchical Queues\n"
             "                       AP  -- Absolute Priorities\n"
+            "                       PBQ -- Priority Based Local Flat Queues\n"
+            "                       LTQ -- Local Tree Queues\n"
             "\n"
             " -k --prio-switch  : activate prioritized DAG k steps before the end (default: 0)\n"
             "                   : with no argument, prioritized DAG from the start\n"
@@ -167,22 +171,26 @@ static void parse_arguments(int argc, char** argv, int* iparam, char** sparam)
         c = getopt(argc, argv, GETOPT_STRING);
         (void) opt;
 #endif  /* defined(HAVE_GETOPT_LONG) */
-    
+
  //       printf("%c: %s = %s\n", c, long_options[opt].name, optarg);
         switch(c)
         {
             case 'c': iparam[IPARAM_NCORES] = atoi(optarg); break;
-            case 'o': 
+            case 'o':
                 if( !strcmp(optarg, "LFQ") )
                     iparam[IPARAM_SCHEDULER] = DAGUE_SCHEDULER_LFQ;
+                else if( !strcmp(optarg, "LTQ") )
+                    iparam[IPARAM_SCHEDULER] = DAGUE_SCHEDULER_LTQ;
                 else if( !strcmp(optarg, "AP") )
                     iparam[IPARAM_SCHEDULER] = DAGUE_SCHEDULER_AP;
                 else if( !strcmp(optarg, "LHQ") )
                     iparam[IPARAM_SCHEDULER] = DAGUE_SCHEDULER_LHQ;
                 else if( !strcmp(optarg, "GD") )
                     iparam[IPARAM_SCHEDULER] = DAGUE_SCHEDULER_GD;
+                else if( !strcmp(optarg, "PBQ") )
+                    iparam[IPARAM_SCHEDULER] = DAGUE_SCHEDULER_PBQ;
                 else {
-                    fprintf(stderr, "malformed scheduler value %s (accepted: LFQ AP LHQ GD). Reverting to default LFQ\n",
+                    fprintf(stderr, "malformed scheduler value %s (accepted: LFQ AP LHQ GD PBQ LTQ). Reverting to default LFQ\n",
                             optarg);
                     iparam[IPARAM_SCHEDULER] = DAGUE_SCHEDULER_LFQ;
                 }
@@ -225,7 +233,7 @@ static void parse_arguments(int argc, char** argv, int* iparam, char** sparam)
                 else        iparam[IPARAM_VERBOSE] = 2;
                 break;
             case 'h': print_usage(); exit(0);
-            
+
             case '?': /* getopt_long already printed an error message. */
                 exit(1);
             default:
@@ -234,18 +242,6 @@ static void parse_arguments(int argc, char** argv, int* iparam, char** sparam)
     } while(-1 != c);
     int verbose = iparam[IPARAM_RANK] ? 0 : iparam[IPARAM_VERBOSE];
     
-    /* Set some sensible default to the number of cores */
-    if(iparam[IPARAM_NCORES] <= 0)
-    {
-        iparam[IPARAM_NCORES] = sysconf(_SC_NPROCESSORS_ONLN);
-        if(iparam[IPARAM_NCORES] == -1)
-        {
-            perror("sysconf(_SC_NPROCESSORS_ONLN)\n");
-            iparam[IPARAM_NCORES] = 1;
-        }
-        if(verbose) 
-            fprintf(stderr, "+++ cores detected      : %d\n", iparam[IPARAM_NCORES]);
-    }
     if(iparam[IPARAM_NGPUS] < 0) iparam[IPARAM_NGPUS] = 0;
     
     if(verbose > 1) 
@@ -307,9 +303,10 @@ dague_context_t* setup_dague(int argc, char **argv, int *iparam, char **sparam)
     argvzero = argv[0];
 #endif
 #ifdef HAVE_MPI
-    MPI_Init(&argc, &argv);
+    int provided;
+    MPI_Init_thread(&argc, &argv, MPI_THREAD_SERIALIZED, &provided);
     MPI_Comm_size(MPI_COMM_WORLD, &iparam[IPARAM_NNODES]);
-    MPI_Comm_rank(MPI_COMM_WORLD, &iparam[IPARAM_RANK]); 
+    MPI_Comm_rank(MPI_COMM_WORLD, &iparam[IPARAM_RANK]);
 #else
     iparam[IPARAM_NNODES] = 1;
     iparam[IPARAM_RANK] = 0;
@@ -317,7 +314,12 @@ dague_context_t* setup_dague(int argc, char **argv, int *iparam, char **sparam)
     parse_arguments(argc, argv, iparam, sparam);
     int verbose = iparam[IPARAM_VERBOSE];
     if(iparam[IPARAM_RANK] > 0 && verbose < 4) verbose = 0;
-    
+
+#ifdef HAVE_MPI
+    if((verbose > 2) && (provided != MPI_THREAD_SERIALIZED))
+        fprintf(stderr, "!!! DAGuE formally needs MPI_THREAD_SERIALIZED, but your MPI does not provide it. This is -usually- fine nonetheless\n");
+#endif
+
     TIME_START();
     dague_context_t* ctx = dague_init(iparam[IPARAM_NCORES], &argc, &argv);
     /* If the number of cores has not been defined as a parameter earlier
@@ -345,14 +347,14 @@ dague_context_t* setup_dague(int argc, char **argv, int *iparam, char **sparam)
 #else
     (void)dot_filename;
     if(iparam[IPARAM_DOT] != 0) {
-        fprintf(stderr, 
+        fprintf(stderr,
                 "************************************************************************************************\n"
                 "*** Warning: dot generation requested, but DAGUE configured with DAGUE_PROF_GRAPHER disabled ***\n"
                 "************************************************************************************************\n");
     }
 #endif
 
-    dague_set_scheduler( ctx, dague_schedulers_array[ iparam[IPARAM_SCHEDULER] ] );  
+    dague_set_scheduler( ctx, dague_schedulers_array[ iparam[IPARAM_SCHEDULER] ] );
 
     if(verbose > 2) TIME_PRINT(iparam[IPARAM_RANK], ("DAGuE initialized\n"));
     return ctx;
@@ -397,6 +399,6 @@ void cleanup_dague(dague_context_t* dague, int *iparam, char **sparam)
 #endif
 #ifdef HAVE_MPI
     MPI_Finalize();
-#endif    
+#endif
 }
 
