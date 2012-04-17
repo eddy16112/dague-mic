@@ -19,6 +19,7 @@
 
 #include "dague.h"
 #include "data_distribution.h"
+#include "dplasma/include/dplasma.h"
 #include "dplasma/lib/dplasmajdf.h"
 
 #include "data_dist/sparse-matrix/pastix_internal/pastix_internal.h"
