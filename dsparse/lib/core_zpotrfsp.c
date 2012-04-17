@@ -74,7 +74,7 @@ static void core_zpotf2sp(dague_int_t  n,
             EXIT(MOD_SOPALIN, INTERNAL_ERR);
         }
 
-        *tmp = (Dague_Complex64_t)csqrt(*tmp);
+        *tmp = (Dague_Complex64_t)dplasma_zsqrt(*tmp);
         tmp1 = tmp+1;
         
         alpha = 1. / (*tmp);
