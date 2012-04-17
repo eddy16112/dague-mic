@@ -285,6 +285,8 @@ dsparse/lib/[scd]potrf_sp1dplus_wrapper\.c
 dsparse/lib/[scd]potrs_sp1dplus_wrapper\.c
 dsparse/lib/[scd]sytrf_sp1dplus_wrapper\.c
 dsparse/lib/[scd]sytrs_sp1dplus_wrapper\.c
+dsparse/testing/testing_[sdcz]potrf_sp
+dsparse/testing/testing_[sdc]potrf_sp\.c
 tests/operator
 tests/reduce
 tests/rtt/mpi_rtt
