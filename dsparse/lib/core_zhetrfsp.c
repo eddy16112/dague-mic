@@ -48,6 +48,7 @@ int CORE_zgemdm(int transA, int transB,
    Function: FactorizationLDLT
    
    Factorisation LDLt BLAS2 3 terms
+   this subroutine factors the diagonal block 
 
   > A = LDL^T
 
@@ -69,16 +70,16 @@ static void core_zhetf2sp(dague_int_t  n,
     Dague_Complex64_t *tmp, *tmp1, alpha;
 
     for (k=0; k<n; k++){
-        tmp = A + k*(stride+1);
+        tmp = A + k*(stride+1); // = A + k*stride + k = diagonal element
 
         if ( cabs(*tmp) < criteria ) {
             (*tmp) = (Dague_Complex64_t)criteria;
             (*nbpivot)++;
-	}
+        }
 
-        tmp1 = tmp+1;
+        tmp1 = tmp+1; // element just below diagonal
         
-        alpha = 1. / (*tmp);
+        alpha = 1. / (*tmp); // scaling with the diagonal to compute L((k+1):n,k)
         cblas_zscal(n-k-1, CBLAS_SADDR( alpha ), tmp1, 1 );
 
         alpha = -(*tmp);
@@ -94,6 +95,7 @@ static void core_zhetf2sp(dague_int_t  n,
 
   Computes the block LDL^T factorisation of the
   matrix A.
+  this subroutine factors the diagonal supernode 
 
   > A = LDL^T
 
@@ -116,6 +118,7 @@ static void core_zhetrfsp(dague_int_t  n,
     Dague_Complex64_t *tmp,*tmp1,*tmp2;
     Dague_Complex64_t alpha;
 
+	/* diagonal supernode is divided into MAXSIZEOFBLOCK-by-MAXSIZEOFBLOCKS blocks */
     blocknbr = (dague_int_t) ceil( (double)n/(double)MAXSIZEOFBLOCKS );
 
     for (k=0; k<blocknbr; k++) {
@@ -132,8 +135,10 @@ static void core_zhetrfsp(dague_int_t  n,
             
             matrixsize = n-(k*MAXSIZEOFBLOCKS+blocksize);
             
-            /* Compute the column Lk+1k */
-            /** Compute Lk+1,k*Dk,k      */
+            /* Compute the column L(k+1:n,k) = (L(k,k)D(k,k))^{-1}A(k+1:n,k)    */
+            /* 1) Compute A(k+1:n,k) = A(k+1:n,k)L(k,k)^{-T} = D(k,k)L(k+1:n,k) */
+			/* input: L(k,k) in tmp, A(k+1:n,k) in tmp1   */
+			/* output: A(k+1:n,k) in tmp1                 */
             cblas_ztrsm(CblasColMajor,
                         CblasRight, CblasLower,
                         CblasConjTrans, CblasUnit,
@@ -141,18 +146,19 @@ static void core_zhetrfsp(dague_int_t  n,
                         CBLAS_SADDR(zone), tmp,  stride,
                                            tmp1, stride);
 
+            /* Compute L(k+1:n,k) = A(k+1:n,k)D(k,k)^{-1}     */
             for(col = 0; col < blocksize; col++) {
-                /** Copy Lk+1,k*Dk,k and compute Lk+1,k */
+                /* copy L(k+1+col:n,k+col)*D(k+col,k+col) into work(:,col) */
                 cblas_zcopy(matrixsize, tmp1+col*stride,     1, 
                                         work+col*matrixsize, 1);
 
+				/* compute L(k+1+col:n,k+col) = A(k+1+col:n,k+col)D(k+col,k+col)^{-1} */
                 alpha = 1. / *(tmp + col*(stride+1));
-                
                 cblas_zscal(matrixsize, CBLAS_SADDR(alpha), 
                             tmp1+col*stride, 1);
             }
             
-            /* Update Ak+1k+1 = Ak+1k+1 - (Lk+1k*Dk,k)*Lk+1kT */
+            /* Update A(k+1:n,k+1:n) = A(k+1:n,k+1:n) - (L(k+1:n,k)*D(k,k))*L(k+1:n,k)^T */
             cblas_zgemm(CblasColMajor,
                         CblasNoTrans, CblasConjTrans,
                         matrixsize, matrixsize, blocksize,
@@ -166,6 +172,7 @@ static void core_zhetrfsp(dague_int_t  n,
 
 /*
  * Factorization of diagonal block 
+ * entry point from DAGue: to factor c-th supernodal column
  */
 void core_zhetrfsp1d(Dague_Complex64_t *L,
                      Dague_Complex64_t *work,
@@ -182,22 +189,22 @@ void core_zhetrfsp1d(Dague_Complex64_t *L,
     assert( SYMB_FCOLNUM(c) == SYMB_FROWNUM(SYMB_BLOKNUM(c)) );
 
     /* Initialisation des pointeurs de blocs */
-    dima   = SYMB_LCOLNUM(c)-SYMB_FCOLNUM(c)+1;
-    stride = SOLV_STRIDE(c);
+    dima   = SYMB_LCOLNUM(c)-SYMB_FCOLNUM(c)+1; /* (last column in this block-column)-(first column in this block-column)+1 */
+    stride = SOLV_STRIDE(c);                    /*  leading dimension of this block                                         */
 
     /* Factorize diagonal block (two terms version with workspace) */
     core_zhetrfsp(dima, L, stride, &nbpivot, criteria, work);
 
-    fblknum = SYMB_BLOKNUM(c);
-    lblknum = SYMB_BLOKNUM(c + 1);
+    fblknum = SYMB_BLOKNUM(c);      /* block number of this diagonal block     */
+    lblknum = SYMB_BLOKNUM(c + 1);  /* block number of the next diagonal block */
 
     /* vertical dimension */
     dimb = stride - dima;
 
-    /* if there is an extra-diagonal bloc in column block */
+    /* if there are off-diagonal supernodes in the column */
     if ( fblknum+1 < lblknum ) 
     {
-        /* first extra-diagonal bloc in column block address */
+        /* the first off-diagonal block in column block address */
         fL = L + SOLV_COEFIND(fblknum+1);
         
         /* Three terms version, no need to keep L and L*D */
@@ -257,8 +264,8 @@ void core_zhetrfsp1d_gemm(dague_int_t cblknum,
                       work2, ldw );
   
     /*
-     * Add contribution to facing cblk
-     */
+     * Add contribution to facing cblk  *
+	 * A(i,i+1:n) += work1              */
     b = SYMB_BLOKNUM( fcblknum );
     stridefc = SOLV_STRIDE(fcblknum);
     C = C + (SYMB_FROWNUM(bloknum) - SYMB_FCOLNUM(fcblknum)) * stridefc;

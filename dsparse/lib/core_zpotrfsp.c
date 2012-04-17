@@ -39,6 +39,7 @@ static Dague_Complex64_t mzone = -1.;
    Function: FactorizationLDLT
    
    Factorisation LDLt BLAS2 3 terms
+   this subroutine factors the diagonal block 
 
   > A = LDL^T
 
@@ -60,12 +61,12 @@ static void core_zpotf2sp(dague_int_t  n,
     Dague_Complex64_t *tmp, *tmp1, alpha;
 
     for (k=0; k<n; k++){
-        tmp = A + k*(stride+1);
+        tmp = A + k*(stride+1); // = A + k*stride + k = diagonal element
 
         if ( cabs(*tmp) < criteria ) {
             (*tmp) = (Dague_Complex64_t)criteria;
             (*nbpivot)++;
-	}
+        }
 
         /* Hermitian matrices, so imaginary part should be 0 */
         if ( creal(*tmp) < 0. )
@@ -77,7 +78,7 @@ static void core_zpotf2sp(dague_int_t  n,
         *tmp = (Dague_Complex64_t)csqrt(*tmp);
         tmp1 = tmp+1;
         
-        alpha = 1. / (*tmp);
+        alpha = 1. / (*tmp); // scaling with the diagonal to compute L((k+1):n,k)
         cblas_zscal(n-k-1, CBLAS_SADDR( alpha ), tmp1, 1 );
  
         cblas_zher(CblasColMajor, CblasLower,  
@@ -92,6 +93,7 @@ static void core_zpotf2sp(dague_int_t  n,
 
   Computes the block LDL^T factorisation of the
   matrix A.
+  this subroutine factors the diagonal supernode 
 
   > A = LDL^T
 
@@ -112,6 +114,7 @@ static void core_zpotrfsp(dague_int_t  n,
     dague_int_t k, blocknbr, blocksize, matrixsize;
     Dague_Complex64_t *tmp,*tmp1,*tmp2;
 
+	/* diagonal supernode is divided into MAXSIZEOFBLOCK-by-MAXSIZEOFBLOCKS blocks */
     blocknbr = (dague_int_t) ceil( (double)n/(double)MAXSIZEOFBLOCKS );
 
     for (k=0; k<blocknbr; k++) {
@@ -128,8 +131,10 @@ static void core_zpotrfsp(dague_int_t  n,
             
             matrixsize = n-(k*MAXSIZEOFBLOCKS+blocksize);
             
-            /* Compute the column Lk+1k */
-            /** Compute Lk+1,k*Dk,k      */
+            /* Compute the column L(k+1:n,k) = (L(k,k)D(k,k))^{-1}A(k+1:n,k)    */
+            /* 1) Compute A(k+1:n,k) = A(k+1:n,k)L(k,k)^{-T} = D(k,k)L(k+1:n,k) */
+			/* input: L(k,k) in tmp, A(k+1:n,k) in tmp1   */
+			/* output: A(k+1:n,k) in tmp1                 */
             cblas_ztrsm(CblasColMajor,
                         CblasRight, CblasLower,
                         CblasConjTrans, CblasNonUnit,
@@ -149,6 +154,7 @@ static void core_zpotrfsp(dague_int_t  n,
 
 /*
  * Factorization of diagonal block 
+ * entry point from DAGue: to factor c-th supernodal column
  */
 void core_zpotrfsp1d(Dague_Complex64_t *L,
                      SolverMatrix *datacode, 
@@ -164,22 +170,22 @@ void core_zpotrfsp1d(Dague_Complex64_t *L,
     assert( SYMB_FCOLNUM(c) == SYMB_FROWNUM(SYMB_BLOKNUM(c)) );
 
     /* Initialisation des pointeurs de blocs */
-    dima   = SYMB_LCOLNUM(c)-SYMB_FCOLNUM(c)+1;
-    stride = SOLV_STRIDE(c);
+    dima   = SYMB_LCOLNUM(c)-SYMB_FCOLNUM(c)+1; /* (last column in this block-column)-(first column in this block-column)+1 */
+    stride = SOLV_STRIDE(c);                    /*  leading dimension of this block                                         */
 
     /* Factorize diagonal block (two terms version with workspace) */
     core_zpotrfsp(dima, L, stride, &nbpivot, criteria );
 
-    fblknum = SYMB_BLOKNUM(c);
-    lblknum = SYMB_BLOKNUM(c + 1);
+    fblknum = SYMB_BLOKNUM(c);      /* block number of this diagonal block     */
+    lblknum = SYMB_BLOKNUM(c + 1);  /* block number of the next diagonal block */
 
     /* vertical dimension */
     dimb = stride - dima;
 
-    /* if there is an extra-diagonal bloc in column block */
+    /* if there are off-diagonal supernodes in the column */
     if ( fblknum+1 < lblknum ) 
     {
-        /* first extra-diagonal bloc in column block address */
+        /* the first off-diagonal block in column block address */
         fL = L + SOLV_COEFIND(fblknum+1);
         
         /* Three terms version, no need to keep L and L*D */
@@ -228,8 +234,8 @@ void core_zpotrfsp1d_gemm(dague_int_t cblknum,
                  0.,  work, dimi );
   
     /*
-     * Add contribution to facing cblk
-     */
+     * Add contribution to facing cblk  *
+	 * A(i,i+1:n) += work1              */
     b = SYMB_BLOKNUM( fcblknum );
     stridefc = SOLV_STRIDE(fcblknum);
     C = C + (SYMB_FROWNUM(bloknum) - SYMB_FCOLNUM(fcblknum)) * stridefc;

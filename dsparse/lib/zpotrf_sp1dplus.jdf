@@ -38,6 +38,8 @@ p_work   [type = "dague_memory_pool_t *" size = "datacode->coefmax * sizeof(Dagu
 
 /**************************************************
  *                POTRF_TRSM                      *
+ * panel factorization: do trf of diagonal and    *
+ *                    : trsm on off-diagonal      *
  **************************************************/
 POTRF_TRSM(k) [high_priority = on]
 
@@ -74,27 +76,29 @@ END
 
 /**************************************************
  *                      GEMM                      *
+ * update the trailing matrix with the panel      *
+ * k-th block updating corresponding.
  **************************************************/
 
 GEMM(k)
 
 // Execution space
 k = 0..bloknbr
-fcblk  = inline_c %{ return SYMB_CBLKNUM(k); %}
-cblk   = inline_c %{ return sparse_matrix_get_lcblknum( descA, (dague_int_t)k ); %}// TODO: store cblknum in symbblok
-phony  = inline_c %{ return k == SYMB_BLOKNUM( cblk ); %}
-prev   = inline_c %{ if (phony) return 0; else return sparse_matrix_get_listptr_prev( descA, (dague_int_t)k, (dague_int_t)fcblk ); %}
-next   = inline_c %{ if (phony) return 0; else return sparse_matrix_get_listptr_next( descA, (dague_int_t)k, (dague_int_t)fcblk ); %}
+fcblk  = inline_c %{ return SYMB_CBLKNUM(k); %}                                    // index of the diagonal block in the row that k-th block belongs to
+cblk   = inline_c %{ return sparse_matrix_get_lcblknum( descA, (dague_int_t)k ); %}// diagonal block in the column that k-th block belongs to, TODO: store cblknum in symbblok
+phony  = inline_c %{ return k == SYMB_BLOKNUM( cblk ); %}                          // diagonal block?
+prev   = inline_c %{ if (phony) return 0; else return sparse_matrix_get_listptr_prev( descA, (dague_int_t)k, (dague_int_t)fcblk ); %} // previous column updating fcblk-th column
+next   = inline_c %{ if (phony) return 0; else return sparse_matrix_get_listptr_next( descA, (dague_int_t)k, (dague_int_t)fcblk ); %} // next column updating fcblk-th column
 
 // Parallel partitioning
 :A(fcblk)
 
 // Parameters
-READ  A <- phony ? A(fcblk) : A POTRF_TRSM(cblk)
-RW    C <- ( prev == 0 ) ? A(fcblk) : C GEMM( prev )
+READ  A <- phony ? A(fcblk) : A POTRF_TRSM(cblk)       // if off-diagonal, then take output from trsm
+RW    C <- ( prev == 0 ) ? A(fcblk) : C GEMM( prev )   // if off-diagonal, then take output from gemm by the previous column
         -> phony ? A(fcblk)
-        -> ((!phony) && (next == 0)) ? A POTRF_TRSM( fcblk )
-        -> ((!phony) && (next != 0)) ? C GEMM( next )
+        -> ((!phony) && (next == 0)) ? A POTRF_TRSM( fcblk ) // if diagonal in the next column, then do trsm
+        -> ((!phony) && (next != 0)) ? C GEMM( next )        // if off-diagonal in the next column, then do gemm
 
 BODY
       if (!phony) {

@@ -26,8 +26,8 @@ extern "C" %{
 descA    [type = "sparse_matrix_desc_t *"]
 A        [type = "dague_ddesc_t *"]
 datacode [type = "SolverMatrix*" default="&(descA->pastix_data->solvmatr)" hidden=on]
-cblknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.cblknbr - 1" hidden=on] 
-bloknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.bloknbr - 2" hidden=on] /* -2 to avoid last diagonal block */
+cblknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.cblknbr - 1" hidden=on] /* index of last diagonal block */
+bloknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.bloknbr - 2" hidden=on] /* index of last block (gemm is called on diagonal, but nothing is done), -2 to avoid last diagonal block */
 p_work1  [type = "dague_memory_pool_t *" size = "datacode->coefmax * sizeof(Dague_Complex64_t)"]
 p_work2  [type = "dague_memory_pool_t *" size = "datacode->coefmax * sizeof(Dague_Complex64_t)"]
 
@@ -67,17 +67,19 @@ END
 
 /**************************************************
  *                      GEMM                      *
+ * update the trailing matrix with the panel      *
+ * k-th block updating corresponding.
  **************************************************/
 
 GEMM(k)
 
 // Execution space
 k = 0..bloknbr
-fcblk  = inline_c %{ return SYMB_CBLKNUM(k); %}
-cblk   = inline_c %{ return sparse_matrix_get_lcblknum( descA, (dague_int_t)k ); %}// TODO: store cblknum in symbblok
-phony  = inline_c %{ return k == SYMB_BLOKNUM( cblk ); %}
-prev   = inline_c %{ if (phony) return 0; else return sparse_matrix_get_listptr_prev( descA, (dague_int_t)k, (dague_int_t)fcblk ); %}
-next   = inline_c %{ if (phony) return 0; else return sparse_matrix_get_listptr_next( descA, (dague_int_t)k, (dague_int_t)fcblk ); %}
+fcblk  = inline_c %{ return SYMB_CBLKNUM(k); %}                                    // index of the diagonal block in the row that k-th block belongs to
+cblk   = inline_c %{ return sparse_matrix_get_lcblknum( descA, (dague_int_t)k ); %}// diagonal block in the column that k-th block belongs to, TODO: store cblknum in symbblok
+phony  = inline_c %{ return k == SYMB_BLOKNUM( cblk ); %}                          // diagonal block?
+prev   = inline_c %{ if (phony) return 0; else return sparse_matrix_get_listptr_prev( descA, (dague_int_t)k, (dague_int_t)fcblk ); %} // previous column updating fcblk-th column
+next   = inline_c %{ if (phony) return 0; else return sparse_matrix_get_listptr_next( descA, (dague_int_t)k, (dague_int_t)fcblk ); %} // next column updating fcblk-th column
 
 // Parallel partitioning
 :A(fcblk)
