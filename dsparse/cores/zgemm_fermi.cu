@@ -25,7 +25,11 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define GENERATE_SM_VERSION_NAME_I(func, version) zgemm_##func##_SM##version
+#define GENERATE_SM_VERSION_KERNEL_NAME_I(func, version) zgemm_##func##_SM##version
+#define GENERATE_SM_VERSION_KERNEL_NAME_I2(func, version) GENERATE_SM_VERSION_NAME_I(func, version)
+#define GENERATE_SM_VERSION_KERNEL_NAME(func) GENERATE_SM_VERSION_NAME_I2(func, CUDA_SM_VERSION)
+
+#define GENERATE_SM_VERSION_NAME_I(func, version) magmablas_##func##_SM##version
 #define GENERATE_SM_VERSION_NAME_I2(func, version) GENERATE_SM_VERSION_NAME_I(func, version)
 #define GENERATE_SM_VERSION_NAME(func) GENERATE_SM_VERSION_NAME_I2(func, CUDA_SM_VERSION)
 
@@ -34,12 +38,12 @@
 #include "zgemm_fermi_define.h"
 
 extern "C" void
-magmablas_zgemm_fermi( char TRANSA, char TRANSB, int m , int n , int k ,
-                       cuDoubleComplex alpha, const cuDoubleComplex *d_A, int lda,
-                       const cuDoubleComplex *d_B, int ldb,
-                       cuDoubleComplex beta,        cuDoubleComplex *d_C, int ldc,
-                       int blocknbr, const int *blocktab, int fblocknbr, const int *fblocktab,
-                       CUstream stream )
+GENERATE_SM_VERSION_NAME(zgemm)( char TRANSA, char TRANSB, int m , int n , int k ,
+                                 cuDoubleComplex alpha, const cuDoubleComplex *d_A, int lda,
+                                                        const cuDoubleComplex *d_B, int ldb,
+                                 cuDoubleComplex beta,        cuDoubleComplex *d_C, int ldc,
+                                 int blocknbr, const int *blocktab, int fblocknbr, const int *fblocktab,
+                                 CUstream stream )
 {
     /*  -- MAGMA (version 1.1) --
         Univ. of Tennessee, Knoxville

@@ -7,41 +7,41 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #if   (version == trans_nn)
-#define kernel_name GENERATE_SM_VERSION_NAME(nn)
+#define kernel_name GENERATE_SM_VERSION_KERNEL_NAME(nn)
 #elif (version == trans_nt)
 #define TRANS_B
-#define kernel_name GENERATE_SM_VERSION_NAME(nt)
+#define kernel_name GENERATE_SM_VERSION_KERNEL_NAME(nt)
 #elif (version == trans_nc)
 #define TRANS_B 
 #define CONJ_B
-#define kernel_name GENERATE_SM_VERSION_NAME(nc)
+#define kernel_name GENERATE_SM_VERSION_KERNEL_NAME(nc)
 #elif (version == trans_tn)
 #define TRANS_A
-#define kernel_name GENERATE_SM_VERSION_NAME(tn)
+#define kernel_name GENERATE_SM_VERSION_KERNEL_NAME(tn)
 #elif (version == trans_tt)
 #define TRANS_A
 #define TRANS_B 
-#define kernel_name GENERATE_SM_VERSION_NAME(tt)
+#define kernel_name GENERATE_SM_VERSION_KERNEL_NAME(tt)
 #elif (version == trans_tc)
 #define TRANS_A
 #define TRANS_B
 #define CONJ_B
-#define kernel_name GENERATE_SM_VERSION_NAME(tc)
+#define kernel_name GENERATE_SM_VERSION_KERNEL_NAME(tc)
 #elif (version == trans_cn)
 #define TRANS_A
 #define CONJ_A
-#define kernel_name GENERATE_SM_VERSION_NAME(cn)
+#define kernel_name GENERATE_SM_VERSION_KERNEL_NAME(cn)
 #elif (version == trans_ct)
 #define TRANS_A
 #define CONJ_A
 #define TRANS_B
-#define kernel_name GENERATE_SM_VERSION_NAME(ct)
+#define kernel_name GENERATE_SM_VERSION_KERNEL_NAME(ct)
 #elif (version == trans_cc)
 #define TRANS_A
 #define CONJ_A
 #define TRANS_B
 #define CONJ_B
-#define kernel_name GENERATE_SM_VERSION_NAME(cc)
+#define kernel_name GENERATE_SM_VERSION_KERNEL_NAME(cc)
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
