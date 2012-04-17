@@ -320,6 +320,13 @@ dague_context_t* setup_dague(int argc, char **argv, int *iparam, char **sparam)
     
     TIME_START();
     dague_context_t* ctx = dague_init(iparam[IPARAM_NCORES], &argc, &argv);
+    /* If the number of cores has not been defined as a parameter earlier
+     update it with the default parameter computed in dague_init. */
+    if(iparam[IPARAM_NCORES] <= 0)
+    {
+        iparam[IPARAM_NCORES] = ctx->nb_cores;
+    }
+
 #if defined(HAVE_CUDA)
     if(iparam[IPARAM_NGPUS] > 0)
     {
@@ -363,9 +370,17 @@ void cleanup_dague(dague_context_t* dague, int *iparam, char **sparam)
 #else
     asprintf(&filename, "%s.profile", argvzero);
 #endif
-    dague_profiling_dump_xml(filename);
+    dague_profiling_dump_dbp(filename);
     free(filename);
 #endif  /* DAGUE_PROF_TRACE */
+
+#if defined(HAVE_CUDA)
+    if( iparam[IPARAM_NGPUS] > 0 ) {
+        if( 0 != dague_gpu_fini() ) {
+            fprintf(stderr, "xxx DAGuE is unable to finalize the CUDA environment.\n");
+        }
+    }
+#endif  /* defined(HAVE_CUDA) */
     dague_fini(&dague);
 
     for(i=0; i < SPARAM_SIZEOF; i++) {
