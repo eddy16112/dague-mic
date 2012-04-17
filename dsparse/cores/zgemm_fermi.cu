@@ -26,8 +26,8 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define GENERATE_SM_VERSION_KERNEL_NAME_I(func, version) zgemm_##func##_SM##version
-#define GENERATE_SM_VERSION_KERNEL_NAME_I2(func, version) GENERATE_SM_VERSION_NAME_I(func, version)
-#define GENERATE_SM_VERSION_KERNEL_NAME(func) GENERATE_SM_VERSION_NAME_I2(func, CUDA_SM_VERSION)
+#define GENERATE_SM_VERSION_KERNEL_NAME_I2(func, version) GENERATE_SM_VERSION_KERNEL_NAME_I(func, version)
+#define GENERATE_SM_VERSION_KERNEL_NAME(func) GENERATE_SM_VERSION_KERNEL_NAME_I2(func, CUDA_SM_VERSION)
 
 #define GENERATE_SM_VERSION_NAME_I(func, version) magmablas_##func##_SM##version
 #define GENERATE_SM_VERSION_NAME_I2(func, version) GENERATE_SM_VERSION_NAME_I(func, version)
@@ -222,56 +222,56 @@ GENERATE_SM_VERSION_NAME(zgemm)( char TRANSA, char TRANSB, int m , int n , int k
     if (TransA==0 && TransB ==0){
         dim3 dimGrid(m/BLK_M_nn + (m%BLK_M_nn != 0),
                      n/BLK_N_nn + (n%BLK_N_nn != 0));
-        GENERATE_SM_VERSION_NAME(nn)<<< dimGrid, dimBlock, 0, stream >>>(m, n, k, alpha, d_A, lda, d_B, ldb, beta, d_C, ldc,
+        GENERATE_SM_VERSION_KERNEL_NAME(nn)<<< dimGrid, dimBlock, 0, stream >>>(m, n, k, alpha, d_A, lda, d_B, ldb, beta, d_C, ldc,
                                                                          (int)offsetA, (int)offsetB, blocknbr, blocktab, fblocknbr, fblocktab);
     } 
     else if (TransA==0 && TransB ==1){
         dim3 dimGrid(m/BLK_M_nt + (m%BLK_M_nt != 0),
                      n/BLK_N_nt + (n%BLK_N_nt != 0));
-        GENERATE_SM_VERSION_NAME(nt)<<< dimGrid, dimBlock, 0, stream >>>(m, n, k, alpha, d_A, lda, d_B, ldb, beta, d_C, ldc,
+        GENERATE_SM_VERSION_KERNEL_NAME(nt)<<< dimGrid, dimBlock, 0, stream >>>(m, n, k, alpha, d_A, lda, d_B, ldb, beta, d_C, ldc,
                                                                          (int)offsetA, (int)offsetB, blocknbr, blocktab, fblocknbr, fblocktab);
     }
     else if (TransA==1 && TransB ==0){
         dim3 dimGrid(m/BLK_M_tn + (m%BLK_M_tn != 0),
                      n/BLK_N_tn + (n%BLK_N_tn != 0));
-        GENERATE_SM_VERSION_NAME(tn)<<< dimGrid, dimBlock, 0, stream >>>(m, n, k, alpha, d_A, lda, d_B, ldb, beta, d_C, ldc,
+        GENERATE_SM_VERSION_KERNEL_NAME(tn)<<< dimGrid, dimBlock, 0, stream >>>(m, n, k, alpha, d_A, lda, d_B, ldb, beta, d_C, ldc,
                                                                          (int)offsetA, (int)offsetB, blocknbr, blocktab, fblocknbr, fblocktab);
     }
     else if (TransA==1 && TransB ==1){
         dim3 dimGrid(m/BLK_M_tt + (m%BLK_M_tt != 0),
                      n/BLK_N_tt + (n%BLK_N_tt != 0));
-        GENERATE_SM_VERSION_NAME(tt)<<< dimGrid, dimBlock, 0, stream >>>(m, n, k, alpha, d_A, lda, d_B, ldb, beta, d_C, ldc,
+        GENERATE_SM_VERSION_KERNEL_NAME(tt)<<< dimGrid, dimBlock, 0, stream >>>(m, n, k, alpha, d_A, lda, d_B, ldb, beta, d_C, ldc,
                                                                          (int)offsetA, (int)offsetB, blocknbr, blocktab, fblocknbr, fblocktab);
     }
 #if defined(PRECISION_z) || defined(PRECISION_c) 
     else if (TransA==0 && TransB ==2){
         dim3 dimGrid(m/BLK_M_nt + (m%BLK_M_nt != 0),
                      n/BLK_N_nt + (n%BLK_N_nt != 0));
-        GENERATE_SM_VERSION_NAME(nc)<<< dimGrid, dimBlock, 0, stream >>>(m, n, k, alpha, d_A, lda, d_B, ldb, beta, d_C, ldc,
+        GENERATE_SM_VERSION_KERNEL_NAME(nc)<<< dimGrid, dimBlock, 0, stream >>>(m, n, k, alpha, d_A, lda, d_B, ldb, beta, d_C, ldc,
                                                                          (int)offsetA, (int)offsetB, blocknbr, blocktab, fblocknbr, fblocktab);
     } 
     else if (TransA==1 && TransB ==2){
         dim3 dimGrid(m/BLK_M_tt + (m%BLK_M_tt != 0),
                      n/BLK_N_tt + (n%BLK_N_tt != 0));
-        GENERATE_SM_VERSION_NAME(tc)<<< dimGrid, dimBlock, 0, stream >>>(m, n, k, alpha, d_A, lda, d_B, ldb, beta, d_C, ldc,
+        GENERATE_SM_VERSION_KERNEL_NAME(tc)<<< dimGrid, dimBlock, 0, stream >>>(m, n, k, alpha, d_A, lda, d_B, ldb, beta, d_C, ldc,
                                                                          (int)offsetA, (int)offsetB, blocknbr, blocktab, fblocknbr, fblocktab);
     }
     else if (TransA==2 && TransB ==0){
         dim3 dimGrid(m/BLK_M_tn + (m%BLK_M_tn != 0),
                      n/BLK_N_tn + (n%BLK_N_tn != 0));
-        GENERATE_SM_VERSION_NAME(cn)<<< dimGrid, dimBlock, 0, stream >>>(m, n, k, alpha, d_A, lda, d_B, ldb, beta, d_C, ldc,
+        GENERATE_SM_VERSION_KERNEL_NAME(cn)<<< dimGrid, dimBlock, 0, stream >>>(m, n, k, alpha, d_A, lda, d_B, ldb, beta, d_C, ldc,
                                                                          (int)offsetA, (int)offsetB, blocknbr, blocktab, fblocknbr, fblocktab);
     }
     else if (TransA==2 && TransB ==1){
         dim3 dimGrid(m/BLK_M_tt + (m%BLK_M_tt != 0),
                      n/BLK_N_tt + (n%BLK_N_tt != 0));
-        GENERATE_SM_VERSION_NAME(ct)<<< dimGrid, dimBlock, 0, stream >>>(m, n, k, alpha, d_A, lda, d_B, ldb, beta, d_C, ldc,
+        GENERATE_SM_VERSION_KERNEL_NAME(ct)<<< dimGrid, dimBlock, 0, stream >>>(m, n, k, alpha, d_A, lda, d_B, ldb, beta, d_C, ldc,
                                                                          (int)offsetA, (int)offsetB, blocknbr, blocktab, fblocknbr, fblocktab);
     } 
     else if (TransA==2 && TransB ==2){
         dim3 dimGrid(m/BLK_M_tt + (m%BLK_M_tt != 0),
                      n/BLK_N_tt + (n%BLK_N_tt != 0));
-        GENERATE_SM_VERSION_NAME(cc)<<< dimGrid, dimBlock, 0, stream >>>(m, n, k, alpha, d_A, lda, d_B, ldb, beta, d_C, ldc,
+        GENERATE_SM_VERSION_KERNEL_NAME(cc)<<< dimGrid, dimBlock, 0, stream >>>(m, n, k, alpha, d_A, lda, d_B, ldb, beta, d_C, ldc,
                                                                          (int)offsetA, (int)offsetB, blocknbr, blocktab, fblocknbr, fblocktab);
     }
 #endif
