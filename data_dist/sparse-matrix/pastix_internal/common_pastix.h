@@ -27,39 +27,39 @@
 #include "errors.h"
 
 #if (defined DYNSCHED && defined WITH_STARPU)
-#error "STARPU and Dynsched are not compatible"
+#  error "STARPU and Dynsched are not compatible"
 #endif
 
 #ifdef __INTEL_COMPILER
 /* Ignore icc remark : "operands are evaluated in unspecified order"*/
-#pragma warning(disable:981)
+#  pragma warning(disable:981)
 /* Ignore icc remark : "external function definition with no prior declaration" */
-#pragma warning(disable:1418)
+#  pragma warning(disable:1418)
 /* Ignore icc remark : "external declaration in primary source file" */
-#pragma warning(disable:1419)
+#  pragma warning(disable:1419)
 /* Ignore icc remark : " parameter "arg" was never referenced" */
-#pragma warning(disable:869)
+#  pragma warning(disable:869)
 /* Ignore icc remark : "variable "size" was set but never used" */
-#pragma warning(disable:593)
+#  pragma warning(disable:593)
 /* Ignore icc remark : "floating-point equality and inequality comparisons are unreliable" */
-#pragma warning(disable:1572)
+#  pragma warning(disable:1572)
 /* Ignore icc remark : "statement is unreachable" */
-#pragma warning(disable:111)
+#  pragma warning(disable:111)
 #endif
 
 #ifdef OOC_FTGT
-#ifndef OOC_FTGT_RESET
-#define OOC_FTGT_RESET
-#endif
-#ifndef OOC
-#define OOC
-#endif
+#  ifndef OOC_FTGT_RESET
+#    define OOC_FTGT_RESET
+#  endif
+#  ifndef OOC
+#    define OOC
+#  endif
 #endif
 
 #ifdef OOC
-#ifndef MEMORY_USAGE
-#define MEMORY_USAGE
-#endif
+#  ifndef MEMORY_USAGE
+#    define MEMORY_USAGE
+#  endif
 #endif
 
 
@@ -71,20 +71,20 @@
 
 #define X_C_NORESTRICT
 #ifndef X_C_NORESTRICT
-#define X_C_RESTRICT
+#  define X_C_RESTRICT
 #endif /* X_C_NORESTRICT */
 
 #if (defined X_ARCHi686_mac)
-#define X_ARCHi686_pc_linux
+#  define X_ARCHi686_pc_linux
 #endif
 
 #if (defined X_ARCHpower_ibm_aix)
-#define X_INCLUDE_ESSL
-#undef  X_C_RESTRICT
+#  define X_INCLUDE_ESSL
+#  undef  X_C_RESTRICT
 #endif /* (defined X_ARCHpower_ibm_aix) */
 
 #if (defined X_ARCHalpha_compaq_osf1)
-#define restrict
+#  define restrict
 /*#define volatile*/
 #endif /* (defined X_ARCHalpha_compaq_osf1) */
 
@@ -94,11 +94,11 @@
 */
 
 #ifdef X_C_RESTRICT
-#ifdef __GNUC__
-#define restrict                    __restrict
-#endif /* __GNUC__ */
+#  ifdef __GNUC__
+#    define restrict                    __restrict
+#  endif /* __GNUC__ */
 #else /* X_C_RESTRICT */
-#define restrict
+#  define restrict
 #endif /* X_C_RESTRICT */
 
 /*
@@ -107,15 +107,15 @@
 
 /* Redefinition de malloc,free,printf,fprintf */
 #ifdef MARCEL
-#include <pthread.h>
+#  include <pthread.h>
 #endif
 
 #include            <ctype.h>
 #include            <math.h>
 #ifdef X_ARCHi686_mac
-#include            <malloc/malloc.h>
+#  include            <malloc/malloc.h>
 #else /* X_ARCHi686_mac */
-#include            <malloc.h>
+#  include            <malloc.h>
 #endif /* X_ARCHi686_mac */
 #include            <memory.h>
 #include            <stdio.h>
@@ -130,15 +130,29 @@
 #include            <unistd.h>
 #include            <float.h>
 #ifdef X_INCLUDE_ESSL
-#include            <essl.h>
+#  include            <essl.h>
 #endif /* X_INCLUDE_ESSL */
 
 #ifdef X_ASSERT
-#include <assert.h>
+#  include <assert.h>
 #endif /* X_ASSERT */
 
+#ifndef MIN
 #define MIN(x,y) (((x)<(y))?(x):(y))
+#endif
+
+#ifndef MAX
 #define MAX(x,y) (((x)<(y))?(y):(x))
+#endif
+
+/*
+ * Checking incompatible options.
+ */
+#ifdef FORCE_NOMPI
+#  ifdef DISTRIBUTED
+#    error "-DFORCE_NOMPI is not compatible with -DDISTRIBUTED"
+#  endif
+#endif
 
 /*
 **  Handling of generic types.
@@ -146,174 +160,158 @@
 
 #define byte unsigned char                        /*+ Byte type +*/
 
-#ifdef TYPE_COMPLEX
-#ifndef FORCE_COMPLEX
-#define FORCE_COMPLEX
-#endif
-#endif
-
-#ifdef FORCE_COMPLEX
-#ifndef TYPE_COMPLEX
-#define TYPE_COMPLEX
-#endif
-#endif
-
-#ifdef PREC_DOUBLE
-#ifndef FORCE_DOUBLE
-#define FORCE_DOUBLE
-#endif
-#endif
-
-#ifdef FORCE_DOUBLE
-#ifndef PREC_DOUBLE
-#define PREC_DOUBLE
-#endif
-#endif
-
 #ifdef INTSIZE32
-#ifndef FORCE_INT32
-#define FORCE_INT32
-#endif
+#  ifndef FORCE_INT32
+#    define FORCE_INT32
+#  endif
 
 #endif
 
 #if (defined INTSIZE64 || defined INTSSIZE64)
-#ifndef FORCE_INT64
-#define FORCE_INT64
-#endif
+#  ifndef FORCE_INT64
+#    define FORCE_INT64
+#  endif
 #endif
 
 #ifdef FORCE_INT32
-#ifndef INTSIZE32
-#define INTSIZE32
-#endif
+#  ifndef INTSIZE32
+#    define INTSIZE32
+#  endif
 #endif
 
 
 #ifdef FORCE_INT64
-#if !(defined INTSIZE64) && !(defined INTSSIZE64)
-#define INTSIZE64
-#endif
+#  if !(defined INTSIZE64) && !(defined INTSSIZE64)
+#    define INTSIZE64
+#  endif
 #endif
 
 
-#ifdef FORCE_DOUBLE
-#define BLAS_DOUBLE
-#define BASE_FLOAT double
+#ifdef PREC_DOUBLE
+#  define BLAS_DOUBLE
+#  define BASE_FLOAT double
 #else
-#define BASE_FLOAT float
+#  define BASE_FLOAT float
 #endif
 
-#ifdef FORCE_COMPLEX
-#define CPLX
+#ifdef TYPE_COMPLEX
+#  define CPLX
 #endif
 
 #ifdef CPLX
-#if (defined X_ARCHalpha_compaq_osf1)
+#  if (defined X_ARCHalpha_compaq_osf1)
 
-#ifndef USE_CXX
+#    ifndef USE_CXX
 
-#ifndef   _RWSTD_HEADER_REQUIRES_HPP
-#include <complex>
-#else  /* _RWSTD_HEADER_REQUIRES_HPP */
-#include <complex.hpp>
-#endif /* _RWSTD_HEADER_REQUIRES_HPP */
+#      ifndef   _RWSTD_HEADER_REQUIRES_HPP
+#        include <complex>
+#      else  /* _RWSTD_HEADER_REQUIRES_HPP */
+#        include <complex.hpp>
+#      endif /* _RWSTD_HEADER_REQUIRES_HPP */
 
-#define FLOAT complex<BASE_FLOAT>
+#      define FLOAT complex<BASE_FLOAT>
 
-#ifdef    FORCE_DOUBLE
-#define COMM_FLOAT MPI_DOUBLE_COMPLEX
-#define FLOAT_MAX DBL_MAX
-#else  /* FORCE_DOUBLE */
-#define COMM_FLOAT MPI_COMPLEX
-#define FLOAT_MAX MAXFLOAT
-#endif /* FORCE_DOUBLE */
+#      ifdef    PREC_DOUBLE
+#        define COMM_FLOAT MPI_DOUBLE_COMPLEX
+#        define FLOAT_MAX DBL_MAX
+#      else  /* PREC_DOUBLE */
+#        define COMM_FLOAT MPI_COMPLEX
+#        define FLOAT_MAX MAXFLOAT
+#      endif /* PREC_DOUBLE */
 
-#define COMM_SUM GetMpiSum()
-#define ABS_FLOAT(x) abs(x)
-#define fabs(x) abs(x)
-#define cabs(x) abs(x)
-#define csqrt(x) sqrt(x)
-#define CONJ_FLOAT(x) conj(x)
-#define creal(x) real(x)
-#define cimag(x) imag(x)
-#endif /*USE_CXX*/
+#      define COMM_SUM GetMpiSum()
+#      define ABS_FLOAT(x) abs(x)
+#      define fabs(x) abs(x)
+#      define cabs(x) abs(x)
+#      define csqrt(x) sqrt(x)
+#      define CONJ_FLOAT(x) conj(x)
+#      define creal(x) real(x)
+#      define cimag(x) imag(x)
+#    endif /*USE_CXX*/
 
-#else /*X_ARCHalpha_compaq_osf1*/
-#include <complex.h>
-#define COMM_FLOAT GetMpiType()
-#define COMM_SUM GetMpiSum()
+#  else /*X_ARCHalpha_compaq_osf1*/
+#    include <complex.h>
+#    define COMM_FLOAT GetMpiType()
+#    define COMM_SUM GetMpiSum()
 
-#ifdef    FORCE_DOUBLE
-#define FLOAT double complex
-#define ABS_FLOAT(x) cabs(x)
-#ifdef    _DCMPLX
-#define BLAS_FLOAT dcmplx
-#else  /* _DCMPLX */
-#define BLAS_FLOAT double complex
-#endif /* _DCMPLX */
-#define CONJ_FLOAT(x) conj(x)
-#define FLOAT_MAX DBL_MAX
-#else  /* FORCE_DOUBLE */
-#define FLOAT float complex
-#define ABS_FLOAT(x) cabsf(x)
-#ifdef    _CMPLX
-#define BLAS_FLOAT cmplx
-#else  /* _CMPLX */
-#define BLAS_FLOAT float complex
-#endif /* _CMPLX */
-#define CONJ_FLOAT(x) conjf(x)
-#define FLOAT_MAX MAXFLOAT
-#endif /* FORCE_DOUBLE */
+#    ifdef    PREC_DOUBLE
+#      define FLOAT double complex
+#      define ABS_FLOAT(x) cabs(x)
+#      ifdef    _DCMPLX
+#        define BLAS_FLOAT dcmplx
+#      else  /* _DCMPLX */
+#        define BLAS_FLOAT double complex
+#      endif /* _DCMPLX */
+#      define CONJ_FLOAT(x) conj(x)
+#      define FLOAT_MAX DBL_MAX
+#    else  /* PREC_DOUBLE */
+#      define FLOAT float complex
+#      define ABS_FLOAT(x) cabsf(x)
+#      ifdef    _CMPLX
+#        define BLAS_FLOAT cmplx
+#      else  /* _CMPLX */
+#        define BLAS_FLOAT float complex
+#      endif /* _CMPLX */
+#      define CONJ_FLOAT(x) conjf(x)
+#      define FLOAT_MAX MAXFLOAT
+#    endif /* PREC_DOUBLE */
 
-#endif /* X_ARCHalpha_compaq_osf1 */
+#  endif /* X_ARCHalpha_compaq_osf1 */
 #else /* CPLX */
-#define COMM_SUM MPI_SUM
+#  define COMM_SUM MPI_SUM
 
-#ifdef FORCE_DOUBLE
-#define FLOAT double
-#define ABS_FLOAT(x) fabs(x)
-#define CONJ_FLOAT(x) x
-#define COMM_FLOAT MPI_DOUBLE
-#define FLOAT_MAX DBL_MAX
-#else /* FORCE_DOUBLE */
-#define FLOAT float
-#define FLOAT_MAX MAXFLOAT
-#define COMM_FLOAT MPI_FLOAT
-#define ABS_FLOAT(x) fabsf(x)
-#define CONJ_FLOAT(x) x
-#endif /* FORCE_DOUBLE */
-
+#  define CONJ_FLOAT(x) x
+#  ifdef PREC_DOUBLE
+#    define FLOAT double
+#    define ABS_FLOAT(x) fabs(x)
+#    define COMM_FLOAT MPI_DOUBLE
+#    define FLOAT_MAX  DBL_MAX
+#  else /* PREC_DOUBLE */
+#    define FLOAT float
+#    define FLOAT_MAX MAXFLOAT
+#    define COMM_FLOAT MPI_FLOAT
+#    define ABS_FLOAT(x) fabsf(x)
+#  endif /* PREC_DOUBLE */
 #endif /* CPLX */
+
+#ifndef BLAS_FLOAT
+#  define BLAS_FLOAT FLOAT
+#endif
+
+#ifdef PREC_DOUBLE
+#  define BLAS_REAL double
+#else
+#  define BLAS_REAL float
+#endif
 
 /*
  *  Définition de la taille des entiers utilisés
  */
 #ifdef FORCE_LONG
-#define INT           long          /* Long integer type */
-#define UINT          unsigned long
-#define COMM_INT      MPI_LONG
+#  define INT           long          /* Long integer type */
+#  define UINT          unsigned long
+#  define COMM_INT      MPI_LONG
 #elif (defined FORCE_INT32)
-#define INT           int32_t
-#define UINT          u_int32_t
-#define COMM_INT      MPI_INTEGER4
+#  define INT           int32_t
+#  define UINT          u_int32_t
+#  define COMM_INT      MPI_INTEGER4
 #elif (defined FORCE_INT64)
-#define INT           int64_t
-#define UINT          u_int64_t
-#define COMM_INT      MPI_INTEGER8
+#  define INT           int64_t
+#  define UINT          u_int64_t
+#  define COMM_INT      MPI_INTEGER8
 #else
-#define INT           int           /* Default integer type     */
-#define UINT          unsigned int
-#define COMM_INT      MPI_INT       /* Generic MPI integer type */
+#  define INT           int           /* Default integer type     */
+#  define UINT          unsigned int
+#  define COMM_INT      MPI_INT       /* Generic MPI integer type */
 #endif
 
 #ifndef INTSIZEBITS
-#define INTSIZEBITS   (sizeof (INT) << 3)
+#  define INTSIZEBITS   (sizeof (INT) << 3)
 #endif /* INTSIZEBITS */
 
 #define INTVALMAX     ((INT) (((UINT) 1 << (INTSIZEBITS - 1)) - 1))
 
-/* #include "redefine_functions.h" */
+#include "redefine_functions.h"
 
 #define MEMORY_WRITE(mem) ( ((mem) < 1<<10) ?                           \
                             ( (double)(mem) ) :                         \
@@ -331,14 +329,14 @@
                                     "Go" )))
 
 #ifdef PRINT_ALL_MALLOC
-#define PRINT_ALLOC(ptr, size, file, line) do                         \
+#  define PRINT_ALLOC(ptr, size, file, line) do                         \
     {                                                                 \
       fprintf(stdout, "%s:%d allocation size %.3g %s : %p (%s)\n",    \
               file, line, MEMORY_WRITE((size)),                       \
               MEMORY_UNIT_WRITE((size)), ptr, #ptr);                  \
     } while(0)
 
-#define PRINT_DEALLOC(ptr, file, line) do                               \
+#  define PRINT_DEALLOC(ptr, file, line) do                               \
     {                                                                   \
       if (ptr != NULL) {                                                \
         double * pda_memptr = (double*)(ptr);                           \
@@ -353,11 +351,11 @@
       }                                                                 \
     } while(0)
 #else /* not PRINT_ALL_MALLOC */
-#define PRINT_ALLOC(ptr, size, file, line) do   \
+#  define PRINT_ALLOC(ptr, size, file, line) do   \
     {                                           \
     } while(0)
 
-#define PRINT_DEALLOC(ptr, file, line) do       \
+#  define PRINT_DEALLOC(ptr, file, line) do       \
     {                                           \
     } while(0)
 #endif /* not PRINT_ALL_MALLOC */
@@ -365,16 +363,16 @@
 /* Working definitions. */
 #define memAlloca(size)                alloca(size)
 #ifndef MEMORY_USAGE   /* TODO : remove mutex protection in multi-thread mode */
-#ifdef X_ARCHpower_ibm_aix
-#define memAlloc(size)                 mymalloc(size, __FILE__,__LINE__)
+#  ifdef X_ARCHpower_ibm_aix
+#    define memAlloc(size)                 mymalloc(size, __FILE__,__LINE__)
+#  else
+#    define memAlloc(size)                 malloc(size)
+#  endif
+#  define memAlloca(size)                alloca(size)
+#  define memRealloc(ptr,size)           realloc((ptr),(size))
+#  define memFree(ptr)                   ( free ((char *) (ptr)) , 0)
 #else
-#define memAlloc(size)                 malloc(size)
-#endif
-#define memAlloca(size)                alloca(size)
-#define memRealloc(ptr,size)           realloc((ptr),(size))
-#define memFree(ptr)                   ( free ((char *) (ptr)) , 0)
-#else
-#define memAlloc(size)                 (memAlloc_func(size,__FILE__,__LINE__))
+#  define memAlloc(size)                 (memAlloc_func(size,__FILE__,__LINE__))
 #endif
 #define memFree_null(ptr)                  do   \
     {                                           \
@@ -390,7 +388,7 @@
 #define memMov(dst,src,siz)                memmove((dst),(src),(siz));
 
 #ifdef WARNINGS_MALLOC
-#define CHECK_ALLOC(ptr, size, type)                                  \
+#  define CHECK_ALLOC(ptr, size, type)                                  \
   do {                                                                \
     if (ptr != NULL)                                                  \
       errorPrintW("non NULL pointer in allocation (line=%d,file=%s)", \
@@ -400,7 +398,7 @@
                   __LINE__,__FILE__);                                 \
   } while (0)
 #else  /* not WARNINGS_MALLOC */
-#define CHECK_ALLOC(ptr, size, type)                                  \
+#  define CHECK_ALLOC(ptr, size, type)                                  \
   do {                                                                \
   } while (0)
 
@@ -452,13 +450,21 @@
  *   size  - Number of elements to allocate.
  *   types - Type of the elements to allocate.
  */
-#define MALLOC_EXTERN(ptr, size, type)                                \
-  do {                                                                \
-    CHECK_ALLOC(ptr, size, type);                                     \
-    if (NULL == (ptr = (type *) malloc((size) * sizeof(type))))       \
-      {                                                               \
-        MALLOC_ERROR(#ptr);                                           \
-      }                                                               \
+#define MALLOC_EXTERN(ptr, size, type)                                  \
+  do {                                                                  \
+    CHECK_ALLOC(ptr, size, type);                                       \
+    if (((long long)(size) * sizeof(type)) == 0)                        \
+      {                                                                 \
+        ptr = NULL;                                                     \
+      }                                                                 \
+    else                                                                \
+      {                                                                 \
+        if (((long long)(((size)*sizeof(type))) < 0) ||                 \
+            NULL == (ptr = (type *) malloc((size) * sizeof(type))))     \
+          {                                                             \
+            MALLOC_ERROR(#ptr);                                         \
+          }                                                             \
+      }                                                                 \
   } while(0)
 
 
@@ -473,19 +479,26 @@
  *   size  - Number of elements to allocate.
  *   types - Type of the elements to allocate.
  */
-#define MALLOC_INTERN(ptr, size, type)                                \
-  {                                                                   \
-    CHECK_ALLOC(ptr, size, type);                                     \
-    if (((size) * sizeof(type) > 0) &&                                \
-        (NULL == (ptr = (type *) memAlloc((size) * sizeof(type)))))   \
-      {                                                               \
-        MALLOC_ERROR(#ptr);                                           \
-      }                                                               \
-    PRINT_ALLOC(ptr, (size*sizeof(type)), __FILE__,__LINE__);         \
+#define MALLOC_INTERN(ptr, size, type)                                  \
+  {                                                                     \
+    CHECK_ALLOC(ptr, size, type);                                       \
+    if (((long long)(size) * sizeof(type)) == 0)                        \
+      {                                                                 \
+        ptr = NULL;                                                     \
+      }                                                                 \
+    else                                                                \
+      {                                                                 \
+        if ((((long long) ((size) * sizeof(type))) < 0) ||              \
+            (NULL == (ptr = (type *) memAlloc((size) * sizeof(type))))) \
+          {                                                             \
+            MALLOC_ERROR(#ptr);                                         \
+          }                                                             \
+      }                                                                 \
+    PRINT_ALLOC(ptr, (size*sizeof(type)), __FILE__,__LINE__);           \
   }
 
 /*
-  Macro: FOPEN
+  Macro: PASTIX_FOPEN
 
   Open a file and handle errors.
 
@@ -495,7 +508,7 @@
   mode      - String containing the opening mode.
 
 */
-#define FOPEN(FILE, filenamne, mode)                                \
+#define PASTIX_FOPEN(FILE, filenamne, mode)                                \
   {                                                                 \
     FILE = NULL;                                                    \
     if (NULL == (FILE = fopen(filenamne, mode)))                    \
@@ -506,7 +519,7 @@
       }                                                             \
   }
 /*
-  Macro: FREAD
+  Macro: PASTIX_FREAD
 
   Calls fread function and test his return value
 
@@ -516,7 +529,7 @@
   count  - Number of elements to read
   stream - Stream to read from
 */
-#define FREAD(buff, size, count, stream)        \
+#define PASTIX_FREAD(buff, size, count, stream)        \
   {                                             \
     if ( 0 == fread(buff, size, count, stream)) \
       {                                         \
@@ -559,15 +572,15 @@ typedef struct File_ {
 */
 
 #ifdef X_ARCHalpha_compaq_osf1
-#ifndef USE_CXX
+#  ifndef USE_CXX
 extern "C" {
-#endif
+#  endif
 #endif
 
 #ifdef MEMORY_USAGE
   void *         memAlloc_func       (size_t,char*,int);
   void *         memRealloc_func     (void *, size_t, char*, int);
-#define memRealloc(ptr,size)                      \
+#  define memRealloc(ptr,size)                      \
   memRealloc_func(ptr, size, __FILE__, __LINE__)
 
   void           memFree             (void *);
@@ -581,8 +594,8 @@ extern "C" {
   void           memAllocTrace       (FILE *, double, int);
   void           memAllocUntrace     ();
 #else
-#define          memAllocTrace(a, b, c) {}
-#define          memAllocUntrace()      {}
+#  define          memAllocTrace(a, b, c) {}
+#  define          memAllocUntrace()      {}
 #endif
   void *         memAllocGroup       (void **, ...);
   void *         memReallocGroup     (void *, ...);
@@ -612,9 +625,9 @@ extern "C" {
   double         clockGet            (void);
 
 #ifdef X_ARCHalpha_compaq_osf1
-#ifndef USE_CXX
+#  ifndef USE_CXX
 }
-#endif
+#  endif
 #endif
 
 /*
@@ -639,10 +652,10 @@ extern "C" {
   void nu pl
 
 /* #ifdef MARCEL */
-/* #define marcel_printf(...) do {  } while(0) */
+/* #  define marcel_printf(...) do {  } while(0) */
 /* /\* #define marcel_printf(...) marcel_fprintf(stderr, __VA_ARGS__) *\/ */
 /* #else */
-/* #define printf(...) do {  } while(0) */
+/* #  define printf(...) do {  } while(0) */
 /* /\* #define printf(...) fprintf(stderr, __VA_ARGS__) *\/ */
 /* #endif */
 

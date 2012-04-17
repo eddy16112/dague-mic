@@ -1,13 +1,13 @@
 /*
-  File: out.h
-  
-  Define output format string for PaStiX.
-  
-  Authors:
-    Mathieu Faverge - faverge@labri.fr
-    Xavier   LACOSTE - lacoste@labri.fr
-    Pierre   RAMET   - ramet@labri.fr
-*/
+ * File: out.h
+ *
+ * Define output format string for PaStiX.
+ *
+ * Authors:
+ *   Mathieu Faverge - faverge@labri.fr
+ *   Xavier   LACOSTE - lacoste@labri.fr
+ *   Pierre   RAMET   - ramet@labri.fr
+ */
 #define OUT_STARPU_TP         " StarPU : Thread policy : %s\n"
 #define OUT_STARPU_STP        " StarPU : No thread policy, setting thread policy to : %s\n"
 #define OUT_ENTETE_LINE1      " +--------------------------------------------------------------------+\n"
@@ -28,7 +28,7 @@
 #define OUT_OPT_ISEND         "        TEST_ISEND          :                   %s\n"
 #define OUT_OPT_THCOM         "        THREAD_COMM         :                   %s\n"
 #define OUT_OPT_FUN           "        THREAD_FUNNELED     :                   %s\n"
-#define OUT_OPT_TAG           "        TAG                 :                   %s\n"	    
+#define OUT_OPT_TAG           "        TAG                 :                   %s\n"
 #define OUT_OPT_OOC           "        OUT_OF_CORE         :                   %s\n"
 #define OUT_OPT_DIST          "        DISTRIBUTED         :                   %s\n"
 #define OUT_OPT_FORCE         "        FORCE_CONSO         :                   %s\n"
@@ -45,11 +45,18 @@
 #define OUT_STEP_FAX          " Symbolic Factorization :                      \n"
 #define OUT_STEP_KASS         " Kass :                                       \n"
 #define OUT_STEP_BLEND        " Analyse :                                    \n"
-#define OUT_STEP_NUMFACT      " Numerical Factorization :                    \n"
+#define OUT_STEP_NUMFACT_LU   " Numerical Factorization (LU) :\n"
+#ifdef TYPE_COMPLEX
+#  define OUT_STEP_NUMFACT_LLT  " Numerical Factorization (LLh) :\n"
+#else
+#  define OUT_STEP_NUMFACT_LLT  " Numerical Factorization (LLt) :\n"
+#endif
+#define OUT_STEP_NUMFACT_LDLT " Numerical Factorization (LDLt) :\n"
+#define OUT_STEP_NUMFACT_LDLH " Numerical Factorization (LDLh) :\n"
 #define OUT_STEP_SOLVE        " Solve :                                      \n"
 #define OUT_STEP_REFF         " Reffinement :                                \n"
 #define TIME_COMPUTE_ORDERING "   Time to compute ordering                     %.3g s\n"
-#define OUT_CLUSTNBR 	      "   Number of cluster                            %ld\n"
+#define OUT_CLUSTNBR          "   Number of cluster                            %ld\n"
 #define OUT_PROCNBR           "   Number of processor per cluster              %ld\n"
 #define OUT_THRDNBR           "   Number of thread number per MPI process      %ld\n"
 #define OUT_BLEND_CHKSMBMTX   "   Check the symbol matrix                      \n"
@@ -90,6 +97,7 @@
 #define OUT2_SOP_UP           "   --- Up Step                                      ---\n"
 #define GEN_RHS_1             "   Generate RHS for X=1\n"
 #define GEN_RHS_I             "   Generate RHS for X=i\n"
+#define GEN_SOL_0             "   Generate X0=0\n"
 #define OOC_MEM_LIM_PERCENT   "   OOC memory limit                             %d%% of needed (%.3g %s)\n"
 #define OOC_MEM_LIM           "   OOC memory limit                             %.3g %s\n"
 #define OOC_IN_STEP           "   [%2d] IN %s :\n"
@@ -97,6 +105,9 @@
 #define OOC_READ              "   [%2d]   read                                  %.3g %s\n"
 #define OOC_ALLOCATED         "   [%2d]   Allocated                             %.3g %s\n"
 #define OOC_MAX_ALLOCATED     "   [%2d]   Maximum allocated                     %.3g %s\n"
+#define OUT_ITERRAFF_GMRES    "   GMRES :\n"
+#define OUT_ITERRAFF_PIVOT    "   Simple refinement :\n"
+#define OUT_ITERRAFF_GRAD     "   Conjuguate gradient :\n"
 #define OUT_ITERRAFF_ITER     "    - iteration %d :\n"
 #define OUT_ITERRAFF_TTS      "         time to solve                          %.3g s\n"
 #define OUT_ITERRAFF_TTT      "         total iteration time                   %.3g s\n"

@@ -1,6 +1,6 @@
 #ifndef CSC_H
 #define CSC_H
-/* #include "common_pastix.h" */
+#include "common_pastix.h"
 
 /* Section: Macros */
 /*
@@ -175,12 +175,14 @@ typedef struct CscFormat_ CscFormat;
     cscftab - Array of Block column structures. (<CscFormat>)
     rowtab  - Array of rows in the matrix.
     valtab  - Array of values of the matrix.
+    type    - 'S' for symmetric, 'H' for hermitian, U for unsymmetric.
 */
 struct CscMatrix_ {
   INT         cscfnbr;
   CscFormat * cscftab;
   INT       * rowtab;
   FLOAT     * valtab;
+  char         type;
 };
 /*
   Type: CscMatrix

@@ -58,7 +58,7 @@
    IPARM_REFINEMENT            - Refinement type (see Refinement modes)                   Default: API_RAF_GMRES       IN
    IPARM_SYM                   - Symmetric matrix mode (see Symmetric modes)              Default: API_SYM_YES         IN
    IPARM_INCOMPLETE            - Incomplete factorization                                 Default: API_NO              IN
-   IPARM_ABS                   - ABS (Automatic Blocksize Splitting)                      Default: API_NO              IN
+   IPARM_ABS                   - ABS level (Automatic Blocksize Splitting)                Default: 1                   IN
    IPARM_ESP                   - ESP (Enhanced Sparse Parallelism)                        Default: API_NO              IN
    IPARM_GMRES_IM              - GMRES restart parameter                                  Default: 25                  IN
    IPARM_FREE_CSCUSER          - Free user CSC                                            Default: API_CSC_PRESERVE    IN
@@ -143,7 +143,7 @@ enum IPARM_ACCESS {
   IPARM_MURGE_REFINEMENT        = 58,
   IPARM_STARPU                  = 59,
   IPARM_AUTOSPLIT_COMM          = 60,
-
+  IPARM_FLOAT                   = 61,
   IPARM_PID                     = 62,
   IPARM_ERROR_NUMBER            = 63,
   IPARM_SIZE                    = 64  /* Need to be greater or equal to 64 for backward compatibility */
@@ -294,7 +294,8 @@ enum API_IO {
 enum API_RHS {
   API_RHS_B = 0, /* Utilisation du second membre fournit */
   API_RHS_1 = 1, /* Utilisation d'un second membre dont tous les coefficients valent 1 */
-  API_RHS_I = 2  /* Utilisation d'un second membre tel que RHS(i) = i */
+  API_RHS_I = 2, /* Utilisation d'un second membre tel que RHS(i) = i */
+  API_RHS_0 = 3  /* Initialisation en mode ONLY_RAFF d'une solution X0(i) = 0 */
 };
 
 /** Type de raffinement utilisé */
@@ -319,18 +320,19 @@ enum API_RAF {
 /*
   Enum: API_FACT
 
-  Factorization modes (index IPARM_FACTORISATION_TYPE)
+  Factorization modes (index IPARM_FACTORISATION)
 
   API_FACT_LLT  - $LL^t$ Factorization
   API_FACT_LDLT - $LDL^t$ Factorization
   API_FACT_LU   - $LU$ Factorization
-
+  API_FACT_LDLH - $LDL^h$ hermitian factorization
 */
 /* _POS_ 4 */
 enum API_FACT {
   API_FACT_LLT  = 0, /* Factorisation de Cholesky */
   API_FACT_LDLT = 1, /* Factorisation de Crout */
-  API_FACT_LU   = 2  /* Factorisation LU */
+  API_FACT_LU   = 2, /* Factorisation LU */
+  API_FACT_LDLH  = 3
 };
 
 /** Matrice symétrique ou non (0 : symétrique, 1 : non) */
@@ -341,12 +343,14 @@ enum API_FACT {
 
   API_SYM_YES - Symmetric matrix
   API_SYM_NO  - Nonsymmetric matrix
+  API_SYM_HER - Hermitian
 
  */
 /* _POS_ 3 */
 enum API_SYM {
   API_SYM_YES = 0, /* Matrice symetrique     */
-  API_SYM_NO  = 1  /* Matrice non symetrique */
+  API_SYM_NO  = 1,  /* Matrice non symetrique */
+  API_SYM_HER = 2
 };
 
 /** Supressing user CSC(D) when not usefull anymore */
@@ -452,6 +456,23 @@ enum API_ORDER {
   API_ORDER_LOAD      = 3
 };
 
+/*
+  Enum: API_FLOAT
+
+  Ordering modes (index IPARM_ORDERING)
+
+  API_REALSINGLE    - Use \scotch{} ordering
+  API_REALDOUBLE    - Use \metis{} ordering
+  API_COMPLEXSINGLE - Apply user's permutation
+  API_COMPLEXDOUBLE - Load ordering from disk
+ */
+/* _POS_ 61 */
+enum API_FLOAT {
+  API_REALSINGLE    = 0,
+  API_REALDOUBLE    = 1,
+  API_COMPLEXSINGLE = 2,
+  API_COMPLEXDOUBLE = 3
+};
 
 /*
   Enum: MODULES
@@ -534,6 +555,7 @@ enum ERR_NUMBERS {
 
 /** Matrix type */
 #define MTX_ISSYM(a) ((a)[1]=='S')
+#define MTX_ISHER(a) ((a)[1]=='H')
 #define MTX_ISCOM(a) ((a)[0]=='C')
 #define MTX_ISRHX(a) ((a)[2]=='X')
 #define MTX_ISRHS(a) ((a)[0]!='\0')
