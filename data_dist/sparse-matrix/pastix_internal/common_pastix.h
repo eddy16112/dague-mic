@@ -311,7 +311,7 @@
 
 #define INTVALMAX     ((INT) (((UINT) 1 << (INTSIZEBITS - 1)) - 1))
 
-#include "redefine_functions.h"
+/* #include "redefine_functions.h" */
 
 #define MEMORY_WRITE(mem) ( ((mem) < 1<<10) ?                           \
                             ( (double)(mem) ) :                         \
