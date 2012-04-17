@@ -23,6 +23,27 @@
 
 #include "data_distribution.h"
 
+void magmablas_sgemm_SM11( char TRANSA, char TRANSB, int m , int n , int k,
+                           float alpha, const float *d_A, int lda,
+                                        const float *d_B, int ldb,
+                           float beta,        float *d_C, int ldc,
+                           int blocknbr, const int *blocktab, int fblocknbr, const int *fblocktab,
+                           CUstream stream );
+
+void magmablas_sgemm_SM13( char TRANSA, char TRANSB, int m , int n , int k ,
+                           float alpha, const float *d_A, int lda,
+                                        const float *d_B, int ldb,
+                           float beta,        float *d_C, int ldc,
+                           int blocknbr, const int *blocktab, int fblocknbr, const int *fblocktab,
+                           CUstream stream );
+
+void magmablas_sgemm_SM20( char TRANSA, char TRANSB, int m , int n , int k ,
+                           float alpha, const float *d_A, int lda,
+                                        const float *d_B, int ldb,
+                           float beta,        float *d_C, int ldc,
+                           int blocknbr, const int *blocktab, int fblocknbr, const int *fblocktab,
+                           CUstream stream );
+
 #define DPLASMA_SCHEDULING 1
 #define DPLASMA_ONLY_GPU 0
 #define DAGUE_GPU_USE_PRIORITIES 1
@@ -772,6 +793,7 @@ gpu_sgemm_internal_submit( gpu_device_t* gpu_device,
     d_C = d_C + ((SYMB_FROWNUM(bloknum) - SYMB_FCOLNUM(fcblknum))*SOLV_STRIDE(fcblknum)) *TYPE_SIZE(this_task);
 #endif
 
+#if defined(OLDKERNEL)
     offset = 0;
     CU_PUSH_POINTER( gpu_device->hcuFunction, offset, d_C );
     CU_PUSH_POINTER( gpu_device->hcuFunction, offset, d_blok);
@@ -814,6 +836,23 @@ gpu_sgemm_internal_submit( gpu_device_t* gpu_device,
 
     DAGUE_CUDA_CHECK_ERROR( "cuLaunchGridAsync ", status,
                               {return -1;} );
+#else /* defined(OLDKERNEL) */
+    {
+        my_tmp_int_t fblcknbr = SYMB_BLOKNUM(fcblknum+1) - SYMB_BLOKNUM(fcblknum);
+        CUdeviceptr d_blocktab, d_fbloktab;
+        
+        d_blocktab = UGLY_A->d_blocktab[gpu_device->index] + 2 * bloknum                * sizeof(my_tmp_int_t);
+        d_fbloktab = UGLY_A->d_blocktab[gpu_device->index] + 2 * SYMB_BLOKNUM(fcblknum) * sizeof(my_tmp_int_t);
+        
+        /* WARNING: check on multi-gpus how the texture works */
+        magmablas_sgemm_SM20( 'N', 'T', m, n, k, 
+                              alpha, (float*)d_blok, SOLV_STRIDE(cblknum),
+                                     (float*)d_blok, SOLV_STRIDE(cblknum),
+                              beta,  (float*)d_C,    SOLV_STRIDE(fcblknum),
+                              bloknbr, (const int *)d_blocktab, fblcknbr, (const int *)d_fbloktab,
+                              stream );
+    }
+#endif /* defined(OLDKERNEL) */
     
 #ifdef DSPARSE_GPU_WITH_SYNCHRO
     status = cuStreamSynchronize( stream );
