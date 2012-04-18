@@ -82,20 +82,41 @@
 #define ASSERT_DEBUG(expr, dbg_flag)
 #endif
 
-/*
-  Macro:  CHECK_NAN
-  
-  Check if the argument is equal to NaN or infinity.
-
-  Parameters:
-    expr - The value to check.
-*/  
 #ifdef PASTIX_DEBUG_NAN
+/*
+ * Macro:  TAB_CHECK_NAN
+ *
+ * Check if any entry of the array is equal to NaN or infinity.
+ *
+ * Parameters:
+ *   tab  - The array to check.
+ *   size - The number of entries in the array.
+ */
+#define TAB_CHECK_NAN(tab, size)                \
+  do {                                          \
+    INT pdn_i;                                  \
+    for (pdn_i = 0; pdn_i < (size); pdn_i++)    \
+      {                                         \
+        CHECK_NAN((tab)[i]);                    \
+      }                                         \
+  } while (0)
+
+/*
+ * Macro:  CHECK_NAN
+ *
+ * Check if the argument is equal to NaN or infinity.
+ *
+ * Parameters:
+ *   expr - The value to check.
+ */
 #define CHECK_NAN(expr) {					\
     ASSERT_DEBUG(!isnan(expr), DBG_SOPALIN_NAN);		\
     ASSERT_DEBUG(!isinf(expr), DBG_SOPALIN_INF);		\
   }
 #else
+#define TAB_CHECK_NAN(tab, size)                \
+  do {                                          \
+  } while (0)
 #define CHECK_NAN(expr)
 #endif
 /*

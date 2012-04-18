@@ -7,7 +7,7 @@
    Structure used to store datas for a step by step execution.
 */
 
-typedef struct pastix_data_t {
+struct pastix_data_t {
   SolverMatrix     solvmatr;         /*+ Matrix informations                                                 +*/
   SopalinParam     sopar;            /*+ Sopalin parameters                                                  +*/
   Order            ordemesh;         /*+ Order                                                               +*/
@@ -67,6 +67,10 @@ typedef struct pastix_data_t {
   FLOAT           *iscalerowtab;
   FLOAT           *scalecoltab;
   FLOAT           *iscalecoltab;
-} pastix_data_t;
+#ifdef WITH_SEM_BARRIER
+  sem_t           *sem_barrier;      /*+ Semaphore used for AUTOSPLIT_COMM barrier                           +*/
+#endif
+  INT              pastix_id;        /*+ Id of the pastix instance (PID of first MPI task)                   +*/
+};
 
 #endif /* PASTIX_STR_H */

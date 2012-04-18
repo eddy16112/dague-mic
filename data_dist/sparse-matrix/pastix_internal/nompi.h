@@ -117,39 +117,38 @@ typedef struct MPI_Status{
 
 #define MPI_Gather(sendbuf, sendcount, sendtype, recvbuf,   \
                    recvcount, recvtype, root, comm)         \
-  if (SOLV_PROCNUM == root)                                 \
-    {                                                       \
-      switch (sendtype) {                                   \
-      case MPI_INT:                                         \
-        memcpy(recvbuf,sendbuf,sendcount*sizeof(int));      \
+  do {                                                      \
+    switch (sendtype) {                                     \
+    case MPI_INT:                                           \
+      memcpy(recvbuf,sendbuf,sendcount*sizeof(int));        \
+      break;                                                \
+    case MPI_LONG:                                          \
+      memcpy(recvbuf,sendbuf,sendcount*sizeof(long));       \
+      break;                                                \
+    case MPI_INTEGER4:                                      \
+      memcpy(recvbuf,sendbuf,sendcount*sizeof(int32_t));    \
         break;                                              \
-      case MPI_LONG:                                        \
-        memcpy(recvbuf,sendbuf,sendcount*sizeof(long));     \
-        break;                                              \
-      case MPI_INTEGER4:                                    \
-        memcpy(recvbuf,sendbuf,sendcount*sizeof(int32_t));  \
-        break;                                              \
-      case MPI_INTEGER8:                                    \
-        memcpy(recvbuf,sendbuf,sendcount*sizeof(int64_t));  \
-        break;                                              \
-      case MPI_FLOAT:                                       \
-        memcpy(recvbuf,sendbuf,sendcount*sizeof(float));    \
-        break;                                              \
-      case MPI_DOUBLE:                                      \
-        memcpy(recvbuf,sendbuf,sendcount*sizeof(double));   \
-        break;                                              \
-      case MPI_COMPLEX:                                     \
-        memcpy(recvbuf,sendbuf,sendcount*2*sizeof(float));  \
-        break;                                              \
-      case MPI_DOUBLE_COMPLEX:                              \
-        memcpy(recvbuf,sendbuf,sendcount*2*sizeof(double)); \
-        break;                                              \
-      default:                                              \
-        fprintf(stderr,"error in #define MPI_Gather\n");    \
-      }                                                     \
-    }
+    case MPI_INTEGER8:                                      \
+      memcpy(recvbuf,sendbuf,sendcount*sizeof(int64_t));    \
+      break;                                                \
+    case MPI_FLOAT:                                         \
+      memcpy(recvbuf,sendbuf,sendcount*sizeof(float));      \
+      break;                                                \
+    case MPI_DOUBLE:                                        \
+      memcpy(recvbuf,sendbuf,sendcount*sizeof(double));     \
+      break;                                                \
+    case MPI_COMPLEX:                                       \
+      memcpy(recvbuf,sendbuf,sendcount*2*sizeof(float));    \
+      break;                                                \
+    case MPI_DOUBLE_COMPLEX:                                \
+      memcpy(recvbuf,sendbuf,sendcount*2*sizeof(double));   \
+      break;                                                \
+    default:                                                \
+      fprintf(stderr,"error in #define MPI_Gather\n");      \
+    }                                                       \
+  } while(0)
 
-#define MPI_Allreduce(sendbuf, recvbuf, count, datatype, op, comm)	\
+#define MPI_Allreduce(sendbuf, recvbuf, count, datatype, op, comm)  \
   switch (datatype) {                                               \
   case MPI_INT:                                                     \
     memcpy(recvbuf,sendbuf,count*sizeof(int));                      \

@@ -26,9 +26,12 @@ int main(int argc, char ** argv)
 #endif
 
     /* Set defaults for non argv iparams/sparam */
-    param_default(iparam, sparam);
+    param_default(iparam, sparam); /* setup default params (e.g., nodes = 1) *
+								    * see dsparse/testing/common.c           */
 
     /* Initialize DAGuE */
+	/* setup DAGue (e.g., dague_init(iparam[IPARAM_NCORES], &argc, &argv)) *
+     * see dsparse/testing/common.c                                        */
     dague = setup_dague(argc, argv, iparam, sparam);
     PASTE_CODE_IPARAM_LOCALS(iparam);
 
@@ -41,18 +44,22 @@ int main(int argc, char ** argv)
         return 1;
     }
     /* initializing matrix structure */
-    PASTE_CODE_INIT_CONTEXT( dspctxt, factotype );
+    PASTE_CODE_INIT_CONTEXT( dspctxt, factotype ); /* init matrix data structure (e.g., _dspctxt.colptr = NULL; ) *
+													* see dsparse/testing/common.h                                */
 
     /* Initialize the descriptor */
     sparse_matrix_desc_t ddescA;
     sparse_matrix_init( &ddescA, spmtx_ComplexDouble, nodes, cores, rank );
-    dspctxt.desc = &ddescA;
+    dspctxt.desc = &ddescA;      /* setup matrix parameters (e.g., desc->super.cores   = cores) *
+								  * see data_dist/sparse-matrix/sparse-matrix.c                 */
 
     sparse_vector_desc_t ddescB;
     sparse_vector_init( &ddescB, spmtx_ComplexDouble, nodes, cores, rank );
     dspctxt.rhsdesc = &ddescB;
 
     /* Read the matrix files */
+	/* 1) call PaStIx for API_TASK_ORDERING, ..,  API_TASK_ANALYSE; *
+     * 2) allocate space to store factors                           */
     flops = sparse_matrix_zrdmtx( &dspctxt );
     
     if ( check ) {
@@ -75,6 +82,9 @@ int main(int argc, char ** argv)
 #endif
 
     /* Initialize the matrix */
+	/* call sparse_matrix_zcsc2cblk for each block column *
+	 * DAGUe is used to setup columns in parallel         *
+	 * solvmatr->cscmtx -> descA->pastix_data->solvmatr   */
     dsparse_zcsc2cblk( dague, &ddescA );
 
     if ( loud && rank == 0 ) {
