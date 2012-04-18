@@ -24,23 +24,23 @@
 #include "data_distribution.h"
 
 void magmablas_sgemm_SM11( char TRANSA, char TRANSB, int m , int n , int k,
-                           float alpha, const float *d_A, int lda,
-                                        const float *d_B, int ldb,
-                           float beta,        float *d_C, int ldc,
+                           float alpha, float *d_A, int lda,
+                                        float *d_B, int ldb,
+                           float beta,  float *d_C, int ldc,
                            int blocknbr, const int *blocktab, int fblocknbr, const int *fblocktab,
                            CUstream stream );
 
 void magmablas_sgemm_SM13( char TRANSA, char TRANSB, int m , int n , int k ,
-                           float alpha, const float *d_A, int lda,
-                                        const float *d_B, int ldb,
-                           float beta,        float *d_C, int ldc,
+                           float alpha, float *d_A, int lda,
+                                        float *d_B, int ldb,
+                           float beta,  float *d_C, int ldc,
                            int blocknbr, const int *blocktab, int fblocknbr, const int *fblocktab,
                            CUstream stream );
 
 void magmablas_sgemm_SM20( char TRANSA, char TRANSB, int m , int n , int k ,
-                           float alpha, const float *d_A, int lda,
-                                        const float *d_B, int ldb,
-                           float beta,        float *d_C, int ldc,
+                           float alpha, float *d_A, int lda,
+                                        float *d_B, int ldb,
+                           float beta,  float *d_C, int ldc,
                            int blocknbr, const int *blocktab, int fblocknbr, const int *fblocktab,
                            CUstream stream );
 
@@ -199,6 +199,8 @@ int sparse_sgemm_cuda_init( dague_context_t* dague_context, sparse_matrix_desc_t
         /* If not disallowed by env, load from static linked kernels */
         /* This is non functional, as the ptr is not a CuFunction. */
         gpu_device->hcuFunction = NULL;
+
+#ifdef OLDKERNEL
         env = getenv("DAGUE_CUBIN_NOSTATIC");
         if( !env || (('1' != env[0]) && ('y' != env[0])) ) {
             void* dlh;
@@ -221,8 +223,8 @@ int sparse_sgemm_cuda_init( dague_context_t* dague_context, sparse_matrix_desc_t
                                         WARNING(("GPU:\tUnable to load `%s'\n", module_path));
                                         continue;
                                     } );
-            snprintf(module_path, FILENAME_MAX, 
-                     "sgemm_nt_SM%d%d", 
+            snprintf(module_path, FILENAME_MAX,
+                     "sgemm_nt_SM%d%d",
                      gpu_device->major, gpu_device->minor);
             DEBUG3(("CUDA MODULE %s\n", module_path));
             status = cuModuleGetFunction( &(gpu_device->hcuFunction), gpu_device->hcuModule, module_path );
@@ -235,6 +237,7 @@ int sparse_sgemm_cuda_init( dague_context_t* dague_context, sparse_matrix_desc_t
         if(NULL == gpu_device->hcuFunction) return -1;
 
         cuFuncSetBlockShape( gpu_device->hcuFunction, 16, 4, 1 );
+#endif
 
         /*
          * Transfer the blocktab before to allocate the chunks of memory
