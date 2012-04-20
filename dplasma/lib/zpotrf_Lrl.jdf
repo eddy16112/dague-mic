@@ -32,7 +32,7 @@ extern "C" %{
 #include "gpu_data.h"
 #include "dplasma/cores/cuda_zgemm.h"
 extern int *gpu_counter;
-extern dague_gpu_data_map_t *gpu_data_A;
+extern dague_gpu_data_map_t dague_gpu_map;
 #endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
 
 #define MYGEMM
@@ -114,27 +114,28 @@ RW T <- (k == 0) ? A(k, k) : T HERK(k-1, k)
      -> T TRSM(k+1..descA.mt-1, k)
      -> A(k, k)
 
-/*
+
 ; inline_c %{
     if (descA.mb == SMALL_TILE_THRESHOLD) {
 //        printf("small\n");
-        return (k >= (descA.mt - PRI_CHANGE)) ? (descA.mt - k) * (descA.mt - k) * (descA.mt - k) : 0x7fffffff;
+        return (k >= (descA.mt - PRI_CHANGE)) ? (descA.mt - k) * (descA.mt - k) * (descA.mt - k) : 0x7fffffff-1;
     } else {
         return (k >= (descA.mt - PRI_CHANGE)) ? (descA.mt - k) * (descA.mt - k) * (descA.mt - k) : 1000000000;
     } 
 %}
-*/
 
-; (k >= (descA.mt - PRI_CHANGE)) ? (descA.mt - k) * (descA.mt - k) * (descA.mt - k) : 1000000000
+
+//; (k >= (descA.mt - PRI_CHANGE)) ? (descA.mt - k) * (descA.mt - k) * (descA.mt - k) : 1000000000
 //; (k >= (descA.mt - PRI_CHANGE)) ? (descA.mt - k + 7) * (descA.mt - k + 2) * (descA.mt - k) / 6 : 0
 
 BODY
+
     int tempkm = k == descA.mt-1 ? descA.m - k*descA.mb : descA.mb;
     int ldak = BLKLDD( descA, k );
 
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
     if (tempkm > GPU_TILE_THRESHOLD) {
-        gpu_mark_data_usage( gpu_data_A, DAGUE_READ | DAGUE_WRITE, k, k );
+        dague_gpu_update_data_version( &dague_gpu_map, GEMM_KEY(k, k) );
     }
 #endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
 
@@ -160,7 +161,7 @@ BODY
         potrf_cb_data->A = (dague_ddesc_t *) small_descT;
         potrf_cb_data->cb_kernel_type = KERNEL_POTRF;
         dague_set_complete_callback(dague_zpotrf, complete_recursive_dague_callback, (void *)potrf_cb_data);
-        dague_set_priority( dague_zpotrf, 0x7fffffff-1);
+        //dague_set_priority( dague_zpotrf, 0x7fffffff-1);
         dague_enqueue(context->master_context, dague_zpotrf);
  //       printf("POTRF DAGUE\n");
         return -1;
@@ -213,17 +214,17 @@ RW    C <- (k == 0) ? A(m, k) : C GEMM(k-1, m, k)
         -> B GEMM(k, m+1..descA.mt-1, m )
         -> A(m, k)
 
-/*
+
 ; inline_c %{
     if (descA.mb == SMALL_TILE_THRESHOLD) {
-        return (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - k - m - 1) * (m - k) : 0x7fffffff-1; 
+        return (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - k - m - 1) * (m - k) : 0x7fffffff-2; 
     } else {
         return (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - k - m - 1) * (m - k) : 1000000000;
     } 
 %}
-*/
 
-; (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - k - m - 1) * (m - k) : 1000000000
+
+//; (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - k - m - 1) * (m - k) : 1000000000
 //;  (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m - k) * ((descA.mt - m - k + 1) / 2 + 2) - 1 + (descA.mt - m + 2) * (descA.mt - m + 1) * (descA.mt - m) / 6 : 0
 
 BODY
@@ -233,8 +234,7 @@ BODY
     int ldam = BLKLDD( descA, m );
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
     if (tempmm > GPU_TILE_THRESHOLD || descA.nb > GPU_TILE_THRESHOLD) {
-        gpu_mark_data_usage( gpu_data_A, DAGUE_READ, k, k );
-        gpu_mark_data_usage( gpu_data_A, DAGUE_READ | DAGUE_WRITE, m, k );
+        dague_gpu_update_data_version( &dague_gpu_map, GEMM_KEY(m, k) );
     }
 #endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
 
@@ -274,7 +274,7 @@ BODY
         trsm_cb_data->B = (dague_ddesc_t *) small_descC;
         trsm_cb_data->cb_kernel_type = KERNEL_TRSM;
         dague_set_complete_callback(dague_ztrsm, complete_recursive_dague_callback, (void *)trsm_cb_data);
-        dague_set_priority( dague_ztrsm, 0x7fffffff-2);
+        //dague_set_priority( dague_ztrsm, 0x7fffffff-2);
         dague_enqueue(context->master_context, dague_ztrsm);
         return -1;
 
@@ -325,17 +325,17 @@ READ  A <- C TRSM(m, k)
 RW    T <- (k == 0)   ? A(m, m)    : T HERK(k-1, m)
         -> (m == k+1) ? T POTRF(m) : T HERK(k+1, m)
 
-/*
+
 ; inline_c %{
     if (descA.mb == SMALL_TILE_THRESHOLD) {
-        return (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * (m - k) : 0x7fffffff-1;
+        return (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * (m - k) : 0x7fffffff-2;
     } else {
         return (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * (m - k) : 1000000000;
     }
 %}
-*/
 
-; (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * (m - k) : 1000000000
+
+//; (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * (m - k) : 1000000000
 //; (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m + 2) * (descA.mt - m + 1) * (descA.mt - m) / 6 + descA.mt - m + k + 1 : 0
 
 BODY
@@ -345,8 +345,7 @@ BODY
 
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
    if (tempmm > GPU_TILE_THRESHOLD || descA.mb > GPU_TILE_THRESHOLD) {
-        gpu_mark_data_usage( gpu_data_A, DAGUE_READ, m, k );
-        gpu_mark_data_usage( gpu_data_A, DAGUE_READ | DAGUE_WRITE, m, m );
+        dague_gpu_update_data_version( &dague_gpu_map, GEMM_KEY(m, m) );
     }
 #endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
 
@@ -382,7 +381,7 @@ BODY
         herk_cb_data->B = (dague_ddesc_t *) small_descT;
         herk_cb_data->cb_kernel_type = KERNEL_HERK;
         dague_set_complete_callback(dague_zherk, complete_recursive_dague_callback, (void *)herk_cb_data);
-        dague_set_priority( dague_zherk, 0x7fffffff-2);
+        //dague_set_priority( dague_zherk, 0x7fffffff-2);
         dague_enqueue(context->master_context, dague_zherk);
         return -1;
 
@@ -434,17 +433,17 @@ READ  B <- C TRSM(n, k)
 RW    C <- (k == 0)   ? A(m, n)      : C GEMM(k-1, m, n)
         -> (n == k+1) ? C TRSM(m, n) : C GEMM(k+1, m, n)
 
-/*
+
 ; inline_c %{
     if (descA.mb == SMALL_TILE_THRESHOLD) {
-        return (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - m - n - 3) * (m - n) + 6 * (m - k) : 0x7fffffff-2;
+        return (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - m - n - 3) * (m - n) + 6 * (m - k) : 0x7fffffff-3;
     } else {
-        return (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - m - n - 3) * (m - n) + 6 * (m - k) : 1000000000;
+        return (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - m - n - 3) * (m - n) + 6 * (m - k) : 0x7fffffff;
     }
 %}
-*/
 
-; (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - m - n - 3) * (m - n) + 6 * (m - k) : 2147483647
+
+//; (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m) * (descA.mt - m) * (descA.mt - m) + 3 * ((2 * descA.mt) - m - n - 3) * (m - n) + 6 * (m - k) : 2147483647
 //;  (m >= (descA.mt - PRI_CHANGE)) ? (descA.mt - m - n) * ((descA.mt - n - k + 1) / 2 + 2) - 1 + (descA.mt - m + 2) * (descA.mt - m + 1) * (descA.mt - m) / 6 + descA.mt - n + k + 1 : 0
 
 BODY
@@ -461,35 +460,30 @@ BODY
 #endif
 
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
-	 printf("GEMM: %d\n", descA.mb);
-     if (tempmm > GPU_TILE_THRESHOLD || descA.mb > GPU_TILE_THRESHOLD) {
-         gpu_mark_data_usage( gpu_data_A, DAGUE_READ, m, k );
-         gpu_mark_data_usage( gpu_data_A, DAGUE_READ, n, k );
+//	 printf("mark GPU GEMM: %d, m:%d, n:%d, k:%d\n", descA.mb, m, n, k);
+	if (tempmm > GPU_TILE_THRESHOLD || descA.mb > GPU_TILE_THRESHOLD) {
+		if( dague_active_gpu() > 0 ) {
+        	int rc;
+			if( 0 == (rc = gpu_zgemm( context, this_task, uplo )) )
+            	goto FIN;
+        	if( -1 == rc ) {
+            	/* We're done, but the task has been already destroyed */
+            	return -1;
+        	}
+        	if( -2 == rc ) {
+            	/* The GPU failed to execute this task, but the task was already rescheduled */
+	    		fprintf(stderr, "Unable to disable GPU at runtime. Fatal error.\n");
+	    		exit(2);
+        	}
+       	 	/* Continue with the task on the cores */
+    	}
+    	dague_gpu_update_data_version( &dague_gpu_map, GEMM_KEY(m, n) );
 
-         if( zgemm_cuda_ndevices() > 0 ) {
-             int rc;
-             rc = gpu_zgemm( context, this_task, uplo );
-             if( 0 == rc) {
-                 printf("rc 0\n");
-                 goto FIN;
-             }
-             if( -1 == rc ) {
-                 /* We're done, but the task has been already destroyed */
-                 return -1;
-             }
-             if( -2 == rc ) {
-                 /* The GPU failed to execute this task, but the task was already rescheduled */
-                 fprintf(stderr, "Unable to disable GPU at runtime. Fatal error.\n");
-                 exit(2);
-             }
-             fprintf(stderr, "#####continuing with the task on the cores\n");
-             /* Continue with the task on the cores */
-         }
-         gpu_mark_data_usage( gpu_data_A, DAGUE_READ | DAGUE_WRITE, m, n );
      }
      else {
          goto MYCPU;
      }
+
 #endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
 
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
@@ -531,7 +525,7 @@ MYCPU:
         gemm_cb_data->C = (dague_ddesc_t *) small_descC;
         gemm_cb_data->cb_kernel_type = KERNEL_GEMM;
         dague_set_complete_callback(dague_zgemm, complete_recursive_dague_callback, (void *)gemm_cb_data);
-        dague_set_priority( dague_zgemm, 0x7fffffff-3);
+        //dague_set_priority( dague_zgemm, 0x7fffffff-3);
         dague_enqueue(context->master_context, dague_zgemm);
         return -1;
 
