@@ -15,6 +15,9 @@
 void dplasma_zgemm( dague_context_t *dague, const int transA, const int transB,
                     const Dague_Complex64_t alpha, const tiled_matrix_desc_t* A, const tiled_matrix_desc_t* B,
                     const Dague_Complex64_t beta,  tiled_matrix_desc_t* C);
+void dplasma_zgemm_bcast( dague_context_t *dague, const int transA, const int transB,
+                    const Dague_Complex64_t alpha, const tiled_matrix_desc_t* A, const tiled_matrix_desc_t* B,
+                    const Dague_Complex64_t beta,  tiled_matrix_desc_t* C);
 int  dplasma_zhemm( dague_context_t *dague, const PLASMA_enum side, const PLASMA_enum uplo,
                     const Dague_Complex64_t alpha, const tiled_matrix_desc_t* A, const tiled_matrix_desc_t* B,
                     const double beta,  tiled_matrix_desc_t* C);
@@ -76,6 +79,9 @@ int dplasma_zhetrf(dague_context_t *dague, tiled_matrix_desc_t *A);
  */
 /* Level 3 Blas */
 dague_object_t* dplasma_zgemm_New( const int transa, const int transb,
+                                   const PLASMA_Complex64_t alpha, const tiled_matrix_desc_t *A, const tiled_matrix_desc_t *B,
+                                   const PLASMA_Complex64_t beta,  tiled_matrix_desc_t *C);
+dague_object_t* dplasma_zgemm_bcast_New( const int transa, const int transb,
                                    const PLASMA_Complex64_t alpha, const tiled_matrix_desc_t *A, const tiled_matrix_desc_t *B,
                                    const PLASMA_Complex64_t beta,  tiled_matrix_desc_t *C);
 dague_object_t* dplasma_zhemm_New( const PLASMA_enum side, const PLASMA_enum uplo,
@@ -141,6 +147,7 @@ dague_object_t* dplasma_zhetrf_New( tiled_matrix_desc_t *A, int *info);
  *               Destruct functions
  */
 void dplasma_zgemm_Destruct( dague_object_t *o );
+void dplasma_zgemm_bcast_Destruct( dague_object_t *o );
 void dplasma_zhemm_Destruct( dague_object_t *o );
 void dplasma_zherk_Destruct( dague_object_t *o );
 void dplasma_ztrmm_Destruct( dague_object_t *o );

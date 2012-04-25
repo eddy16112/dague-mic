@@ -10,6 +10,7 @@ include(RulesTestings.cmake)
 
 set(TESTS
   testing_zgemm.c
+  testing_zgemm_bcast.c
   testing_ztrmm.c
   testing_ztrsm.c
   testing_zpotrf.c

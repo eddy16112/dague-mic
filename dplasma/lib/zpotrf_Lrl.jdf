@@ -476,6 +476,7 @@ BODY
 	    		exit(2);
         	}
        	 	/* Continue with the task on the cores */
+			printf("continue on CPU\n");
     	}
     	dague_gpu_update_data_version( &dague_gpu_map, GEMM_KEY(m, n) );
 

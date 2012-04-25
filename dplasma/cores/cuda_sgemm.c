@@ -551,11 +551,11 @@ int gpu_sgemm( dague_execution_unit_t* eu_context,
         *  - plus "balancing" between CPU/GPU
         **/
 		//printf("i am here\n");
-		
+		/*
         if( ((m % OHM_M) == 0) && ( (n % OHM_N) == 0) ){
             dague_atomic_inc_32b( &(dague_cpu_counter) );
             return -99;
-        }
+        }*/
 #endif  /* DPLASMA_ONLY_GPU */
         gpu_load[which_gpu] += n;  /* keep n -- not being used yet*/
 #endif  /* DPLASMA_SCHEDULING */
