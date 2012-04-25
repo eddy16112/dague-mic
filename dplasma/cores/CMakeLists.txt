@@ -50,7 +50,8 @@ if(CUDA_FOUND)
       RENAME sgemm-sm_20.cubin)
 
     cuda_build_clean_target()
-    set(GPU_KERNEL_SOURCES cuda_sgemm.c cuda_stsmqr.c)
+    set(GPU_KERNEL_SOURCES cuda_sgemm.c)
+###    set(GPU_KERNEL_SOURCES cuda_sgemm.c cuda_stsmqr.c)
 
     set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS_BACKUP})
 else()
