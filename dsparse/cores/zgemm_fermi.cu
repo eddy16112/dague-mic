@@ -158,7 +158,12 @@ GENERATE_SM_VERSION_NAME(zgemm)( char TRANSA, char TRANSB, int m , int n , int k
     size_t offsetA = 0;
     size_t offsetB = 0;
 
+#if defined(PRECISION_z) || defined(PRECISION_c)
     int TransA = 2, TransB = 2;
+#else
+    int TransA = 1, TransB = 1;
+#endif
+
     if (TRANSA == 'T' ||  TRANSA == 't')
         TransA = 1;
     else
