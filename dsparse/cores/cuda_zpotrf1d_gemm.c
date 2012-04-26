@@ -386,7 +386,7 @@ gpu_kernel_pop_zpotrfsp1d( gpu_device_t* gpu_device,
     fprintf(stderr, "pop\n");
 
     /* Generic */
-    for( i = 0; i < 2/*this_task->function->nb_parameters*/; i++ ) {
+    for( i = 0; i < this_task->function->nb_parameters; i++ ) {
         gpu_elem = (gpu_elem_t*)this_task->data[i].mem2dev_data->device_elem[gpu_device->index];
         assert( gpu_elem->generic.memory_elem == this_task->data[i].mem2dev_data );
         if( this_task->function->in[i]->access_type & ACCESS_READ ) {
@@ -447,7 +447,7 @@ gpu_kernel_epilog_zpotrfsp1d( gpu_device_t* gpu_device,
     int i;
     
     fprintf(stderr, "Epilog\n");
-    for( i = 0; i < 2/*this_task->function->nb_parameters*/; i++ ) {
+    for( i = 0; i < this_task->function->nb_parameters; i++ ) {
         if( !(this_task->function->in[i]->access_type & ACCESS_WRITE) ) continue;
 
         gpu_elem = (gpu_elem_t*)this_task->data[i].mem2dev_data->device_elem[gpu_device->index];
