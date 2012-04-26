@@ -10,8 +10,11 @@
 #include "common.h"
 #include "data_dist/sparse-matrix/sparse-matrix.h"
 
-int sparse_sgemm_cuda_init( dague_context_t* context, sparse_matrix_desc_t *tileA );
-int sparse_sgemm_cuda_fini( dague_context_t* dague_context );
+#if defined(HAVE_CUDA)
+#include <cublas.h>
+#include "dsparse/cores/cuda_sparse.h"
+#include "dsparse/cores/cuda_zpotrf1d_gemm.h"
+#endif
 
 int main(int argc, char ** argv)
 {
@@ -72,11 +75,18 @@ int main(int argc, char ** argv)
     if(iparam[IPARAM_NGPUS] > 0)
         {
             if(loud) printf("+++ Load GPU kernel ... ");
-            if(0 != sparse_sgemm_cuda_init(dague, &ddescA))
+            if(0 != gpu_kernel_init_zpotrfsp1d(dague, 
+                                               (sparse_matrix_desc_t*)&ddescA))
                 {
                     fprintf(stderr, "XXX Unable to load GPU kernel.\n");
                     exit(3);
                 }
+            int cblknbr = sparse_register_bloktab( dague, 
+                                     (sparse_matrix_desc_t*)&ddescA);
+            dague_gpu_data_register(dague,
+                                    (dague_ddesc_t*)&ddescA,
+                                    cblknbr, 
+                                    sizeof(Dague_Complex64_t) );
             if(loud) printf("Done\n");
         }
 #endif
@@ -180,14 +190,17 @@ int main(int argc, char ** argv)
     }
     sparse_matrix_zclean( &dspctxt );
     
-    sparse_matrix_destroy( &ddescA );
-    sparse_vector_destroy( &ddescB );
-
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
     if(iparam[IPARAM_NGPUS] > 0) {
-        sparse_sgemm_cuda_fini(dague);
+        dague_gpu_data_unregister();
+        sparse_unregister_bloktab(dague, 
+                                  (sparse_matrix_desc_t*)&ddescA);
+        dague_gpu_kernel_fini(dague, "gemm");
     }
 #endif
+
+    sparse_matrix_destroy( &ddescA );
+    sparse_vector_destroy( &ddescB );
 
     cleanup_dague(dague, iparam, sparam);
     

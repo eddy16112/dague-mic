@@ -21,9 +21,9 @@ extern "C" %{
 
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
 #include "gpu_data.h"
-#include "dsparse/cores/cuda_sparse_sgemm.h"
+#include "dsparse/cores/cuda_zpotrf1d_gemm.h"
 extern int *gpu_counter;
-extern dague_gpu_data_map_t *gpu_data_A;
+extern dague_gpu_data_map_t dague_gpu_map;
 #endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
 %}
 
@@ -62,7 +62,7 @@ RW A <- ( browk == browk1 ) ? A(k) : C GEMM( lastbrow )
 
 BODY
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
-      sparse_gpu_mark_data_usage( gpu_data_A, DAGUE_READ | DAGUE_WRITE, k );
+      dague_gpu_update_data_version( &dague_gpu_map, KERNEL_KEY( k ) );
 #endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
 
       DRYRUN(
@@ -107,11 +107,10 @@ BODY
                    "thread %d compute_1dgemm START ( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
                    context->eu_id, k, fcblk, cblk, prev, next);
 
-          sparse_gpu_mark_data_usage( gpu_data_A, DAGUE_READ, cblk );
-          if( sparse_sgemm_cuda_ndevices() > 0 ) {
+          if( dague_active_gpu() > 0 ) {
               int rc;
               
-              if( 0 == (rc = sparse_gpu_sgemm( context, this_task )) ) {
+              if( 0 == (rc = gpu_zpotrfsp1d( context, this_task )) ) {
                   printlog(
                            "thread %d compute_1dgemm( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d ) - GPU(0)\n",
                            context->eu_id, k, fcblk, cblk, prev, next);
@@ -131,7 +130,7 @@ BODY
               }
               /* Continue with the task on the cores */
           }
-          sparse_gpu_mark_data_usage( gpu_data_A, DAGUE_READ | DAGUE_WRITE, fcblk );
+          dague_gpu_update_data_version( &dague_gpu_map, KERNEL_KEY( fcblk ) );
 #endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
 
           Dague_Complex64_t *work = (Dague_Complex64_t *)dague_private_memory_pop( p_work );

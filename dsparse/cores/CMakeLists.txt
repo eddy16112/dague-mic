@@ -25,7 +25,6 @@ set(CUDA_NVCC_FLAGS_11 -maxrregcount 32 -arch sm_11 -DCUDA_SM_VERSION=11 ${CUDA_
 set(CUDA_NVCC_FLAGS_13 -maxrregcount 32 -arch sm_13 -DCUDA_SM_VERSION=13 ${CUDA_NVCC_FLAGS_BACKUP})
 set(CUDA_NVCC_FLAGS_20 -arch sm_20 -DCUDA_SM_VERSION=20 ${CUDA_NVCC_FLAGS_BACKUP})
 
-
 ### Generate the CUDA kernels if necessary
 if(CUDA_FOUND)
     set(CUDA_BUILD_CUBIN ON)
@@ -72,8 +71,21 @@ if(CUDA_FOUND)
     endforeach()
 
 #    cuda_build_clean_target()
-    set(GPU_KERNEL_SOURCES cuda_sparse_sgemm.c)
-    
+
+    precisions_rules_py(gpu_generated_headers
+                        cuda_zpotrf1d_gemm.h
+                        PRECISIONS "${DPLASMA_PRECISIONS}")
+
+    precisions_rules_py(gpu_generated_sources
+                        cuda_zpotrf1d_gemm.c
+                        PRECISIONS "${DPLASMA_PRECISIONS}")
+
+    set(GPU_KERNEL_SOURCES 
+             cuda_sparse.h
+             ${gpu_generated_headers}
+             cuda_sparse.c
+             ${gpu_generated_sources})
+
     set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS_BACKUP})
 else()
     set(GPU_KERNEL_SOURCES "")
