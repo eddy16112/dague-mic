@@ -26,5 +26,4 @@ typedef struct dague_zgemm_NN_bcast_object {
 } dague_zgemm_NN_bcast_object_t;
 
 extern dague_zgemm_NN_bcast_object_t *dague_zgemm_NN_bcast_new(int transA, int transB, Dague_Complex64_t alpha, Dague_Complex64_t beta, tiled_matrix_desc_t descA, dague_ddesc_t * A /* data A */, tiled_matrix_desc_t descB, dague_ddesc_t * B /* data B */, tiled_matrix_desc_t descC, dague_ddesc_t * C /* data C */);
-extern void dague_zgemm_NN_bcast_destroy( dague_zgemm_NN_bcast_object_t *o );
 #endif /* _zgemm_NN_bcast_h_ */ 

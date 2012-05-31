@@ -175,9 +175,6 @@ static const dague_function_t zgemm_NN_bcast_C = {
   .hook = NULL,
   .release_deps = NULL,
   .body = NULL,
-#if defined(DAGUE_SCHED_CACHE_AWARE)
-  .cache_rank_function = NULL,
-#endif /* defined(DAGUE_SCHED_CACHE_AWARE) */
 };
 static const dague_function_t zgemm_NN_bcast_B = {
   .name = "B",
@@ -195,9 +192,6 @@ static const dague_function_t zgemm_NN_bcast_B = {
   .hook = NULL,
   .release_deps = NULL,
   .body = NULL,
-#if defined(DAGUE_SCHED_CACHE_AWARE)
-  .cache_rank_function = NULL,
-#endif /* defined(DAGUE_SCHED_CACHE_AWARE) */
 };
 static const dague_function_t zgemm_NN_bcast_A = {
   .name = "A",
@@ -215,9 +209,6 @@ static const dague_function_t zgemm_NN_bcast_A = {
   .hook = NULL,
   .release_deps = NULL,
   .body = NULL,
-#if defined(DAGUE_SCHED_CACHE_AWARE)
-  .cache_rank_function = NULL,
-#endif /* defined(DAGUE_SCHED_CACHE_AWARE) */
 };
 
 /** Predeclarations of the parameters */
@@ -254,7 +245,7 @@ static const expr_t maxexpr_of_symb_zgemm_NN_bcast_GEMM_m = {
   .op = EXPR_OP_INLINE,
   .inline_func = maxexpr_of_symb_zgemm_NN_bcast_GEMM_m_fct
 };
-static const symbol_t symb_zgemm_NN_bcast_GEMM_m = {.min = &minexpr_of_symb_zgemm_NN_bcast_GEMM_m, .max = &maxexpr_of_symb_zgemm_NN_bcast_GEMM_m, .cst_inc = 1, .expr_inc = NULL,  .flags = 0x0};
+static const symbol_t symb_zgemm_NN_bcast_GEMM_m = { .name = "m", .context_index = 0, .min = &minexpr_of_symb_zgemm_NN_bcast_GEMM_m, .max = &maxexpr_of_symb_zgemm_NN_bcast_GEMM_m, .cst_inc = 1, .expr_inc = NULL,  .flags = 0x0};
 
 static inline int minexpr_of_symb_zgemm_NN_bcast_GEMM_n_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
 {
@@ -280,7 +271,7 @@ static const expr_t maxexpr_of_symb_zgemm_NN_bcast_GEMM_n = {
   .op = EXPR_OP_INLINE,
   .inline_func = maxexpr_of_symb_zgemm_NN_bcast_GEMM_n_fct
 };
-static const symbol_t symb_zgemm_NN_bcast_GEMM_n = {.min = &minexpr_of_symb_zgemm_NN_bcast_GEMM_n, .max = &maxexpr_of_symb_zgemm_NN_bcast_GEMM_n, .cst_inc = 1, .expr_inc = NULL,  .flags = 0x0};
+static const symbol_t symb_zgemm_NN_bcast_GEMM_n = { .name = "n", .context_index = 1, .min = &minexpr_of_symb_zgemm_NN_bcast_GEMM_n, .max = &maxexpr_of_symb_zgemm_NN_bcast_GEMM_n, .cst_inc = 1, .expr_inc = NULL,  .flags = 0x0};
 
 static inline int minexpr_of_symb_zgemm_NN_bcast_GEMM_k_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
 {
@@ -306,7 +297,7 @@ static const expr_t maxexpr_of_symb_zgemm_NN_bcast_GEMM_k = {
   .op = EXPR_OP_INLINE,
   .inline_func = maxexpr_of_symb_zgemm_NN_bcast_GEMM_k_fct
 };
-static const symbol_t symb_zgemm_NN_bcast_GEMM_k = {.min = &minexpr_of_symb_zgemm_NN_bcast_GEMM_k, .max = &maxexpr_of_symb_zgemm_NN_bcast_GEMM_k, .cst_inc = 1, .expr_inc = NULL,  .flags = 0x0};
+static const symbol_t symb_zgemm_NN_bcast_GEMM_k = { .name = "k", .context_index = 2, .min = &minexpr_of_symb_zgemm_NN_bcast_GEMM_k, .max = &maxexpr_of_symb_zgemm_NN_bcast_GEMM_k, .cst_inc = 1, .expr_inc = NULL,  .flags = 0x0};
 
 static inline int pred_of_zgemm_NN_bcast_GEMM_as_expr_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
 {
@@ -432,7 +423,7 @@ static const dep_t flow_of_zgemm_NN_bcast_GEMM_for_A_dep1_iffalse_atline_88 = {
     &expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep1_iffalse_atline_88
   }
 };
-static inline int expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_atline_89_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
+static inline int expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
 {
   const __dague_zgemm_NN_bcast_internal_object_t *__dague_object = (const __dague_zgemm_NN_bcast_internal_object_t*)__dague_object_parent;
   int n = assignments[1].value;
@@ -440,11 +431,11 @@ static inline int expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue
   (void)__dague_object; (void)assignments;
   return (n == 0);
 }
-static const expr_t expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_atline_89 = {
+static const expr_t expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89 = {
   .op = EXPR_OP_INLINE,
-  .inline_func = expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_atline_89_fct
+  .inline_func = expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89_fct
 };
-static inline int expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_atline_89_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
+static inline int expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
 {
   const __dague_zgemm_NN_bcast_internal_object_t *__dague_object = (const __dague_zgemm_NN_bcast_internal_object_t*)__dague_object_parent;
   int m = assignments[0].value;
@@ -452,11 +443,11 @@ static inline int expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_a
   (void)__dague_object; (void)assignments;
   return m;
 }
-static const expr_t expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_atline_89 = {
+static const expr_t expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89 = {
   .op = EXPR_OP_INLINE,
-  .inline_func = expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_atline_89_fct
+  .inline_func = expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89_fct
 };
-static inline int rangemin_of_expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_atline_89_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
+static inline int rangemin_of_expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
 {
   const __dague_zgemm_NN_bcast_internal_object_t *__dague_object = (const __dague_zgemm_NN_bcast_internal_object_t*)__dague_object_parent;
 
@@ -464,11 +455,11 @@ static inline int rangemin_of_expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_d
   (void)__dague_object; (void)assignments;
   return 1;
 }
-static const expr_t rangemin_of_expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_atline_89 = {
+static const expr_t rangemin_of_expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89 = {
   .op = EXPR_OP_INLINE,
-  .inline_func = rangemin_of_expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_atline_89_fct
+  .inline_func = rangemin_of_expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89_fct
 };
-static inline int rangemax_of_expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_atline_89_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
+static inline int rangemax_of_expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
 {
   const __dague_zgemm_NN_bcast_internal_object_t *__dague_object = (const __dague_zgemm_NN_bcast_internal_object_t*)__dague_object_parent;
 
@@ -476,19 +467,19 @@ static inline int rangemax_of_expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_d
   (void)__dague_object; (void)assignments;
   return (descC.nt - 1);
 }
-static const expr_t rangemax_of_expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_atline_89 = {
+static const expr_t rangemax_of_expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89 = {
   .op = EXPR_OP_INLINE,
-  .inline_func = rangemax_of_expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_atline_89_fct
+  .inline_func = rangemax_of_expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89_fct
 };
-static const expr_t expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_atline_89 = {
+static const expr_t expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89 = {
   .op = EXPR_OP_RANGE_CST_INCREMENT,
   .u_expr.range = {
-    .op1 = &rangemin_of_expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_atline_89,
-    .op2 = &rangemax_of_expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_atline_89,
+    .op1 = &rangemin_of_expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89,
+    .op2 = &rangemax_of_expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89,
     .increment.cst = 1
   }
 };
-static inline int expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_atline_89_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
+static inline int expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
 {
   const __dague_zgemm_NN_bcast_internal_object_t *__dague_object = (const __dague_zgemm_NN_bcast_internal_object_t*)__dague_object_parent;
   int k = assignments[2].value;
@@ -496,64 +487,19 @@ static inline int expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_a
   (void)__dague_object; (void)assignments;
   return k;
 }
-static const expr_t expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_atline_89 = {
+static const expr_t expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89 = {
   .op = EXPR_OP_INLINE,
-  .inline_func = expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_atline_89_fct
+  .inline_func = expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89_fct
 };
-static const dep_t flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_atline_89 = {
-  .cond = &expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_atline_89,
+static const dep_t flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89 = {
+  .cond = &expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89,
   .dague = &zgemm_NN_bcast_GEMM,
   .flow = &flow_of_zgemm_NN_bcast_GEMM_for_A,
   .datatype = { .index = DAGUE_zgemm_NN_bcast_DEFAULT_ARENA, .index_fct = NULL,.nb_elt = 1, .nb_elt_fct = NULL },
   .call_params = {
-    &expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_atline_89,
-    &expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_atline_89,
-    &expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_atline_89
-  }
-};
-static inline int expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iffalse_atline_89_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
-{
-  const __dague_zgemm_NN_bcast_internal_object_t *__dague_object = (const __dague_zgemm_NN_bcast_internal_object_t*)__dague_object_parent;
-  int n = assignments[1].value;
-
-  (void)__dague_object; (void)assignments;
-  return !(n == 0);
-}
-static const expr_t expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iffalse_atline_89 = {
-  .op = EXPR_OP_INLINE,
-  .inline_func = expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iffalse_atline_89_fct
-};
-static inline int expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iffalse_atline_89_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
-{
-  const __dague_zgemm_NN_bcast_internal_object_t *__dague_object = (const __dague_zgemm_NN_bcast_internal_object_t*)__dague_object_parent;
-  int m = assignments[0].value;
-
-  (void)__dague_object; (void)assignments;
-  return m;
-}
-static const expr_t expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iffalse_atline_89 = {
-  .op = EXPR_OP_INLINE,
-  .inline_func = expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iffalse_atline_89_fct
-};
-static inline int expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iffalse_atline_89_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
-{
-  const __dague_zgemm_NN_bcast_internal_object_t *__dague_object = (const __dague_zgemm_NN_bcast_internal_object_t*)__dague_object_parent;
-  int k = assignments[2].value;
-
-  (void)__dague_object; (void)assignments;
-  return k;
-}
-static const expr_t expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iffalse_atline_89 = {
-  .op = EXPR_OP_INLINE,
-  .inline_func = expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iffalse_atline_89_fct
-};
-static const dep_t flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iffalse_atline_89 = {
-  .cond = &expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iffalse_atline_89,
-  .dague = &zgemm_NN_bcast_A,
-  .datatype = { .index = DAGUE_zgemm_NN_bcast_DEFAULT_ARENA, .index_fct = NULL,.nb_elt = 1, .nb_elt_fct = NULL },
-  .call_params = {
-    &expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iffalse_atline_89,
-    &expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iffalse_atline_89
+    &expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89,
+    &expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89,
+    &expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89
   }
 };
 static const dague_flow_t flow_of_zgemm_NN_bcast_GEMM_for_A = {
@@ -562,7 +508,7 @@ static const dague_flow_t flow_of_zgemm_NN_bcast_GEMM_for_A = {
   .access_type = ACCESS_READ,
   .flow_index = 0,
   .dep_in  = { &flow_of_zgemm_NN_bcast_GEMM_for_A_dep1_iftrue_atline_88, &flow_of_zgemm_NN_bcast_GEMM_for_A_dep1_iffalse_atline_88 },
-  .dep_out = { &flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iftrue_atline_89, &flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_iffalse_atline_89 }
+  .dep_out = { &flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89 }
 };
 
 static inline int expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep1_iftrue_atline_90_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
@@ -670,7 +616,7 @@ static const dep_t flow_of_zgemm_NN_bcast_GEMM_for_B_dep1_iffalse_atline_90 = {
     &expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep1_iffalse_atline_90
   }
 };
-static inline int expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_atline_91_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
+static inline int expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
 {
   const __dague_zgemm_NN_bcast_internal_object_t *__dague_object = (const __dague_zgemm_NN_bcast_internal_object_t*)__dague_object_parent;
   int m = assignments[0].value;
@@ -678,11 +624,11 @@ static inline int expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue
   (void)__dague_object; (void)assignments;
   return (m == 0);
 }
-static const expr_t expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_atline_91 = {
+static const expr_t expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91 = {
   .op = EXPR_OP_INLINE,
-  .inline_func = expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_atline_91_fct
+  .inline_func = expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91_fct
 };
-static inline int rangemin_of_expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_atline_91_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
+static inline int rangemin_of_expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
 {
   const __dague_zgemm_NN_bcast_internal_object_t *__dague_object = (const __dague_zgemm_NN_bcast_internal_object_t*)__dague_object_parent;
 
@@ -690,11 +636,11 @@ static inline int rangemin_of_expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_d
   (void)__dague_object; (void)assignments;
   return 1;
 }
-static const expr_t rangemin_of_expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_atline_91 = {
+static const expr_t rangemin_of_expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91 = {
   .op = EXPR_OP_INLINE,
-  .inline_func = rangemin_of_expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_atline_91_fct
+  .inline_func = rangemin_of_expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91_fct
 };
-static inline int rangemax_of_expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_atline_91_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
+static inline int rangemax_of_expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
 {
   const __dague_zgemm_NN_bcast_internal_object_t *__dague_object = (const __dague_zgemm_NN_bcast_internal_object_t*)__dague_object_parent;
 
@@ -702,19 +648,19 @@ static inline int rangemax_of_expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_d
   (void)__dague_object; (void)assignments;
   return descC.mt;
 }
-static const expr_t rangemax_of_expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_atline_91 = {
+static const expr_t rangemax_of_expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91 = {
   .op = EXPR_OP_INLINE,
-  .inline_func = rangemax_of_expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_atline_91_fct
+  .inline_func = rangemax_of_expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91_fct
 };
-static const expr_t expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_atline_91 = {
+static const expr_t expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91 = {
   .op = EXPR_OP_RANGE_CST_INCREMENT,
   .u_expr.range = {
-    .op1 = &rangemin_of_expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_atline_91,
-    .op2 = &rangemax_of_expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_atline_91,
+    .op1 = &rangemin_of_expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91,
+    .op2 = &rangemax_of_expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91,
     .increment.cst = 1
   }
 };
-static inline int expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_atline_91_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
+static inline int expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
 {
   const __dague_zgemm_NN_bcast_internal_object_t *__dague_object = (const __dague_zgemm_NN_bcast_internal_object_t*)__dague_object_parent;
   int n = assignments[1].value;
@@ -722,11 +668,11 @@ static inline int expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_a
   (void)__dague_object; (void)assignments;
   return n;
 }
-static const expr_t expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_atline_91 = {
+static const expr_t expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91 = {
   .op = EXPR_OP_INLINE,
-  .inline_func = expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_atline_91_fct
+  .inline_func = expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91_fct
 };
-static inline int expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_atline_91_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
+static inline int expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
 {
   const __dague_zgemm_NN_bcast_internal_object_t *__dague_object = (const __dague_zgemm_NN_bcast_internal_object_t*)__dague_object_parent;
   int k = assignments[2].value;
@@ -734,64 +680,19 @@ static inline int expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_a
   (void)__dague_object; (void)assignments;
   return k;
 }
-static const expr_t expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_atline_91 = {
+static const expr_t expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91 = {
   .op = EXPR_OP_INLINE,
-  .inline_func = expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_atline_91_fct
+  .inline_func = expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91_fct
 };
-static const dep_t flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_atline_91 = {
-  .cond = &expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_atline_91,
+static const dep_t flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91 = {
+  .cond = &expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91,
   .dague = &zgemm_NN_bcast_GEMM,
   .flow = &flow_of_zgemm_NN_bcast_GEMM_for_B,
   .datatype = { .index = DAGUE_zgemm_NN_bcast_DEFAULT_ARENA, .index_fct = NULL,.nb_elt = 1, .nb_elt_fct = NULL },
   .call_params = {
-    &expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_atline_91,
-    &expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_atline_91,
-    &expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_atline_91
-  }
-};
-static inline int expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iffalse_atline_91_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
-{
-  const __dague_zgemm_NN_bcast_internal_object_t *__dague_object = (const __dague_zgemm_NN_bcast_internal_object_t*)__dague_object_parent;
-  int m = assignments[0].value;
-
-  (void)__dague_object; (void)assignments;
-  return !(m == 0);
-}
-static const expr_t expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iffalse_atline_91 = {
-  .op = EXPR_OP_INLINE,
-  .inline_func = expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iffalse_atline_91_fct
-};
-static inline int expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iffalse_atline_91_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
-{
-  const __dague_zgemm_NN_bcast_internal_object_t *__dague_object = (const __dague_zgemm_NN_bcast_internal_object_t*)__dague_object_parent;
-  int k = assignments[2].value;
-
-  (void)__dague_object; (void)assignments;
-  return k;
-}
-static const expr_t expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iffalse_atline_91 = {
-  .op = EXPR_OP_INLINE,
-  .inline_func = expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iffalse_atline_91_fct
-};
-static inline int expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iffalse_atline_91_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
-{
-  const __dague_zgemm_NN_bcast_internal_object_t *__dague_object = (const __dague_zgemm_NN_bcast_internal_object_t*)__dague_object_parent;
-  int n = assignments[1].value;
-
-  (void)__dague_object; (void)assignments;
-  return n;
-}
-static const expr_t expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iffalse_atline_91 = {
-  .op = EXPR_OP_INLINE,
-  .inline_func = expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iffalse_atline_91_fct
-};
-static const dep_t flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iffalse_atline_91 = {
-  .cond = &expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iffalse_atline_91,
-  .dague = &zgemm_NN_bcast_B,
-  .datatype = { .index = DAGUE_zgemm_NN_bcast_DEFAULT_ARENA, .index_fct = NULL,.nb_elt = 1, .nb_elt_fct = NULL },
-  .call_params = {
-    &expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iffalse_atline_91,
-    &expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iffalse_atline_91
+    &expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91,
+    &expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91,
+    &expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91
   }
 };
 static const dague_flow_t flow_of_zgemm_NN_bcast_GEMM_for_B = {
@@ -800,7 +701,7 @@ static const dague_flow_t flow_of_zgemm_NN_bcast_GEMM_for_B = {
   .access_type = ACCESS_READ,
   .flow_index = 1,
   .dep_in  = { &flow_of_zgemm_NN_bcast_GEMM_for_B_dep1_iftrue_atline_90, &flow_of_zgemm_NN_bcast_GEMM_for_B_dep1_iffalse_atline_90 },
-  .dep_out = { &flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iftrue_atline_91, &flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_iffalse_atline_91 }
+  .dep_out = { &flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91 }
 };
 
 static inline int expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_C_dep1_iftrue_atline_92_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
@@ -1027,12 +928,12 @@ iterate_successors_of_zgemm_NN_bcast_GEMM(dague_execution_unit_t *eu, dague_exec
   const __dague_zgemm_NN_bcast_internal_object_t *__dague_object = (const __dague_zgemm_NN_bcast_internal_object_t*)this_task->dague_object;
   dague_execution_context_t nc;
   dague_arena_t* arena = NULL;
-  int __nb_elt = -1;
+  int __nb_elt = -1, vpid_dst = -1;
   int rank_src = 0, rank_dst = 0;
   int m = this_task->locals[0].value;
   int n = this_task->locals[1].value;
   int k = this_task->locals[2].value;
-  (void)rank_src; (void)rank_dst; (void)__dague_object; (void)__nb_elt;
+  (void)rank_src; (void)rank_dst; (void)__dague_object; (void)vpid_dst; (void)__nb_elt;
   (void)m;  (void)n;  (void)k;
   nc.dague_object = this_task->dague_object;
 #if defined(DISTRIBUTED)
@@ -1042,139 +943,145 @@ iterate_successors_of_zgemm_NN_bcast_GEMM(dague_execution_unit_t *eu, dague_exec
   if( action_mask & (1 << 0) ) {
 #if defined(DISTRIBUTED)
     arena = __dague_object->super.arenas[DAGUE_zgemm_NN_bcast_DEFAULT_ARENA];
-#endif
-#if defined(DISTRIBUTED)
     __nb_elt = 1;
-#endif  /* defined(DISTRIBUTED) */
+#endif
     if( (n == 0) ) {
       nc.function = (const dague_function_t*)&zgemm_NN_bcast_GEMM;
       {
         const int GEMM_m = m;
-        if( (GEMM_m >= (0)) && (GEMM_m <= ((descC.mt - 1))) ) {
-          nc.locals[0].value = GEMM_m;
+          if( (GEMM_m >= (0)) && (GEMM_m <= ((descC.mt - 1))) ) {
+            nc.locals[0].value = GEMM_m;
           {
             int GEMM_n;
             for( GEMM_n = 1;GEMM_n <= (descC.nt - 1); GEMM_n+=1) {
-              if( (GEMM_n >= (0)) && (GEMM_n <= ((descC.nt - 1))) ) {
-                nc.locals[1].value = GEMM_n;
+                if( (GEMM_n >= (0)) && (GEMM_n <= ((descC.nt - 1))) ) {
+                  nc.locals[1].value = GEMM_n;
                 {
                   const int GEMM_k = k;
-                  if( (GEMM_k >= (0)) && (GEMM_k <= ((descA.nt - 1))) ) {
-                    nc.locals[2].value = GEMM_k;
+                    if( (GEMM_k >= (0)) && (GEMM_k <= ((descA.nt - 1))) ) {
+                      nc.locals[2].value = GEMM_k;
 #if defined(DISTRIBUTED)
                       rank_dst = ((dague_ddesc_t*)__dague_object->super.C)->rank_of((dague_ddesc_t*)__dague_object->super.C, GEMM_m, GEMM_n);
-#endif
+                      if( eu != NULL && rank_dst == eu->virtual_process->dague_context->my_rank ) vpid_dst = ((dague_ddesc_t*)__dague_object->super.C)->vpid_of((dague_ddesc_t*)__dague_object->super.C, GEMM_m, GEMM_n);
+#else /* !DISTRIBUTED */
+                      vpid_dst = ((dague_ddesc_t*)__dague_object->super.C)->vpid_of((dague_ddesc_t*)__dague_object->super.C, GEMM_m, GEMM_n);
+#endif /* DISTRIBUTED */
 #if defined(DAGUE_DEBUG_VERBOSE1)
                     if( NULL != eu ) {
                       char tmp[128], tmp1[128];
-                      DEBUG(("thread %d release deps of A:%s to A:%s (from node %d to %d)\n", eu->eu_id,
-                             dague_service_to_string(this_task, tmp, 128),
-                             dague_service_to_string(&nc, tmp1, 128), rank_src, rank_dst));
+                      DEBUG(("thread %d VP %d release deps of A:%s to A:%s (from node %d to %d)\n",
+                             eu->th_id, eu->virtual_process->vp_id,
+                             dague_snprintf_execution_context(tmp, 128, this_task),
+                             dague_snprintf_execution_context(tmp1, 128, &nc), rank_src, rank_dst));
                     }
 #endif
                       nc.flowname = "A";
                       nc.priority = __dague_object->super.super.object_priority;
-                      if( DAGUE_ITERATE_STOP == ontask(eu, &nc, this_task, 0, 0, rank_src, rank_dst, arena, __nb_elt, ontask_arg) )
+                      if( DAGUE_ITERATE_STOP == ontask(eu, &nc, this_task, 0, 0, rank_src, rank_dst, vpid_dst, arena, __nb_elt, ontask_arg) )
                         return;
-      }
         }
           }
             }
               }
                 }
                   }
+                    }
     }
   }
   /* Flow of Data B */
   if( action_mask & (1 << 1) ) {
 #if defined(DISTRIBUTED)
     arena = __dague_object->super.arenas[DAGUE_zgemm_NN_bcast_DEFAULT_ARENA];
-#endif
-#if defined(DISTRIBUTED)
     __nb_elt = 1;
-#endif  /* defined(DISTRIBUTED) */
+#endif
     if( (m == 0) ) {
       nc.function = (const dague_function_t*)&zgemm_NN_bcast_GEMM;
       {
         int GEMM_m;
         for( GEMM_m = 1;GEMM_m <= descC.mt; GEMM_m+=1) {
-          if( (GEMM_m >= (0)) && (GEMM_m <= ((descC.mt - 1))) ) {
-            nc.locals[0].value = GEMM_m;
+            if( (GEMM_m >= (0)) && (GEMM_m <= ((descC.mt - 1))) ) {
+              nc.locals[0].value = GEMM_m;
             {
               const int GEMM_n = n;
-              if( (GEMM_n >= (0)) && (GEMM_n <= ((descC.nt - 1))) ) {
-                nc.locals[1].value = GEMM_n;
+                if( (GEMM_n >= (0)) && (GEMM_n <= ((descC.nt - 1))) ) {
+                  nc.locals[1].value = GEMM_n;
                 {
                   const int GEMM_k = k;
-                  if( (GEMM_k >= (0)) && (GEMM_k <= ((descA.nt - 1))) ) {
-                    nc.locals[2].value = GEMM_k;
+                    if( (GEMM_k >= (0)) && (GEMM_k <= ((descA.nt - 1))) ) {
+                      nc.locals[2].value = GEMM_k;
 #if defined(DISTRIBUTED)
                       rank_dst = ((dague_ddesc_t*)__dague_object->super.C)->rank_of((dague_ddesc_t*)__dague_object->super.C, GEMM_m, GEMM_n);
-#endif
+                      if( eu != NULL && rank_dst == eu->virtual_process->dague_context->my_rank ) vpid_dst = ((dague_ddesc_t*)__dague_object->super.C)->vpid_of((dague_ddesc_t*)__dague_object->super.C, GEMM_m, GEMM_n);
+#else /* !DISTRIBUTED */
+                      vpid_dst = ((dague_ddesc_t*)__dague_object->super.C)->vpid_of((dague_ddesc_t*)__dague_object->super.C, GEMM_m, GEMM_n);
+#endif /* DISTRIBUTED */
 #if defined(DAGUE_DEBUG_VERBOSE1)
                     if( NULL != eu ) {
                       char tmp[128], tmp1[128];
-                      DEBUG(("thread %d release deps of B:%s to B:%s (from node %d to %d)\n", eu->eu_id,
-                             dague_service_to_string(this_task, tmp, 128),
-                             dague_service_to_string(&nc, tmp1, 128), rank_src, rank_dst));
+                      DEBUG(("thread %d VP %d release deps of B:%s to B:%s (from node %d to %d)\n",
+                             eu->th_id, eu->virtual_process->vp_id,
+                             dague_snprintf_execution_context(tmp, 128, this_task),
+                             dague_snprintf_execution_context(tmp1, 128, &nc), rank_src, rank_dst));
                     }
 #endif
                       nc.flowname = "B";
                       nc.priority = __dague_object->super.super.object_priority;
-                      if( DAGUE_ITERATE_STOP == ontask(eu, &nc, this_task, 1, 0, rank_src, rank_dst, arena, __nb_elt, ontask_arg) )
+                      if( DAGUE_ITERATE_STOP == ontask(eu, &nc, this_task, 1, 0, rank_src, rank_dst, vpid_dst, arena, __nb_elt, ontask_arg) )
                         return;
-      }
         }
           }
             }
               }
                 }
                   }
+                    }
     }
   }
   /* Flow of Data C */
   if( action_mask & (1 << 2) ) {
 #if defined(DISTRIBUTED)
     arena = __dague_object->super.arenas[DAGUE_zgemm_NN_bcast_DEFAULT_ARENA];
-#endif
-#if defined(DISTRIBUTED)
     __nb_elt = 1;
-#endif  /* defined(DISTRIBUTED) */
+#endif
     if( !((k == (descA.nt - 1))) ) {
       nc.function = (const dague_function_t*)&zgemm_NN_bcast_GEMM;
       {
         const int GEMM_m = m;
-        if( (GEMM_m >= (0)) && (GEMM_m <= ((descC.mt - 1))) ) {
-          nc.locals[0].value = GEMM_m;
+          if( (GEMM_m >= (0)) && (GEMM_m <= ((descC.mt - 1))) ) {
+            nc.locals[0].value = GEMM_m;
           {
             const int GEMM_n = n;
-            if( (GEMM_n >= (0)) && (GEMM_n <= ((descC.nt - 1))) ) {
-              nc.locals[1].value = GEMM_n;
+              if( (GEMM_n >= (0)) && (GEMM_n <= ((descC.nt - 1))) ) {
+                nc.locals[1].value = GEMM_n;
               {
                 const int GEMM_k = (k + 1);
-                if( (GEMM_k >= (0)) && (GEMM_k <= ((descA.nt - 1))) ) {
-                  nc.locals[2].value = GEMM_k;
+                  if( (GEMM_k >= (0)) && (GEMM_k <= ((descA.nt - 1))) ) {
+                    nc.locals[2].value = GEMM_k;
 #if defined(DISTRIBUTED)
                     rank_dst = ((dague_ddesc_t*)__dague_object->super.C)->rank_of((dague_ddesc_t*)__dague_object->super.C, GEMM_m, GEMM_n);
-#endif
+                    if( eu != NULL && rank_dst == eu->virtual_process->dague_context->my_rank ) vpid_dst = ((dague_ddesc_t*)__dague_object->super.C)->vpid_of((dague_ddesc_t*)__dague_object->super.C, GEMM_m, GEMM_n);
+#else /* !DISTRIBUTED */
+                    vpid_dst = ((dague_ddesc_t*)__dague_object->super.C)->vpid_of((dague_ddesc_t*)__dague_object->super.C, GEMM_m, GEMM_n);
+#endif /* DISTRIBUTED */
 #if defined(DAGUE_DEBUG_VERBOSE1)
                   if( NULL != eu ) {
                     char tmp[128], tmp1[128];
-                    DEBUG(("thread %d release deps of C:%s to C:%s (from node %d to %d)\n", eu->eu_id,
-                           dague_service_to_string(this_task, tmp, 128),
-                           dague_service_to_string(&nc, tmp1, 128), rank_src, rank_dst));
+                    DEBUG(("thread %d VP %d release deps of C:%s to C:%s (from node %d to %d)\n",
+                           eu->th_id, eu->virtual_process->vp_id,
+                           dague_snprintf_execution_context(tmp, 128, this_task),
+                           dague_snprintf_execution_context(tmp1, 128, &nc), rank_src, rank_dst));
                   }
 #endif
                     nc.flowname = "C";
                     nc.priority = __dague_object->super.super.object_priority;
-                    if( DAGUE_ITERATE_STOP == ontask(eu, &nc, this_task, 2, 1, rank_src, rank_dst, arena, __nb_elt, ontask_arg) )
+                    if( DAGUE_ITERATE_STOP == ontask(eu, &nc, this_task, 2, 1, rank_src, rank_dst, vpid_dst, arena, __nb_elt, ontask_arg) )
                       return;
-      }
         }
           }
             }
               }
                 }
+                  }
     }
   }
   (void)nc;(void)arena;(void)eu;(void)ontask;(void)ontask_arg;(void)rank_dst;(void)action_mask;
@@ -1184,11 +1091,12 @@ static int release_deps_of_zgemm_NN_bcast_GEMM(dague_execution_unit_t *eu, dague
 {
   const __dague_zgemm_NN_bcast_internal_object_t *__dague_object = (const __dague_zgemm_NN_bcast_internal_object_t *)context->dague_object;
   dague_release_dep_fct_arg_t arg;
+  int __vp_id;
   arg.nb_released = 0;
   arg.output_usage = 0;
   arg.action_mask = action_mask;
   arg.deps = deps;
-  arg.ready_list = NULL;
+  arg.ready_lists = (eu != NULL) ? calloc(sizeof(dague_execution_context_t *), eu->virtual_process->dague_context->nb_vp) : NULL;
   (void)__dague_object;
   if( action_mask & DAGUE_ACTION_RELEASE_LOCAL_DEPS ) {
     arg.output_entry = data_repo_lookup_entry_and_create( eu, GEMM_repo, GEMM_hash(__dague_object, context->locals) );
@@ -1204,11 +1112,14 @@ static int release_deps_of_zgemm_NN_bcast_GEMM(dague_execution_unit_t *eu, dague
   iterate_successors_of_zgemm_NN_bcast_GEMM(eu, context, action_mask, dague_release_dep_fct, &arg);
 
   if(action_mask & DAGUE_ACTION_RELEASE_LOCAL_DEPS) {
+    struct dague_vp** vps = eu->virtual_process->dague_context->virtual_processes;
     data_repo_entry_addto_usage_limit(GEMM_repo, arg.output_entry->key, arg.output_usage);
-    if( NULL != arg.ready_list ) {
-      __dague_schedule(eu, arg.ready_list);
-      arg.ready_list = NULL;
+    for(__vp_id = 0; __vp_id < eu->virtual_process->dague_context->nb_vp; __vp_id++) {
+      if( NULL == arg.ready_lists[__vp_id] ) continue;
+      __dague_schedule(vps[__vp_id]->execution_units[0], arg.ready_lists[__vp_id]);
+      arg.ready_lists[__vp_id] = NULL;
     }
+    free(arg.ready_lists);
   }
 #if defined(DISTRIBUTED)
   if( (action_mask & DAGUE_ACTION_SEND_REMOTE_DEPS) && arg.remote_deps_count ) {
@@ -1240,7 +1151,6 @@ static int release_deps_of_zgemm_NN_bcast_GEMM(dague_execution_unit_t *eu, dague
       (void)AUNREF(context->data[2].data);
     }
   }
-  assert( NULL == arg.ready_list );
   return arg.nb_released;
 }
 
@@ -1272,18 +1182,18 @@ static int hook_of_zgemm_NN_bcast_GEMM(dague_execution_unit_t *context, dague_ex
   eA = this_task->data[0].data_repo;
   gA = this_task->data[0].data;
   if( NULL == gA ) {
-  if( (n == 0) ) {
-      tass[0].value = m;
-      tass[1].value = k;
-    eA = data_repo_lookup_entry( READ_A_repo, READ_A_hash( __dague_object, tass ));
-    gA = eA->data[0];
-  } else {
-      tass[0].value = m;
-      tass[1].value = 0;
-      tass[2].value = k;
-    eA = data_repo_lookup_entry( GEMM_repo, GEMM_hash( __dague_object, tass ));
-    gA = eA->data[0];
-  }
+    if( (n == 0) ) {
+        tass[0].value = m;
+        tass[1].value = k;
+      eA = data_repo_lookup_entry( READ_A_repo, READ_A_hash( __dague_object, tass ));
+      gA = eA->data[0];
+    } else {
+        tass[0].value = m;
+        tass[1].value = 0;
+        tass[2].value = k;
+      eA = data_repo_lookup_entry( GEMM_repo, GEMM_hash( __dague_object, tass ));
+      gA = eA->data[0];
+    }
     this_task->data[0].data = gA;
     this_task->data[0].data_repo = eA;
   }
@@ -1295,18 +1205,18 @@ static int hook_of_zgemm_NN_bcast_GEMM(dague_execution_unit_t *context, dague_ex
   eB = this_task->data[1].data_repo;
   gB = this_task->data[1].data;
   if( NULL == gB ) {
-  if( (m == 0) ) {
-      tass[0].value = k;
-      tass[1].value = n;
-    eB = data_repo_lookup_entry( READ_B_repo, READ_B_hash( __dague_object, tass ));
-    gB = eB->data[0];
-  } else {
-      tass[0].value = 0;
-      tass[1].value = n;
-      tass[2].value = k;
-    eB = data_repo_lookup_entry( GEMM_repo, GEMM_hash( __dague_object, tass ));
-    gB = eB->data[1];
-  }
+    if( (m == 0) ) {
+        tass[0].value = k;
+        tass[1].value = n;
+      eB = data_repo_lookup_entry( READ_B_repo, READ_B_hash( __dague_object, tass ));
+      gB = eB->data[0];
+    } else {
+        tass[0].value = 0;
+        tass[1].value = n;
+        tass[2].value = k;
+      eB = data_repo_lookup_entry( GEMM_repo, GEMM_hash( __dague_object, tass ));
+      gB = eB->data[1];
+    }
     this_task->data[1].data = gB;
     this_task->data[1].data_repo = eB;
   }
@@ -1318,15 +1228,15 @@ static int hook_of_zgemm_NN_bcast_GEMM(dague_execution_unit_t *context, dague_ex
   eC = this_task->data[2].data_repo;
   gC = this_task->data[2].data;
   if( NULL == gC ) {
-  if( (k == 0) ) {
-    gC = (dague_arena_chunk_t*) C(m, n);
-  } else {
-      tass[0].value = m;
-      tass[1].value = n;
-      tass[2].value = 0;
-    eC = data_repo_lookup_entry( GEMM_repo, GEMM_hash( __dague_object, tass ));
-    gC = eC->data[2];
-  }
+    if( (k == 0) ) {
+      gC = (dague_arena_chunk_t*) C(m, n);
+    } else {
+        tass[0].value = m;
+        tass[1].value = n;
+        tass[2].value = 0;
+      eC = data_repo_lookup_entry( GEMM_repo, GEMM_hash( __dague_object, tass ));
+      gC = eC->data[2];
+    }
     this_task->data[2].data = gC;
     this_task->data[2].data_repo = eC;
   }
@@ -1392,7 +1302,7 @@ static int hook_of_zgemm_NN_bcast_GEMM(dague_execution_unit_t *context, dague_ex
                                k, n, ldbk,
                  creal(lbeta), m, n, ldcm );
 
-#line 1396 "zgemm_NN_bcast.c"
+#line 1306 "zgemm_NN_bcast.c"
 /*--------------------------------------------------------------------------------*
  *                                END OF GEMM BODY                                *
  *--------------------------------------------------------------------------------*/
@@ -1419,28 +1329,6 @@ static int complete_hook_of_zgemm_NN_bcast_GEMM(dague_execution_unit_t *context,
 #endif
 #if defined(DISTRIBUTED)
   /** If not working on distributed, there is no risk that data is not in place */
-  if( !((n == 0)) ) {
-    if( ADATA(this_task->data[0].data) != A(m, k) ) {
-      int __arena_index = DAGUE_zgemm_NN_bcast_DEFAULT_ARENA;
-      int __dtt_nb = 1;
-      assert( (__arena_index>=0) && (__arena_index < __dague_object->super.arenas_size) );
-      assert( __dtt_nb >= 0 );
-      dague_remote_dep_memcpy( context, this_task->dague_object, A(m, k), this_task->data[0].data, 
-                               __dague_object->super.arenas[__arena_index]->opaque_dtt,
-                               __dtt_nb );
-    }
-  }
-  if( !((m == 0)) ) {
-    if( ADATA(this_task->data[1].data) != B(k, n) ) {
-      int __arena_index = DAGUE_zgemm_NN_bcast_DEFAULT_ARENA;
-      int __dtt_nb = 1;
-      assert( (__arena_index>=0) && (__arena_index < __dague_object->super.arenas_size) );
-      assert( __dtt_nb >= 0 );
-      dague_remote_dep_memcpy( context, this_task->dague_object, B(k, n), this_task->data[1].data, 
-                               __dague_object->super.arenas[__arena_index]->opaque_dtt,
-                               __dtt_nb );
-    }
-  }
   if( (k == (descA.nt - 1)) ) {
     if( ADATA(this_task->data[2].data) != C(m, n) ) {
       int __arena_index = DAGUE_zgemm_NN_bcast_DEFAULT_ARENA;
@@ -1453,7 +1341,7 @@ static int complete_hook_of_zgemm_NN_bcast_GEMM(dague_execution_unit_t *context,
     }
   }
 #endif /* DISTRIBUTED */
-  dague_prof_grapher_task(this_task, context->eu_id, GEMM_hash(__dague_object, this_task->locals));
+  dague_prof_grapher_task(this_task, context->th_id, context->virtual_process->vp_id, GEMM_hash(__dague_object, this_task->locals));
   release_deps_of_zgemm_NN_bcast_GEMM(context, this_task,
       DAGUE_ACTION_RELEASE_REMOTE_DEPS |
       DAGUE_ACTION_RELEASE_LOCAL_DEPS |
@@ -1467,12 +1355,15 @@ static int zgemm_NN_bcast_GEMM_internal_init(__dague_zgemm_NN_bcast_internal_obj
 {
   dague_dependencies_t *dep = NULL;
   assignment_t assignments[MAX_LOCAL_COUNT];(void) assignments;
-  int nb_tasks = 0, __foundone = 0;
+  int nb_tasks = 0;
   int32_t  m, n, k;
   int32_t  m_min = 0x7fffffff, n_min = 0x7fffffff, k_min = 0x7fffffff;
   int32_t  m_max = 0, n_max = 0, k_max = 0;
-  (void)__dague_object; (void)__foundone;
-  int32_t m_start, m_end, m_inc;  int32_t n_start, n_end, n_inc;  int32_t k_start, k_end, k_inc;  /* First, find the min and max value for each of the dimensions */
+  (void)__dague_object;
+  int32_t m_start, m_end, m_inc;
+  int32_t n_start, n_end, n_inc;
+  int32_t k_start, k_end, k_inc;
+  /* First, find the min and max value for each of the dimensions */
   for(m = 0;
       m <= (descC.mt - 1);
       m += 1) {
@@ -1502,6 +1393,7 @@ static int zgemm_NN_bcast_GEMM_internal_init(__dague_zgemm_NN_bcast_internal_obj
    * and if at least one value is defined, allocate arrays to point
    * to it. Array dimensions are defined by the (rough) observation above
    **/
+  DEBUG2(("Allocating dependencies array for zgemm_NN_bcast_GEMM_internal_init\n"));
   dep = NULL;
   m_start = 0;
   m_end = (descC.mt - 1);
@@ -1513,7 +1405,6 @@ static int zgemm_NN_bcast_GEMM_internal_init(__dague_zgemm_NN_bcast_internal_obj
     n_inc = 1;
     for(n = dague_imax(n_start, n_min); n <= dague_imin(n_end, n_max); n+=n_inc) {
       assignments[1].value = n;
-      __foundone = 0;
       k_start = 0;
       k_end = (descA.nt - 1);
       k_inc = 1;
@@ -1535,7 +1426,8 @@ static int zgemm_NN_bcast_GEMM_internal_init(__dague_zgemm_NN_bcast_internal_obj
       }
     }
   }
-  (void)m_start; (void)m_end; (void)m_inc;  (void)n_start; (void)n_end; (void)n_inc;  (void)k_start; (void)k_end; (void)k_inc;  __dague_object->super.super.dependencies_array[0] = dep;
+  (void)m_start; (void)m_end; (void)m_inc;  (void)n_start; (void)n_end; (void)n_inc;  (void)k_start; (void)k_end; (void)k_inc;
+  __dague_object->super.super.dependencies_array[0] = dep;
   __dague_object->super.super.nb_local_tasks += nb_tasks;
   return nb_tasks;
 }
@@ -1593,7 +1485,7 @@ static const expr_t maxexpr_of_symb_zgemm_NN_bcast_READ_B_k = {
   .op = EXPR_OP_INLINE,
   .inline_func = maxexpr_of_symb_zgemm_NN_bcast_READ_B_k_fct
 };
-static const symbol_t symb_zgemm_NN_bcast_READ_B_k = {.min = &minexpr_of_symb_zgemm_NN_bcast_READ_B_k, .max = &maxexpr_of_symb_zgemm_NN_bcast_READ_B_k, .cst_inc = 1, .expr_inc = NULL,  .flags = 0x0};
+static const symbol_t symb_zgemm_NN_bcast_READ_B_k = { .name = "k", .context_index = 0, .min = &minexpr_of_symb_zgemm_NN_bcast_READ_B_k, .max = &maxexpr_of_symb_zgemm_NN_bcast_READ_B_k, .cst_inc = 1, .expr_inc = NULL,  .flags = 0x0};
 
 static inline int minexpr_of_symb_zgemm_NN_bcast_READ_B_n_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
 {
@@ -1619,7 +1511,7 @@ static const expr_t maxexpr_of_symb_zgemm_NN_bcast_READ_B_n = {
   .op = EXPR_OP_INLINE,
   .inline_func = maxexpr_of_symb_zgemm_NN_bcast_READ_B_n_fct
 };
-static const symbol_t symb_zgemm_NN_bcast_READ_B_n = {.min = &minexpr_of_symb_zgemm_NN_bcast_READ_B_n, .max = &maxexpr_of_symb_zgemm_NN_bcast_READ_B_n, .cst_inc = 1, .expr_inc = NULL,  .flags = 0x0};
+static const symbol_t symb_zgemm_NN_bcast_READ_B_n = { .name = "n", .context_index = 1, .min = &minexpr_of_symb_zgemm_NN_bcast_READ_B_n, .max = &maxexpr_of_symb_zgemm_NN_bcast_READ_B_n, .cst_inc = 1, .expr_inc = NULL,  .flags = 0x0};
 
 static inline int pred_of_zgemm_NN_bcast_READ_B_as_expr_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
 {
@@ -1754,11 +1646,11 @@ iterate_successors_of_zgemm_NN_bcast_READ_B(dague_execution_unit_t *eu, dague_ex
   const __dague_zgemm_NN_bcast_internal_object_t *__dague_object = (const __dague_zgemm_NN_bcast_internal_object_t*)this_task->dague_object;
   dague_execution_context_t nc;
   dague_arena_t* arena = NULL;
-  int __nb_elt = -1;
+  int __nb_elt = -1, vpid_dst = -1;
   int rank_src = 0, rank_dst = 0;
   int k = this_task->locals[0].value;
   int n = this_task->locals[1].value;
-  (void)rank_src; (void)rank_dst; (void)__dague_object; (void)__nb_elt;
+  (void)rank_src; (void)rank_dst; (void)__dague_object; (void)vpid_dst; (void)__nb_elt;
   (void)k;  (void)n;
   nc.dague_object = this_task->dague_object;
 #if defined(DISTRIBUTED)
@@ -1768,46 +1660,48 @@ iterate_successors_of_zgemm_NN_bcast_READ_B(dague_execution_unit_t *eu, dague_ex
   if( action_mask & (1 << 0) ) {
 #if defined(DISTRIBUTED)
     arena = __dague_object->super.arenas[DAGUE_zgemm_NN_bcast_DEFAULT_ARENA];
-#endif
-#if defined(DISTRIBUTED)
     __nb_elt = 1;
-#endif  /* defined(DISTRIBUTED) */
+#endif
     nc.function = (const dague_function_t*)&zgemm_NN_bcast_GEMM;
     {
       const int GEMM_m = 0;
-      if( (GEMM_m >= (0)) && (GEMM_m <= ((descC.mt - 1))) ) {
-        nc.locals[0].value = GEMM_m;
+        if( (GEMM_m >= (0)) && (GEMM_m <= ((descC.mt - 1))) ) {
+          nc.locals[0].value = GEMM_m;
         {
           const int GEMM_n = n;
-          if( (GEMM_n >= (0)) && (GEMM_n <= ((descC.nt - 1))) ) {
-            nc.locals[1].value = GEMM_n;
+            if( (GEMM_n >= (0)) && (GEMM_n <= ((descC.nt - 1))) ) {
+              nc.locals[1].value = GEMM_n;
             {
               int GEMM_k;
               for( GEMM_k = 0;GEMM_k <= (descA.mt - 1); GEMM_k+=1) {
-                if( (GEMM_k >= (0)) && (GEMM_k <= ((descA.nt - 1))) ) {
-                  nc.locals[2].value = GEMM_k;
+                  if( (GEMM_k >= (0)) && (GEMM_k <= ((descA.nt - 1))) ) {
+                    nc.locals[2].value = GEMM_k;
 #if defined(DISTRIBUTED)
                     rank_dst = ((dague_ddesc_t*)__dague_object->super.C)->rank_of((dague_ddesc_t*)__dague_object->super.C, GEMM_m, GEMM_n);
-#endif
+                    if( eu != NULL && rank_dst == eu->virtual_process->dague_context->my_rank ) vpid_dst = ((dague_ddesc_t*)__dague_object->super.C)->vpid_of((dague_ddesc_t*)__dague_object->super.C, GEMM_m, GEMM_n);
+#else /* !DISTRIBUTED */
+                    vpid_dst = ((dague_ddesc_t*)__dague_object->super.C)->vpid_of((dague_ddesc_t*)__dague_object->super.C, GEMM_m, GEMM_n);
+#endif /* DISTRIBUTED */
 #if defined(DAGUE_DEBUG_VERBOSE1)
                   if( NULL != eu ) {
                     char tmp[128], tmp1[128];
-                    DEBUG(("thread %d release deps of B:%s to B:%s (from node %d to %d)\n", eu->eu_id,
-                           dague_service_to_string(this_task, tmp, 128),
-                           dague_service_to_string(&nc, tmp1, 128), rank_src, rank_dst));
+                    DEBUG(("thread %d VP %d release deps of B:%s to B:%s (from node %d to %d)\n",
+                           eu->th_id, eu->virtual_process->vp_id,
+                           dague_snprintf_execution_context(tmp, 128, this_task),
+                           dague_snprintf_execution_context(tmp1, 128, &nc), rank_src, rank_dst));
                   }
 #endif
                     nc.flowname = "B";
                     nc.priority = __dague_object->super.super.object_priority;
-                    if( DAGUE_ITERATE_STOP == ontask(eu, &nc, this_task, 0, 0, rank_src, rank_dst, arena, __nb_elt, ontask_arg) )
+                    if( DAGUE_ITERATE_STOP == ontask(eu, &nc, this_task, 0, 0, rank_src, rank_dst, vpid_dst, arena, __nb_elt, ontask_arg) )
                       return;
-    }
       }
         }
           }
             }
               }
                 }
+                  }
   }
   (void)nc;(void)arena;(void)eu;(void)ontask;(void)ontask_arg;(void)rank_dst;(void)action_mask;
 }
@@ -1816,11 +1710,12 @@ static int release_deps_of_zgemm_NN_bcast_READ_B(dague_execution_unit_t *eu, dag
 {
   const __dague_zgemm_NN_bcast_internal_object_t *__dague_object = (const __dague_zgemm_NN_bcast_internal_object_t *)context->dague_object;
   dague_release_dep_fct_arg_t arg;
+  int __vp_id;
   arg.nb_released = 0;
   arg.output_usage = 0;
   arg.action_mask = action_mask;
   arg.deps = deps;
-  arg.ready_list = NULL;
+  arg.ready_lists = (eu != NULL) ? calloc(sizeof(dague_execution_context_t *), eu->virtual_process->dague_context->nb_vp) : NULL;
   (void)__dague_object;
   if( action_mask & DAGUE_ACTION_RELEASE_LOCAL_DEPS ) {
     arg.output_entry = data_repo_lookup_entry_and_create( eu, READ_B_repo, READ_B_hash(__dague_object, context->locals) );
@@ -1836,11 +1731,14 @@ static int release_deps_of_zgemm_NN_bcast_READ_B(dague_execution_unit_t *eu, dag
   iterate_successors_of_zgemm_NN_bcast_READ_B(eu, context, action_mask, dague_release_dep_fct, &arg);
 
   if(action_mask & DAGUE_ACTION_RELEASE_LOCAL_DEPS) {
+    struct dague_vp** vps = eu->virtual_process->dague_context->virtual_processes;
     data_repo_entry_addto_usage_limit(READ_B_repo, arg.output_entry->key, arg.output_usage);
-    if( NULL != arg.ready_list ) {
-      __dague_schedule(eu, arg.ready_list);
-      arg.ready_list = NULL;
+    for(__vp_id = 0; __vp_id < eu->virtual_process->dague_context->nb_vp; __vp_id++) {
+      if( NULL == arg.ready_lists[__vp_id] ) continue;
+      __dague_schedule(vps[__vp_id]->execution_units[0], arg.ready_lists[__vp_id]);
+      arg.ready_lists[__vp_id] = NULL;
     }
+    free(arg.ready_lists);
   }
 #if defined(DISTRIBUTED)
   if( (action_mask & DAGUE_ACTION_SEND_REMOTE_DEPS) && arg.remote_deps_count ) {
@@ -1853,7 +1751,6 @@ static int release_deps_of_zgemm_NN_bcast_READ_B(dague_execution_unit_t *eu, dag
     (void)k; (void)n;
 
   }
-  assert( NULL == arg.ready_list );
   return arg.nb_released;
 }
 
@@ -1878,7 +1775,7 @@ static int hook_of_zgemm_NN_bcast_READ_B(dague_execution_unit_t *context, dague_
   eB = this_task->data[0].data_repo;
   gB = this_task->data[0].data;
   if( NULL == gB ) {
-  gB = (dague_arena_chunk_t*) B(k, n);
+    gB = (dague_arena_chunk_t*) B(k, n);
     this_task->data[0].data = gB;
     this_task->data[0].data_repo = eB;
   }
@@ -1915,7 +1812,7 @@ static int hook_of_zgemm_NN_bcast_READ_B(dague_execution_unit_t *context, dague_
 #line 69 "zgemm_NN_bcast.jdf"
      printlog("rank %u <- B(%d,%d)\n", __dague_object->super.B->myrank, k, n);
 
-#line 1919 "zgemm_NN_bcast.c"
+#line 1816 "zgemm_NN_bcast.c"
 /*--------------------------------------------------------------------------------*
  *                              END OF READ_B BODY                              *
  *--------------------------------------------------------------------------------*/
@@ -1941,7 +1838,7 @@ static int complete_hook_of_zgemm_NN_bcast_READ_B(dague_execution_unit_t *contex
 #if defined(DISTRIBUTED)
   /** If not working on distributed, there is no risk that data is not in place */
 #endif /* DISTRIBUTED */
-  dague_prof_grapher_task(this_task, context->eu_id, READ_B_hash(__dague_object, this_task->locals));
+  dague_prof_grapher_task(this_task, context->th_id, context->virtual_process->vp_id, READ_B_hash(__dague_object, this_task->locals));
   release_deps_of_zgemm_NN_bcast_READ_B(context, this_task,
       DAGUE_ACTION_RELEASE_REMOTE_DEPS |
       DAGUE_ACTION_RELEASE_LOCAL_DEPS |
@@ -1955,12 +1852,14 @@ static int zgemm_NN_bcast_READ_B_internal_init(__dague_zgemm_NN_bcast_internal_o
 {
   dague_dependencies_t *dep = NULL;
   assignment_t assignments[MAX_LOCAL_COUNT];(void) assignments;
-  int nb_tasks = 0, __foundone = 0;
+  int nb_tasks = 0;
   int32_t  k, n;
   int32_t  k_min = 0x7fffffff, n_min = 0x7fffffff;
   int32_t  k_max = 0, n_max = 0;
-  (void)__dague_object; (void)__foundone;
-  int32_t k_start, k_end, k_inc;  int32_t n_start, n_end, n_inc;  /* First, find the min and max value for each of the dimensions */
+  (void)__dague_object;
+  int32_t k_start, k_end, k_inc;
+  int32_t n_start, n_end, n_inc;
+  /* First, find the min and max value for each of the dimensions */
   for(k = 0;
       k <= (descB.mt - 1);
       k += 1) {
@@ -1983,13 +1882,13 @@ static int zgemm_NN_bcast_READ_B_internal_init(__dague_zgemm_NN_bcast_internal_o
    * and if at least one value is defined, allocate arrays to point
    * to it. Array dimensions are defined by the (rough) observation above
    **/
+  DEBUG2(("Allocating dependencies array for zgemm_NN_bcast_READ_B_internal_init\n"));
   dep = NULL;
   k_start = 0;
   k_end = (descB.mt - 1);
   k_inc = 1;
   for(k = dague_imax(k_start, k_min); k <= dague_imin(k_end, k_max); k+=k_inc) {
     assignments[0].value = k;
-    __foundone = 0;
     n_start = 0;
     n_end = (descB.nt - 1);
     n_inc = 1;
@@ -2007,19 +1906,23 @@ static int zgemm_NN_bcast_READ_B_internal_init(__dague_zgemm_NN_bcast_internal_o
       }
     }
   }
-  (void)k_start; (void)k_end; (void)k_inc;  (void)n_start; (void)n_end; (void)n_inc;  __dague_object->super.super.dependencies_array[1] = dep;
+  (void)k_start; (void)k_end; (void)k_inc;  (void)n_start; (void)n_end; (void)n_inc;
+  __dague_object->super.super.dependencies_array[1] = dep;
   __dague_object->super.super.nb_local_tasks += nb_tasks;
   return nb_tasks;
 }
 
 static int zgemm_NN_bcast_READ_B_startup_tasks(dague_context_t *context, const __dague_zgemm_NN_bcast_internal_object_t *__dague_object, dague_execution_context_t** pready_list)
 {
-  dague_execution_context_t* new_context;
+  dague_execution_context_t* new_context, new_context_holder, *new_dynamic_context;
   assignment_t *assignments = NULL;
+  int vpid;
   int32_t  k = -1, n = -1;
   (void)k; (void)n;
-  new_context = (dague_execution_context_t*)dague_thread_mempool_allocate( context->execution_units[0]->context_mempool );
+  new_context = &new_context_holder;
   assignments = new_context->locals;
+  new_context->dague_object = (dague_object_t*)__dague_object;
+  new_context->function = (const dague_function_t*)&zgemm_NN_bcast_READ_B;
   /* Parse all the inputs and generate the ready execution tasks */
   for(k = 0;
       k <= (descB.mt - 1);
@@ -2030,28 +1933,28 @@ static int zgemm_NN_bcast_READ_B_startup_tasks(dague_context_t *context, const _
         n+=1) {
       assignments[1].value = n;
       if( !READ_B_pred(k, n) ) continue;
+      vpid = ((dague_ddesc_t*)__dague_object->super.B)->vpid_of((dague_ddesc_t*)__dague_object->super.B, k, n);
+      new_dynamic_context = (dague_execution_context_t*)dague_thread_mempool_allocate( context->virtual_processes[vpid]->execution_units[0]->context_mempool );
+      /* Copy only the valid elements from new_context to new_dynamic one */
+      new_dynamic_context->dague_object = new_context->dague_object;
+      new_dynamic_context->function     = new_context->function;
+      memcpy(new_dynamic_context->locals, new_context->locals, 2*sizeof(assignment_t));
       DAGUE_STAT_INCREASE(mem_contexts, sizeof(dague_execution_context_t) + STAT_MALLOC_OVERHEAD);
-      DAGUE_LIST_ITEM_SINGLETON( new_context );
-      new_context->dague_object = (dague_object_t*)__dague_object;
-      new_context->function = (const dague_function_t*)&zgemm_NN_bcast_READ_B;
-      new_context->priority = __dague_object->super.super.object_priority;
-      new_context->flowname = "B";
-    new_context->data[0].data_repo = NULL;
-    new_context->data[0].data      = NULL;
+      DAGUE_LIST_ITEM_SINGLETON( new_dynamic_context );
+      new_dynamic_context->priority = __dague_object->super.super.object_priority;
+      new_dynamic_context->flowname = "B";
+    new_dynamic_context->data[0].data_repo = NULL;
+    new_dynamic_context->data[0].data      = NULL;
 #if defined(DAGUE_DEBUG_VERBOSE2)
       {
         char tmp[128];
         DEBUG2(("Add startup task %s\n",
-               dague_service_to_string(new_context, tmp, 128)));
+               dague_snprintf_execution_context(tmp, 128, new_dynamic_context)));
       }
 #endif
-      dague_list_add_single_elem_by_priority( pready_list, new_context );
-      new_context = (dague_execution_context_t*)dague_thread_mempool_allocate( context->execution_units[0]->context_mempool );
-      assignments = new_context->locals;
-      assignments[0].value = k;
+      dague_list_add_single_elem_by_priority( &pready_list[vpid], new_dynamic_context );
     }
   }
-  dague_thread_mempool_free( context->execution_units[0]->context_mempool, new_context );
   return 0;
 }
 
@@ -2108,7 +2011,7 @@ static const expr_t maxexpr_of_symb_zgemm_NN_bcast_READ_A_m = {
   .op = EXPR_OP_INLINE,
   .inline_func = maxexpr_of_symb_zgemm_NN_bcast_READ_A_m_fct
 };
-static const symbol_t symb_zgemm_NN_bcast_READ_A_m = {.min = &minexpr_of_symb_zgemm_NN_bcast_READ_A_m, .max = &maxexpr_of_symb_zgemm_NN_bcast_READ_A_m, .cst_inc = 1, .expr_inc = NULL,  .flags = 0x0};
+static const symbol_t symb_zgemm_NN_bcast_READ_A_m = { .name = "m", .context_index = 0, .min = &minexpr_of_symb_zgemm_NN_bcast_READ_A_m, .max = &maxexpr_of_symb_zgemm_NN_bcast_READ_A_m, .cst_inc = 1, .expr_inc = NULL,  .flags = 0x0};
 
 static inline int minexpr_of_symb_zgemm_NN_bcast_READ_A_k_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
 {
@@ -2134,7 +2037,7 @@ static const expr_t maxexpr_of_symb_zgemm_NN_bcast_READ_A_k = {
   .op = EXPR_OP_INLINE,
   .inline_func = maxexpr_of_symb_zgemm_NN_bcast_READ_A_k_fct
 };
-static const symbol_t symb_zgemm_NN_bcast_READ_A_k = {.min = &minexpr_of_symb_zgemm_NN_bcast_READ_A_k, .max = &maxexpr_of_symb_zgemm_NN_bcast_READ_A_k, .cst_inc = 1, .expr_inc = NULL,  .flags = 0x0};
+static const symbol_t symb_zgemm_NN_bcast_READ_A_k = { .name = "k", .context_index = 1, .min = &minexpr_of_symb_zgemm_NN_bcast_READ_A_k, .max = &maxexpr_of_symb_zgemm_NN_bcast_READ_A_k, .cst_inc = 1, .expr_inc = NULL,  .flags = 0x0};
 
 static inline int pred_of_zgemm_NN_bcast_READ_A_as_expr_fct(const dague_object_t *__dague_object_parent, const assignment_t *assignments)
 {
@@ -2269,11 +2172,11 @@ iterate_successors_of_zgemm_NN_bcast_READ_A(dague_execution_unit_t *eu, dague_ex
   const __dague_zgemm_NN_bcast_internal_object_t *__dague_object = (const __dague_zgemm_NN_bcast_internal_object_t*)this_task->dague_object;
   dague_execution_context_t nc;
   dague_arena_t* arena = NULL;
-  int __nb_elt = -1;
+  int __nb_elt = -1, vpid_dst = -1;
   int rank_src = 0, rank_dst = 0;
   int m = this_task->locals[0].value;
   int k = this_task->locals[1].value;
-  (void)rank_src; (void)rank_dst; (void)__dague_object; (void)__nb_elt;
+  (void)rank_src; (void)rank_dst; (void)__dague_object; (void)vpid_dst; (void)__nb_elt;
   (void)m;  (void)k;
   nc.dague_object = this_task->dague_object;
 #if defined(DISTRIBUTED)
@@ -2283,46 +2186,48 @@ iterate_successors_of_zgemm_NN_bcast_READ_A(dague_execution_unit_t *eu, dague_ex
   if( action_mask & (1 << 0) ) {
 #if defined(DISTRIBUTED)
     arena = __dague_object->super.arenas[DAGUE_zgemm_NN_bcast_DEFAULT_ARENA];
-#endif
-#if defined(DISTRIBUTED)
     __nb_elt = 1;
-#endif  /* defined(DISTRIBUTED) */
+#endif
     nc.function = (const dague_function_t*)&zgemm_NN_bcast_GEMM;
     {
       int GEMM_m;
       for( GEMM_m = 0;GEMM_m <= (descA.mt - 1); GEMM_m+=1) {
-        if( (GEMM_m >= (0)) && (GEMM_m <= ((descC.mt - 1))) ) {
-          nc.locals[0].value = GEMM_m;
+          if( (GEMM_m >= (0)) && (GEMM_m <= ((descC.mt - 1))) ) {
+            nc.locals[0].value = GEMM_m;
           {
             const int GEMM_n = 0;
-            if( (GEMM_n >= (0)) && (GEMM_n <= ((descC.nt - 1))) ) {
-              nc.locals[1].value = GEMM_n;
+              if( (GEMM_n >= (0)) && (GEMM_n <= ((descC.nt - 1))) ) {
+                nc.locals[1].value = GEMM_n;
               {
                 const int GEMM_k = k;
-                if( (GEMM_k >= (0)) && (GEMM_k <= ((descA.nt - 1))) ) {
-                  nc.locals[2].value = GEMM_k;
+                  if( (GEMM_k >= (0)) && (GEMM_k <= ((descA.nt - 1))) ) {
+                    nc.locals[2].value = GEMM_k;
 #if defined(DISTRIBUTED)
                     rank_dst = ((dague_ddesc_t*)__dague_object->super.C)->rank_of((dague_ddesc_t*)__dague_object->super.C, GEMM_m, GEMM_n);
-#endif
+                    if( eu != NULL && rank_dst == eu->virtual_process->dague_context->my_rank ) vpid_dst = ((dague_ddesc_t*)__dague_object->super.C)->vpid_of((dague_ddesc_t*)__dague_object->super.C, GEMM_m, GEMM_n);
+#else /* !DISTRIBUTED */
+                    vpid_dst = ((dague_ddesc_t*)__dague_object->super.C)->vpid_of((dague_ddesc_t*)__dague_object->super.C, GEMM_m, GEMM_n);
+#endif /* DISTRIBUTED */
 #if defined(DAGUE_DEBUG_VERBOSE1)
                   if( NULL != eu ) {
                     char tmp[128], tmp1[128];
-                    DEBUG(("thread %d release deps of A:%s to A:%s (from node %d to %d)\n", eu->eu_id,
-                           dague_service_to_string(this_task, tmp, 128),
-                           dague_service_to_string(&nc, tmp1, 128), rank_src, rank_dst));
+                    DEBUG(("thread %d VP %d release deps of A:%s to A:%s (from node %d to %d)\n",
+                           eu->th_id, eu->virtual_process->vp_id,
+                           dague_snprintf_execution_context(tmp, 128, this_task),
+                           dague_snprintf_execution_context(tmp1, 128, &nc), rank_src, rank_dst));
                   }
 #endif
                     nc.flowname = "A";
                     nc.priority = __dague_object->super.super.object_priority;
-                    if( DAGUE_ITERATE_STOP == ontask(eu, &nc, this_task, 0, 0, rank_src, rank_dst, arena, __nb_elt, ontask_arg) )
+                    if( DAGUE_ITERATE_STOP == ontask(eu, &nc, this_task, 0, 0, rank_src, rank_dst, vpid_dst, arena, __nb_elt, ontask_arg) )
                       return;
-    }
       }
         }
           }
             }
               }
                 }
+                  }
   }
   (void)nc;(void)arena;(void)eu;(void)ontask;(void)ontask_arg;(void)rank_dst;(void)action_mask;
 }
@@ -2331,11 +2236,12 @@ static int release_deps_of_zgemm_NN_bcast_READ_A(dague_execution_unit_t *eu, dag
 {
   const __dague_zgemm_NN_bcast_internal_object_t *__dague_object = (const __dague_zgemm_NN_bcast_internal_object_t *)context->dague_object;
   dague_release_dep_fct_arg_t arg;
+  int __vp_id;
   arg.nb_released = 0;
   arg.output_usage = 0;
   arg.action_mask = action_mask;
   arg.deps = deps;
-  arg.ready_list = NULL;
+  arg.ready_lists = (eu != NULL) ? calloc(sizeof(dague_execution_context_t *), eu->virtual_process->dague_context->nb_vp) : NULL;
   (void)__dague_object;
   if( action_mask & DAGUE_ACTION_RELEASE_LOCAL_DEPS ) {
     arg.output_entry = data_repo_lookup_entry_and_create( eu, READ_A_repo, READ_A_hash(__dague_object, context->locals) );
@@ -2351,11 +2257,14 @@ static int release_deps_of_zgemm_NN_bcast_READ_A(dague_execution_unit_t *eu, dag
   iterate_successors_of_zgemm_NN_bcast_READ_A(eu, context, action_mask, dague_release_dep_fct, &arg);
 
   if(action_mask & DAGUE_ACTION_RELEASE_LOCAL_DEPS) {
+    struct dague_vp** vps = eu->virtual_process->dague_context->virtual_processes;
     data_repo_entry_addto_usage_limit(READ_A_repo, arg.output_entry->key, arg.output_usage);
-    if( NULL != arg.ready_list ) {
-      __dague_schedule(eu, arg.ready_list);
-      arg.ready_list = NULL;
+    for(__vp_id = 0; __vp_id < eu->virtual_process->dague_context->nb_vp; __vp_id++) {
+      if( NULL == arg.ready_lists[__vp_id] ) continue;
+      __dague_schedule(vps[__vp_id]->execution_units[0], arg.ready_lists[__vp_id]);
+      arg.ready_lists[__vp_id] = NULL;
     }
+    free(arg.ready_lists);
   }
 #if defined(DISTRIBUTED)
   if( (action_mask & DAGUE_ACTION_SEND_REMOTE_DEPS) && arg.remote_deps_count ) {
@@ -2368,7 +2277,6 @@ static int release_deps_of_zgemm_NN_bcast_READ_A(dague_execution_unit_t *eu, dag
     (void)m; (void)k;
 
   }
-  assert( NULL == arg.ready_list );
   return arg.nb_released;
 }
 
@@ -2393,7 +2301,7 @@ static int hook_of_zgemm_NN_bcast_READ_A(dague_execution_unit_t *context, dague_
   eA = this_task->data[0].data_repo;
   gA = this_task->data[0].data;
   if( NULL == gA ) {
-  gA = (dague_arena_chunk_t*) A(m, k);
+    gA = (dague_arena_chunk_t*) A(m, k);
     this_task->data[0].data = gA;
     this_task->data[0].data_repo = eA;
   }
@@ -2430,7 +2338,7 @@ static int hook_of_zgemm_NN_bcast_READ_A(dague_execution_unit_t *context, dague_
 #line 53 "zgemm_NN_bcast.jdf"
     printlog("rank %u <- A(%d,%d)\n", __dague_object->super.A->myrank, m, k);
 
-#line 2434 "zgemm_NN_bcast.c"
+#line 2342 "zgemm_NN_bcast.c"
 /*--------------------------------------------------------------------------------*
  *                              END OF READ_A BODY                              *
  *--------------------------------------------------------------------------------*/
@@ -2456,7 +2364,7 @@ static int complete_hook_of_zgemm_NN_bcast_READ_A(dague_execution_unit_t *contex
 #if defined(DISTRIBUTED)
   /** If not working on distributed, there is no risk that data is not in place */
 #endif /* DISTRIBUTED */
-  dague_prof_grapher_task(this_task, context->eu_id, READ_A_hash(__dague_object, this_task->locals));
+  dague_prof_grapher_task(this_task, context->th_id, context->virtual_process->vp_id, READ_A_hash(__dague_object, this_task->locals));
   release_deps_of_zgemm_NN_bcast_READ_A(context, this_task,
       DAGUE_ACTION_RELEASE_REMOTE_DEPS |
       DAGUE_ACTION_RELEASE_LOCAL_DEPS |
@@ -2470,12 +2378,14 @@ static int zgemm_NN_bcast_READ_A_internal_init(__dague_zgemm_NN_bcast_internal_o
 {
   dague_dependencies_t *dep = NULL;
   assignment_t assignments[MAX_LOCAL_COUNT];(void) assignments;
-  int nb_tasks = 0, __foundone = 0;
+  int nb_tasks = 0;
   int32_t  m, k;
   int32_t  m_min = 0x7fffffff, k_min = 0x7fffffff;
   int32_t  m_max = 0, k_max = 0;
-  (void)__dague_object; (void)__foundone;
-  int32_t m_start, m_end, m_inc;  int32_t k_start, k_end, k_inc;  /* First, find the min and max value for each of the dimensions */
+  (void)__dague_object;
+  int32_t m_start, m_end, m_inc;
+  int32_t k_start, k_end, k_inc;
+  /* First, find the min and max value for each of the dimensions */
   for(m = 0;
       m <= (descA.mt - 1);
       m += 1) {
@@ -2498,13 +2408,13 @@ static int zgemm_NN_bcast_READ_A_internal_init(__dague_zgemm_NN_bcast_internal_o
    * and if at least one value is defined, allocate arrays to point
    * to it. Array dimensions are defined by the (rough) observation above
    **/
+  DEBUG2(("Allocating dependencies array for zgemm_NN_bcast_READ_A_internal_init\n"));
   dep = NULL;
   m_start = 0;
   m_end = (descA.mt - 1);
   m_inc = 1;
   for(m = dague_imax(m_start, m_min); m <= dague_imin(m_end, m_max); m+=m_inc) {
     assignments[0].value = m;
-    __foundone = 0;
     k_start = 0;
     k_end = (descA.nt - 1);
     k_inc = 1;
@@ -2522,19 +2432,23 @@ static int zgemm_NN_bcast_READ_A_internal_init(__dague_zgemm_NN_bcast_internal_o
       }
     }
   }
-  (void)m_start; (void)m_end; (void)m_inc;  (void)k_start; (void)k_end; (void)k_inc;  __dague_object->super.super.dependencies_array[2] = dep;
+  (void)m_start; (void)m_end; (void)m_inc;  (void)k_start; (void)k_end; (void)k_inc;
+  __dague_object->super.super.dependencies_array[2] = dep;
   __dague_object->super.super.nb_local_tasks += nb_tasks;
   return nb_tasks;
 }
 
 static int zgemm_NN_bcast_READ_A_startup_tasks(dague_context_t *context, const __dague_zgemm_NN_bcast_internal_object_t *__dague_object, dague_execution_context_t** pready_list)
 {
-  dague_execution_context_t* new_context;
+  dague_execution_context_t* new_context, new_context_holder, *new_dynamic_context;
   assignment_t *assignments = NULL;
+  int vpid;
   int32_t  m = -1, k = -1;
   (void)m; (void)k;
-  new_context = (dague_execution_context_t*)dague_thread_mempool_allocate( context->execution_units[0]->context_mempool );
+  new_context = &new_context_holder;
   assignments = new_context->locals;
+  new_context->dague_object = (dague_object_t*)__dague_object;
+  new_context->function = (const dague_function_t*)&zgemm_NN_bcast_READ_A;
   /* Parse all the inputs and generate the ready execution tasks */
   for(m = 0;
       m <= (descA.mt - 1);
@@ -2545,28 +2459,28 @@ static int zgemm_NN_bcast_READ_A_startup_tasks(dague_context_t *context, const _
         k+=1) {
       assignments[1].value = k;
       if( !READ_A_pred(m, k) ) continue;
+      vpid = ((dague_ddesc_t*)__dague_object->super.A)->vpid_of((dague_ddesc_t*)__dague_object->super.A, m, k);
+      new_dynamic_context = (dague_execution_context_t*)dague_thread_mempool_allocate( context->virtual_processes[vpid]->execution_units[0]->context_mempool );
+      /* Copy only the valid elements from new_context to new_dynamic one */
+      new_dynamic_context->dague_object = new_context->dague_object;
+      new_dynamic_context->function     = new_context->function;
+      memcpy(new_dynamic_context->locals, new_context->locals, 2*sizeof(assignment_t));
       DAGUE_STAT_INCREASE(mem_contexts, sizeof(dague_execution_context_t) + STAT_MALLOC_OVERHEAD);
-      DAGUE_LIST_ITEM_SINGLETON( new_context );
-      new_context->dague_object = (dague_object_t*)__dague_object;
-      new_context->function = (const dague_function_t*)&zgemm_NN_bcast_READ_A;
-      new_context->priority = __dague_object->super.super.object_priority;
-      new_context->flowname = "A";
-    new_context->data[0].data_repo = NULL;
-    new_context->data[0].data      = NULL;
+      DAGUE_LIST_ITEM_SINGLETON( new_dynamic_context );
+      new_dynamic_context->priority = __dague_object->super.super.object_priority;
+      new_dynamic_context->flowname = "A";
+    new_dynamic_context->data[0].data_repo = NULL;
+    new_dynamic_context->data[0].data      = NULL;
 #if defined(DAGUE_DEBUG_VERBOSE2)
       {
         char tmp[128];
         DEBUG2(("Add startup task %s\n",
-               dague_service_to_string(new_context, tmp, 128)));
+               dague_snprintf_execution_context(tmp, 128, new_dynamic_context)));
       }
 #endif
-      dague_list_add_single_elem_by_priority( pready_list, new_context );
-      new_context = (dague_execution_context_t*)dague_thread_mempool_allocate( context->execution_units[0]->context_mempool );
-      assignments = new_context->locals;
-      assignments[0].value = m;
+      dague_list_add_single_elem_by_priority( &pready_list[vpid], new_dynamic_context );
     }
   }
-  dague_thread_mempool_free( context->execution_units[0]->context_mempool, new_context );
   return 0;
 }
 
@@ -2606,6 +2520,33 @@ static void zgemm_NN_bcast_startup(dague_context_t *context, dague_object_t *dag
   zgemm_NN_bcast_READ_B_startup_tasks(context, (__dague_zgemm_NN_bcast_internal_object_t*)dague_object, pready_list);
   zgemm_NN_bcast_READ_A_startup_tasks(context, (__dague_zgemm_NN_bcast_internal_object_t*)dague_object, pready_list);
 }
+static void zgemm_NN_bcast_destructor( dague_zgemm_NN_bcast_object_t *o )
+{
+  dague_object_t *d = (dague_object_t *)o;
+  __dague_zgemm_NN_bcast_internal_object_t *__dague_object = (__dague_zgemm_NN_bcast_internal_object_t*)o; (void)__dague_object;
+  int i;
+  free(d->functions_array);
+  d->functions_array = NULL;
+  d->nb_functions = 0;
+  for(i =0; i < o->arenas_size; i++) {
+    if( o->arenas[i] != NULL ) {
+      dague_arena_destruct(o->arenas[i]);
+      free(o->arenas[i]);
+    }
+  }
+  free( o->arenas );
+  o->arenas = NULL;
+  o->arenas_size = 0;
+  /* Destroy the data repositories for this object */
+   data_repo_destroy_nothreadsafe(__dague_object->GEMM_repository);
+   data_repo_destroy_nothreadsafe(__dague_object->READ_B_repository);
+   data_repo_destroy_nothreadsafe(__dague_object->READ_A_repository);
+  for(i = 0; i < DAGUE_zgemm_NN_bcast_NB_FUNCTIONS; i++)
+    dague_destruct_dependencies( d->dependencies_array[i] );
+  free( d->dependencies_array );
+  free(o);
+}
+
 #undef transA
 #undef transB
 #undef alpha
@@ -2680,39 +2621,13 @@ dague_zgemm_NN_bcast_object_t *dague_zgemm_NN_bcast_new(int transA, int transB, 
           MAX_DATAREPO_HASH :
           ((unsigned int)(READ_A_nblocal_tasks * 1.5)), 1);
 
-  __dague_object->super.super.startup_hook = zgemm_NN_bcast_startup;
+  __dague_object->super.super.startup_hook      = zgemm_NN_bcast_startup;
+  __dague_object->super.super.object_destructor = (dague_destruct_object_fn_t)zgemm_NN_bcast_destructor;
   (void)dague_object_register((dague_object_t*)__dague_object);
   return (dague_zgemm_NN_bcast_object_t*)__dague_object;
-}
-
-void dague_zgemm_NN_bcast_destroy( dague_zgemm_NN_bcast_object_t *o )
-{
-  dague_object_t *d = (dague_object_t *)o;
-  __dague_zgemm_NN_bcast_internal_object_t *__dague_object = (__dague_zgemm_NN_bcast_internal_object_t*)o; (void)__dague_object;
-  int i;
-  free(d->functions_array);
-  d->functions_array = NULL;
-  d->nb_functions = 0;
-  for(i =0; i < o->arenas_size; i++) {
-    if( o->arenas[i] != NULL ) {
-      dague_arena_destruct(o->arenas[i]);
-      free(o->arenas[i]);
-    }
-  }
-  free( o->arenas );
-  o->arenas = NULL;
-  o->arenas_size = 0;
-  /* Destroy the data repositories for this object */
-   data_repo_destroy_nothreadsafe(__dague_object->GEMM_repository);
-   data_repo_destroy_nothreadsafe(__dague_object->READ_B_repository);
-   data_repo_destroy_nothreadsafe(__dague_object->READ_A_repository);
-  for(i = 0; i < DAGUE_zgemm_NN_bcast_NB_FUNCTIONS; i++)
-    dague_destruct_dependencies( d->dependencies_array[i] );
-  free( d->dependencies_array );
-  free(o);
 }
 
 #line 125 "zgemm_NN_bcast.jdf"
 
 
-#line 2719 "zgemm_NN_bcast.c"
+#line 2634 "zgemm_NN_bcast.c"
