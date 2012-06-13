@@ -28,12 +28,12 @@ extern "C" %{
 #include "zherk_wrapper.c"
 #include "ztrsm_wrapper.c"
 
-#if defined(HAVE_CUDA) && defined(PRECISION_s)
+#if defined(HAVE_CUDA)
 #include "gpu_data.h"
 #include "dplasma/cores/cuda_zgemm.h"
 extern int *gpu_counter;
 extern dague_gpu_data_map_t dague_gpu_map;
-#endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
+#endif  /* defined(HAVE_CUDA) */
 
 #define MYGEMM
 #define MYHERK
@@ -133,11 +133,11 @@ BODY
     int tempkm = k == descA.mt-1 ? descA.m - k*descA.mb : descA.mb;
     int ldak = BLKLDD( descA, k );
 
-#if defined(HAVE_CUDA) && defined(PRECISION_s)
+#if defined(HAVE_CUDA)
     if (tempkm > GPU_TILE_THRESHOLD) {
-        dague_gpu_update_data_version( &dague_gpu_map, GEMM_KEY(k, k) );
+        dague_gpu_update_data_version( &dague_gpu_map, GEMM_KEY( &descA, k, k) );
     }
-#endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
+#endif  /* defined(HAVE_CUDA) */
 
 #ifdef MYPOTRF
     if (tempkm > SMALL_TILE_THRESHOLD) {
@@ -232,11 +232,11 @@ BODY
     int tempmm = m == descA.mt-1 ? descA.m - m * descA.mb : descA.mb;
     int ldak = BLKLDD( descA, k );
     int ldam = BLKLDD( descA, m );
-#if defined(HAVE_CUDA) && defined(PRECISION_s)
+#if defined(HAVE_CUDA) 
     if (tempmm > GPU_TILE_THRESHOLD || descA.nb > GPU_TILE_THRESHOLD) {
-        dague_gpu_update_data_version( &dague_gpu_map, GEMM_KEY(m, k) );
+        dague_gpu_update_data_version( &dague_gpu_map, GEMM_KEY( &descA, m, k) );
     }
-#endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
+#endif  /* defined(HAVE_CUDA) */
 
     //int tempmm = m == descA.mt-1 ? descA.m - m * descA.mb : descA.mb;
     //int ldak = BLKLDD( descA, k );
@@ -343,11 +343,11 @@ BODY
     int tempmm = m == descA.mt-1 ? descA.m - m*descA.mb : descA.mb;
     int ldam = BLKLDD( descA, m );
 
-#if defined(HAVE_CUDA) && defined(PRECISION_s)
+#if defined(HAVE_CUDA)
    if (tempmm > GPU_TILE_THRESHOLD || descA.mb > GPU_TILE_THRESHOLD) {
-        dague_gpu_update_data_version( &dague_gpu_map, GEMM_KEY(m, m) );
+        dague_gpu_update_data_version( &dague_gpu_map, GEMM_KEY( &descA, m, m) );
     }
-#endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
+#endif  /* defined(HAVE_CUDA) && */
 
     //int tempmm = m == descA.mt-1 ? descA.m - m*descA.mb : descA.mb;
     //int ldam = BLKLDD( descA, m );
@@ -420,9 +420,9 @@ END
 GEMM(k, m, n)
 
 // Execution space
-k = 0..descA.mt-3
-m = k+2..descA.mt-1
-n = k+1..m-1
+k = 0   .. descA.mt-3
+m = k+2 .. descA.mt-1
+n = k+1 .. m-1
 
 // Parallel partitioning
 : A(m, n)
@@ -451,13 +451,19 @@ BODY
     int ldam = BLKLDD( descA, m );
     int ldan = BLKLDD( descA, n );
 
-#if defined(HAVE_CUDA) && defined(PRECISION_s)
+#if defined(HAVE_CUDA)
 //	 printf("mark GPU GEMM: %d, m:%d, n:%d, k:%d\n", descA.mb, m, n, k);
 	if (tempmm > GPU_TILE_THRESHOLD || descA.mb > GPU_TILE_THRESHOLD) {
 		if( dague_active_gpu() > 0 ) {
         	int rc;
 	
-			if( 0 == (rc = gpu_zgemm( context, this_task, uplo )) ) 
+			if( 0 == (rc = gpu_zgemm( context, this_task, 
+                                  ( n == k+1 ),
+                                  PlasmaNoTrans, PlasmaConjTrans,
+                                  tempmm, descA.mb, descA.mb,
+                                  (Dague_Complex64_t)-1.0, m, k, &descA, ldam,
+                                                           n, k, &descA, ldan,
+                                  (Dague_Complex64_t) 1.0, m, n, &descA, ldam)) )
             	goto FIN;
         	if( -1 == rc ) {
             	/* The task is pending in the device, and will be subsequently completed */
@@ -465,21 +471,18 @@ BODY
         	}
         	if( -2 == rc ) {
             	/* The GPU failed to execute this task, but the task was already rescheduled */
-	    	fprintf(stderr, "Unable to disable GPU at runtime. Fatal error.\n");
-	    	exit(2);
+	    		fprintf(stderr, "Unable to disable GPU at runtime. Fatal error.\n");
+	    		exit(2);
         	}
-        	/* Continue with the task on the cores */
-        	device_load[0] -= device_weight[0];  /* lessen the load on the CPUs */
-   		}
-    	dague_gpu_update_data_version( &dague_gpu_map, GEMM_KEY(m, n) );
+    	}
+    	dague_gpu_update_data_version( &dague_gpu_map, GEMM_KEY( &descA, m, n) );
+    }
+    else {
+        goto MYCPU;
+    }
+#endif  /* defined(HAVE_CUDA) */
 
-     }
-     else {
-         goto MYCPU;
-     }
-#endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
-
-#if defined(HAVE_CUDA) && defined(PRECISION_s)
+#if defined(HAVE_CUDA)
 MYCPU:
 #endif
 
@@ -487,7 +490,7 @@ MYCPU:
     if (tempmm > SMALL_TILE_THRESHOLD || descA.mb > SMALL_TILE_THRESHOLD) {
         int small_mb = descA.mb / SMALL_TILE_RATE;
         int small_nb = descA.nb / SMALL_TILE_RATE;
-        printf("gemm dague\n");
+       // printf("gemm dague\n");
         two_dim_block_cyclic_t *small_descA, *small_descB, *small_descC;
         small_descA = (two_dim_block_cyclic_t *) malloc(sizeof(two_dim_block_cyclic_t));
         small_descB = (two_dim_block_cyclic_t *) malloc(sizeof(two_dim_block_cyclic_t));
@@ -551,8 +554,8 @@ MYCPU:
                    n, k, B, ldan,
              1.0,  m, n, C, ldam);
 
-#if defined(HAVE_CUDA) && defined(PRECISION_s)
+#if defined(HAVE_CUDA)
 FIN:
-#endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
+#endif  /* defined(HAVE_CUDA) */
 
 END
