@@ -85,7 +85,7 @@ BODY
 
   printlog("thread %d CORE_zlacpy(%d, %d)\n"
            "\t(PlasmaUpperLower, tempmm, tempnn, B(%d,%d)[%p], ldbm, Z(%d,%d)[%p], ldzm)\n",
-  context->eu_id, m, n, m, n, A, m, n, B);
+  context->th_id, m, n, m, n, A, m, n, B);
 
 END
 
@@ -159,7 +159,7 @@ BODY
 
   printlog("thread %d CORE_zgemm(%d, %d, %d)\n"
            "\t(PlasmaNoTrans, PlasmaNoTrans, tempmm, tempnn, tempkn, (Dague_Complex64_t)-1.000000, A(%d,%d)[%p], ldam, X(%d,%d)[%p], ldxk, (Dague_Complex64_t)1.000000, Z(%d,%d)[%p], ldzm)\n",
-  context->eu_id, m1, n1, k, m1, k, C, k, n1, D, m1, n1, E);
+  context->th_id, m1, n1, k, m1, k, C, k, n1, D, m1, n1, E);
 
 END
 
@@ -243,7 +243,7 @@ BODY
 
   printlog("thread %d CORE_zlacpy(%d, %d)\n"
            "\t(PlasmaUpperLower, tempmm, tempnn, Z(%d,%d)[%p], ldzm, R(%d,%d)[%p], ldrm)\n",
-  context->eu_id, m2, n2, m2, n2, F, m2, n2, G);
+  context->th_id, m2, n2, m2, n2, F, m2, n2, G);
 
 END
 
@@ -328,7 +328,7 @@ BODY
 
   printlog("thread %d CORE_ztrsm(%d, %d)\n"
            "\t(PlasmaLeft, PlasmaLower, PlasmaNoTrans, PlasmaUnit, tempkm, tempnn, (Dague_Complex64_t)1.000000, LU(%d,%d)[%p], lda, Z(%d,%d)[%p], ldz)\n",
-  context->eu_id, k1, n3, k1, k1, H, k1, n3, J);
+  context->th_id, k1, n3, k1, k1, H, k1, n3, J);
 
 END
 
@@ -398,7 +398,7 @@ BODY
 
   printlog("thread %d CORE_zgemm(%d, %d, %d)\n"
            "\t(PlasmaNoTrans, PlasmaNoTrans, tempmm, tempnn, descZ.mb, mzone, LU(%d,%d)[%p], lda, Z(%d,%d)[%p], descZ.mb, (Dague_Complex64_t)1.000000, Z(%d,%d)[%p], ldz)\n",
-  context->eu_id, k1, m3, n4, m3, k1, K, k1, n4, L, m3, n4, M);
+  context->th_id, k1, m3, n4, m3, k1, K, k1, n4, L, m3, n4, M);
 
 END
 
@@ -465,7 +465,7 @@ BODY
 
   printlog("thread %d CORE_ztrsm(%d, %d)\n"
            "\t(PlasmaLeft, PlasmaUpper, PlasmaNoTrans, PlasmaNonUnit, tempkm, tempnn, (Dague_Complex64_t)1.000000, LU(%d,%d)[%p], lda, Z(%d,%d)[%p], ldz)\n",
-  context->eu_id, k2, n5, (descZ.mt-1)-k2, (descZ.mt-1)-k2, N, (descZ.mt-1)-k2, n5, O);
+  context->th_id, k2, n5, (descZ.mt-1)-k2, (descZ.mt-1)-k2, N, (descZ.mt-1)-k2, n5, O);
 
 END
 
@@ -530,7 +530,7 @@ BODY
 
   printlog("thread %d CORE_zgemm(%d, %d, %d)\n"
            "\t(PlasmaNoTrans, PlasmaNoTrans, descZ.mb, tempnn, tempkm, mzone, LU(%d,%d)[%p], descLU.mb, Z(%d,%d)[%p], ldz, (Dague_Complex64_t)1.000000, Z(%d,%d)[%p], descZ.mb)\n",
-  context->eu_id, k2, m4, n6, (descZ.mt-1)-m4, (descZ.mt-1)-k2, P, (descZ.mt-1)-k2, n6, Q, (descZ.mt-1)-m4, n6, R);
+  context->th_id, k2, m4, n6, (descZ.mt-1)-m4, (descZ.mt-1)-k2, P, (descZ.mt-1)-k2, n6, Q, (descZ.mt-1)-m4, n6, R);
 
 END
 
@@ -587,7 +587,7 @@ BODY
 
   printlog("thread %d CORE_zgeadd(%d, %d)\n"
            "\t(tempmm, tempnn, (Dague_Complex64_t)1.000000, Z(%d,%d)[%p], ldzm, X(%d,%d)[%p], ldxm)\n",
-  context->eu_id, m5, n7, m5, n7, S, m5, n7, T);
+  context->th_id, m5, n7, m5, n7, S, m5, n7, T);
 
 END
 
@@ -655,7 +655,7 @@ BODY
 
   printlog("thread %d CORE_zgemm(%d, %d, %d)\n"
            "\t(PlasmaNoTrans, PlasmaNoTrans, tempmm, tempnn, tempkn, (Dague_Complex64_t)-1.000000, A(%d,%d)[%p], ldam, Z(%d,%d)[%p], ldzk, (Dague_Complex64_t)1.000000, R(%d,%d)[%p], ldrm)\n",
-  context->eu_id, m6, n8, k3, m6, k3, U, k3, n8, V, m6, n8, W);
+  context->th_id, m6, n8, k3, m6, k3, U, k3, n8, V, m6, n8, W);
 
 END
 

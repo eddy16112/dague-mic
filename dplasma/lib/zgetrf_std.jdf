@@ -170,6 +170,7 @@ RW    ACOPY <-  A ACOPY_in(k,n)
 CTL     ctl ->  ctl SWAP_PASTE(k,n)
 
 BODY
+    printlog("SWAP_COPY(k=%d,n=%d)\n",k,n);
     DRYRUN(
             /*int tempnn = ((n)==(descA.nt-1)) ? (descA.n-(n*descA.nb)) : (descA.nb);
             int ldak = BLKLDD( descA, k );
@@ -179,7 +180,6 @@ BODY
                   for(i = 0; i < descA.mt; i++)
                         ACOPY[j*ldak+i] = A[j*ldak+i];*/
           );
-    printlog("SWAP_COPY(k=%d,n=%d)\n",d,n);
 END
 
 
