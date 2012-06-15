@@ -236,8 +236,8 @@ BODY
 		     lV + SRCH,  1);
 	 lV[PIVO + h] = (Dague_Complex64_t)(index+m*descA.mb);
        }
-          );
-    printlog();
+         );
+    //printlog();
 END
 
 
@@ -311,7 +311,7 @@ BODY
 		             lW + MAXI, 1);
 
           );
-    printlog();
+    //printlog();
 END
 
 /**************************************************
@@ -392,5 +392,5 @@ BODY
    for(i = 0; i <= hmax; i++)
      ((int *) IP)[i] = ((int) lV[PIVO + i]) + 1;
 	);
-    printlog();
+    //printlog();
 END

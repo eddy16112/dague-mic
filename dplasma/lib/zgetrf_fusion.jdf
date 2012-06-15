@@ -348,7 +348,7 @@ BODY
                    lM + 1,     1);
        lM[0] = (Dague_Complex64_t)(index+m*descA.mb);
            );
-    printlog();
+    printlog("GETRF_MAX(k=%d, m=%d, h=%d)", k, m, h);
 }
 END
 
@@ -413,7 +413,7 @@ BODY
             cblas_zcopy(tempkn+1, lMd, 1,
                         lMm, 1);
            );
-    printlog();
+    printlog("GETRF_RDC(k,r,m,h)");
 }
 END
 
@@ -458,7 +458,6 @@ BODY
         cblas_zcopy(tempkn, lM + 1,    1,
                     lV + SRCH, 1);
            );
-    printlog();
 }
 END
 
@@ -537,7 +536,7 @@ BODY
                         lU + (nmax%IB), IB);
         }
            );
-    printlog();
+    printlog("GETRF_MDL(k,m,h)");
 }
 END
 
@@ -609,7 +608,6 @@ BODY
                         lW + MAXI, 1);
 
            );
-    printlog();
 }
 END
 
@@ -693,7 +691,6 @@ BODY
             }
         }
            );
-    printlog();
 
 #if defined(HAVE_CUDA)
     dague_gpu_update_data_version( &dague_gpu_map, GEMM_KEY( &descA, m, k) );
@@ -758,7 +755,7 @@ BODY
                             A    , ldak,
                             ACOPY, descA.mb);
            );
-    printlog("SWAP_COPY(k=%d,n=%d)\n",d,n);
+    printlog("SWAP_COPY(k=%d,n=%d)\n",k,n);
 }
 END
 
@@ -919,7 +916,7 @@ END
  * Sending the temporary buffer to the logarithmic
  * neighbor
  **************************************************/
-SWAP_SND(k,d,m,n)
+SWAP_SND(k,d,m,n) [immediate=on]
 
 // Execution space
 k = 0 .. minmnt
