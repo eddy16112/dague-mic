@@ -400,7 +400,6 @@ BODY
 #if defined(HAVE_CUDA)
     dague_gpu_update_data_version( &dague_gpu_map, GEMM_KEY( &descA, m, k) );
 #endif  /* defined(HAVE_CUDA) */
-
 }
 END
 
@@ -966,7 +965,7 @@ END
  * Sending the temporary buffer to the logarithmic
  * neighbor
  **************************************************/
-SWAP_SND(k,d,m,n)
+SWAP_SND(k,d,m,n) [immediate=on]
 
 // Execution space
 k = 0 .. minmnt

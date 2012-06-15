@@ -182,13 +182,13 @@ int gpu_kernel_scheduler( dague_execution_unit_t *eu_context,
 
  complete_task:
     assert( NULL != this_task );
-    DEBUG2(( "GPU[%1d]:\Complete %s priority %d\n", gpu_device->device_index,
+    DEBUG2(( "GPU[%1d]:\tComplete %s priority %d\n", gpu_device->device_index,
              dague_snprintf_execution_context(tmp, MAX_TASK_STRLEN, this_task->ec),
              this_task->ec->priority ));
     /* Everything went fine so far, the result is correct and back in the main memory */
     DAGUE_LIST_ITEM_SINGLETON(this_task);
     gpu_kernel_epilog( gpu_device, this_task );
-    dague_complete_execution( eu_context, this_task->ec );
+    __dague_complete_execution( eu_context, this_task->ec );
     device_load[gpu_device->device_index+1] -= device_weight[gpu_device->device_index+1];
     gpu_device->executed_tasks++;
     free( this_task );
