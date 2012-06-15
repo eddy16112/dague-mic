@@ -179,7 +179,7 @@ BODY
                   for(i = 0; i < descA.mt; i++)
                         ACOPY[j*ldak+i] = A[j*ldak+i];*/
           );
-    printlog("SWAP_COPY(k=%d,n=%d)\n",d,n);
+    printlog("SWAP_COPY(k=%d,n=%d)\n",k,n);
 END
 
 
