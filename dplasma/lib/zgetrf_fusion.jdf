@@ -43,35 +43,58 @@ extern dague_gpu_data_map_t dague_gpu_map;
 static Dague_Complex64_t zone  = 1.;
 static Dague_Complex64_t mzone = -1.;
 
-static inline void pivot_to_permutation(int *IP, int hmax, int *upermut, int *opermut, int diff)
+/*
+ * The idea here is to generate a permutation from the sequence of
+ * pivot.  To avoid storing one whole column at each step, we keep
+ * track of two vectors of nb elements, the first one contains the
+ * permutation of the first nb elements, and the second one contains
+ * the inverse permutation of those same elements.
+ *
+ * Let's have i the element to pivot with ip. IPIV[i] = ip;
+ * We set i_1 as such iperm[ i_1 ] = i or perm[ i ] = i_1
+ *  and  ip_1 as such iperm[ ip_1 ] = ip or perm[ ip ] = ip_1
+ * 
+ * At each step we want to swap:
+ *          perm[i] and perm[ip]
+ * as well as iperm[i_1] and iperm[ip_1]
+ *
+ */
+static void pivot_to_permutation(int *IP, int hmax, int *perm, int *invperm, int diff )
 {
-  int i,j;
-  int index;
-  for(i = 0; i < hmax; i++)
-    upermut[i] = opermut[i] = i + diff;
+    int i, j, ip;
+    int i_1, ip_1;
 
-  for(i = 0; i < hmax; i++) {
-    int tmp = upermut[i];
-    if((IP[i] - diff - 1) >= hmax) {
-      index = (IP[i] - diff - 1);
-      for(j = 0; j < hmax; j++)
-        if(opermut[j] == (IP[i] - 1)) {
-          index = j;
-          break;
+    for(i=0; i < hmax; i++)
+        perm[i] = invperm[i] = i + diff;
+
+    for(i = 0; i < hmax; i++) {
+        ip = IP[i]-1;
+        assert( ip - diff >= i );
+        if ( ip-diff > i ) {
+            
+            i_1 = perm[i];
+
+            if (ip-diff < hmax) {
+                ip_1 = perm[ip-diff];
+                perm[ip-diff] = i_1;
+            } else {
+                ip_1 = ip;
+                for(j=0; j < hmax; j++) {
+                    if( invperm[j] == ip ) {
+                        ip_1 = j + diff;
+                        break;
+                    }
+                }
+            }
+            
+            perm[i] = ip_1;
+            i_1  -= diff;
+            ip_1 -= diff;
+
+            if (i_1  < hmax) invperm[i_1 ] = ip;
+            if (ip_1 < hmax) invperm[ip_1] = i+diff;
         }
-      if(index >= hmax) {
-        upermut[i] = (IP[i] - 1);
-        opermut[tmp-diff] = (IP[i] - 1);
-      } else {
-        upermut[i] = index;
-        opermut[index] = index;
-        opermut[tmp - diff] = (IP[i] - 1);
-      }
-    } else {
-      upermut[i] = upermut[(IP[i] - diff - 1)];
-      upermut[(IP[i] - diff - 1)] = tmp;
     }
-  }
 }
 
 %}
@@ -286,7 +309,7 @@ BODY
     int tempkn = ( k == (descA.nt-1) ) ? descA.n - k * descA.nb : descA.nb;
     tempmm -= p;
 
-    printlog();
+    printlog("GETRF_MAX(k=%d, m=%d, h=%d)\n", k, m, h);
 
     DRYRUN(
        int nt = ( tempkn - 1 ) / IB ;
@@ -356,9 +379,10 @@ BODY
        }
 
        /* Saving the default swap line */
-       if(m == k)
+       if(m == k) {
            cblas_zcopy(tempkn, lT + h,         ldam,
                                lV + ISND( h ), 1);
+       }
 
        /* Looking for the local max */
        index = cblas_izamax( tempmm, A, 1 ) + p;
@@ -428,7 +452,7 @@ BODY
 {
     int tempkn = ((k)==(descA.nt-1)) ? (descA.n-(k*descA.nb)) : (descA.nb);
 
-    printlog();
+    printlog("GETRF_RDC(k=%d, r=%d, m=%d, h=%d)\n", k, r, m, h );
 
     DRYRUN(
         Dague_Complex64_t *lMm = (Dague_Complex64_t*)Mm;
@@ -485,7 +509,7 @@ READ  M <-  Mm GETRF_RDC(k, m, 0, h )                  [type = MAXL]
 BODY
 {
     int tempkn = ((k)==(descA.nt-1)) ? (descA.n-(k*descA.nb)) : (descA.nb);
-    printlog();
+    printlog("GETRF_SVM(k=%d, m=%d, h=%d)\n", k, m, h);
 
     DRYRUN(
         Dague_Complex64_t *lV = (Dague_Complex64_t*)V;
@@ -530,16 +554,17 @@ sender = inline_c %{ return ((h == hmax) ? nmax : ((h+1)*IB)-1); %}
 // Parallel partitioning
 :A(k+m, k)
 
-READ  V  <- W GETRF_SND(k,dmax,m,sender)                                                                  [type = SWAP]
-         -> (h == hmax)? V GETRF_FNL(k,(k+m)..(descA.mt-((descA.mt-(k+m+1))%P)-1)..P)                     [type = SWAP]
-RW    U <-  U GETRF_MAX(k,k+m,sender                  )                                                   [type = UMES]
-        ->  (h != hmax)? U GETRF_MAX(k,(k+m)..(descA.mt-((descA.mt-(k+m+1))%P)-1)..P,((h+1)*IB))          [type = UMES]
+READ  V <- W GETRF_SND(k,dmax,m,sender)                                                                  [type = SWAP]
+        -> (h == hmax)? V GETRF_FNL(k,(k+m)..(descA.mt-((descA.mt-(k+m+1))%P)-1)..P)                     [type = SWAP]
+RW    U <- U GETRF_MAX(k,k+m,sender                  )                                                   [type = UMES]
+        -> (h != hmax)? U GETRF_MAX(k,(k+m)..(descA.mt-((descA.mt-(k+m+1))%P)-1)..P,((h+1)*IB))          [type = UMES]
 
 // Priority
 ; 1000000
 
 BODY
 {
+    printlog("GETRF_MDL(k=%d, m=%d, h=%d )\n", k, m, h );
     DRYRUN(
         int tempkn = ((k)==(descA.nt-1)) ? (descA.n-(k*descA.nb)) : (descA.nb);
 
@@ -561,7 +586,6 @@ BODY
                         lU + (nmax%IB), IB);
         }
            );
-    printlog();
 }
 END
 
@@ -609,6 +633,7 @@ RW    W <- (d == 0)? V GETRF_SVM(k,(mmax+m-1)%mmax,h) : W GETRF_SND(k,d-1,(mmax+
 
 BODY
 {
+    printlog("GETRF_SND( k=%d, d=%d, m=%d, h=%d )\n", k, d, m, h );
     DRYRUN(
         int tempkn = ((k)==(descA.nt-1)) ? (descA.n-(k*descA.nb)) : (descA.nb);
 
@@ -632,7 +657,6 @@ BODY
                         lW + MAXI, 1);
 
            );
-    printlog();
 }
 END
 
@@ -681,6 +705,8 @@ RW   IP <-  IP IP_in(k,(m-k)%P)                                                 
 
 BODY
 {
+    printlog("GETRF_FNL( k=%d, m=%d )\n", k, m );
+
     DRYRUN(
         int tempmm = ((m)==(descA.mt-1)) ? (descA.m-(m*descA.mb)) : (descA.mb);
         int tempkn = ((k)==(descA.nt-1)) ? (descA.n-(k*descA.nb)) : (descA.nb);
@@ -690,7 +716,6 @@ BODY
 
         Dague_Complex64_t *lV = (Dague_Complex64_t*)V;
         Dague_Complex64_t *lT = (Dague_Complex64_t*)T;
-
 
         /* Applying the previous swap */
         if(m == k)
@@ -715,7 +740,6 @@ BODY
             }
         }
            );
-    printlog();
 
 #if defined(HAVE_CUDA)
     dague_gpu_update_data_version( &dague_gpu_map, GEMM_KEY( &descA, m, k) );
@@ -771,6 +795,7 @@ RW    ACOPY <-  A ACOPY_in(k,n)
 
 BODY
 {
+    printlog("SWAP_COPY(k=%d,n=%d)\n",k,n);
     DRYRUN(
         int tempnn = ((n)==(descA.nt-1)) ? (descA.n-(n*descA.nb)) : (descA.nb);
         int tempkm = ((k)==(descA.mt-1)) ? (descA.m-(k*descA.mb)) : (descA.mb);
@@ -780,7 +805,6 @@ BODY
                             A    , ldak,
                             ACOPY, descA.mb);
            );
-    printlog("SWAP_COPY(k=%d,n=%d)\n",d,n);
 }
 END
 
@@ -831,6 +855,7 @@ BODY
             pivot_to_permutation(((int *) IP), hmax, upermut, opermut, k*descA.mb);
 
             int i;
+
             for(i = 0; i < hmax; i++) {
                 owner_index = opermut[i]/descA.mb;
                 index       = opermut[i]%descA.mb;
@@ -903,6 +928,8 @@ READ     IP <-  IP GETRF_FNL(k,m)                                               
 
 BODY
 {
+    printlog("SWAP_COLLECT(k=%d,m=%d,n=%d)\n",k,m,n);
+
     DRYRUN(
         int tempkm = ((k)==(descA.mt-1)) ? (descA.m-(k*descA.mb)) : (descA.mb);
         int tempkn = ((k)==(descA.nt-1)) ? (descA.n-(k*descA.nb)) : (descA.nb);
@@ -918,7 +945,6 @@ BODY
         int opermut[hmax];
         pivot_to_permutation(((int *) IP), hmax, upermut, opermut, k*descA.mb);
 
-
         int i;
         for(i = 0; i < hmax; i++) {
             owner_index = upermut[i]/descA.mb;
@@ -931,7 +957,6 @@ BODY
 
         }
            );
-    printlog("SWAP_COLLECT(k=%d,m=%d,n=%d)\n",k,m,n);
 }
 END
 
@@ -1105,18 +1130,20 @@ RW      C <- T SWAP_PASTE(k,n)
 
 BODY
 {
-    DRYRUN(
-        int tempkm = ((k)==(descA.mt-1)) ? (descA.m-(k*descA.mb)) : (descA.mb);
-        int tempnn = ((n)==(descA.nt-1)) ? (descA.n-(n*descA.nb)) : (descA.nb);
-        int ldak = BLKLDD( descA, k );
+    int tempkm = ((k)==(descA.mt-1)) ? (descA.m-(k*descA.mb)) : (descA.mb);
+    int tempnn = ((n)==(descA.nt-1)) ? (descA.n-(n*descA.nb)) : (descA.nb);
+    int ldak = BLKLDD( descA, k );
+    
+    printlog("TRSM_U(k=%d, n=%d)\n"
+             "\t(M=%d, N=%d, LDA=LDC=%d)\n", k, n, tempkm, tempnn, ldak );
 
+    DRYRUN(
         CORE_ztrsm(
             PlasmaLeft, PlasmaLower, PlasmaNoTrans, PlasmaUnit,
             tempkm, tempnn,
             1., T /*A(k, k)*/, ldak,
                 C /*A(k, n)*/, ldak );
            );
-    printlog("CORE_trsm_U(k=%d,n=%d,ldk=%d,A(%d,%d))\n", tempkm, tempnn,ldak,k,n);
 
 #if defined(HAVE_CUDA)
     dague_gpu_update_data_version( &dague_gpu_map, GEMM_KEY( &descA, k, n) );
@@ -1141,9 +1168,9 @@ n = k+1 .. descA.nt-1
 READ  A <- T GETRF_FNL(k, m)
 READ  B <- C TRSM_U(k, n)
 RW    C <- T SWAP_RECV(k, m, n)
-        -> (n == k+1) ? T GETRF_MAX(k+1,m,0)  /* Panel */
-        -> ((m == k+1) && (n >  k+1)) ? A SWAP_COPY(k+1,n)  /* Swap */
-        -> ((m >  k)   && (n >  k+1)) ? T SWAP_COLLECT(k+1,m,n)  /* Everything else */
+        ->  (n == k+1) ? T GETRF_MAX(k+1,m,0)  /* Panel */
+        -> ((n >  k+1) && (m == k+1)) ? A SWAP_COPY(k+1,n)  /* Swap */
+        -> ((n >  k+1) && (m >  k  )) ? T SWAP_COLLECT(k+1,m,n)  /* Everything else */
 
 ; (descA.mt-n-1) * (descA.nt-k-1)
 
@@ -1154,8 +1181,10 @@ BODY
     int ldak = BLKLDD( descA, k );
     int ldam = BLKLDD( descA, m );
 
-    printlog("CORE_gemm(k=%d,m=%d,n=%d,A(%d,%d),ldk=%d,ldm=%d)\n",
-             k,tempmm,tempnn,m,n,ldak,ldam);
+    printlog("GEMM(k=%d, m=%d, n=%d)\n",
+             "\tCORE_gemm(M=%d,N=%d,K=%d,A(%d,%d),lda=%d,B(%d,%d),ldb=%d,C(%d,%d),ldc=%d)\n",
+             k, m, n, tempmm, tempnn, descA.mb,
+             m, k, ldam, k, n, ldak, m, n, ldam);
 
 #if defined(HAVE_CUDA)
     if( dague_active_gpu() > 0 ) {
