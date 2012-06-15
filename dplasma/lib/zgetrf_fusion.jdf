@@ -752,20 +752,19 @@ END
 /**************************************************
  *                    ACOPY_in (pseudo task)
  **************************************************/
-ACOPY_in(k,n) [profile = off]
+ACOPY_in(n) [profile = off]
 
 // Execution space
-k = 0   .. minmnt
-n = k+1 .. descA.nt-1
+n = 1 .. descA.nt-1
 
 // Parallel partitioning
-:ACOPY(k%P,n)
+:ACOPY(0,n)
 
 // Parameters
-READ  A  <- ACOPY(k%P,n)
-         -> ACOPY SWAP_COPY(k,n)
+READ  A  <- ACOPY(0, n)
+         -> ACOPY SWAP_COPY(0,n)
 
-; (descA.mt-n-1) * (descA.nt-k-1)
+; (descA.mt-n-1) * (descA.nt-1)
 
 BODY
 {
@@ -783,14 +782,18 @@ SWAP_COPY(k,n)
 k = 0   .. minmnt
 n = k+1 .. descA.nt-1
 
+mmax = inline_c %{ return dague_imin( minmnt, k+P-1 ); %}
+row  = inline_c %{ return descA.mt-((descA.mt-k-1)%P)-1; %}
+
 // Parallel partitioning
-:A(k,n)
+:A(k, n)
 
 // Parameters
-READ      A <-  (k == 0)? A(k,n) : C GEMM(k-1, k, n)
-            ->  C TRSM_U(k,n)
-RW    ACOPY <-  A ACOPY_in(k,n)
-            ->  U SWAP_RECV(k,k,n)
+READ      A <-  (k == 0) ? A(k, n) : C GEMM(k-1, k, n)
+            ->  C TRSM_U(k, n)
+
+RW    ACOPY <-  (k == 0) ? A ACOPY_in(n) : U SWAP_RECV(k-1, row, n)
+            ->  U SWAP_RECV(k, k..mmax, n)
 
 ; (descA.mt-n-1) * (descA.nt-k-1)
 
@@ -827,16 +830,15 @@ n = k+1 .. descA.nt-1
 :A(m, n)
 
 // Parameters
-READ      U <- (m == k)                   ? ACOPY SWAP_COPY(k, n)
-            <-((m != k) && ((m-k) <  P) ) ? U SWAP_RECV(k, m-1, n) /* Distributed reduction */
-            <-((m != k) && ((m-k) >= P) ) ? U SWAP_RECV(k, m-P, n) /* Local reduction */
+READ      U <-((m-k) <  P) ? ACOPY SWAP_COPY(k, n)
+            <-((m-k) >= P) ? U     SWAP_RECV(k, m-P, n)
 
-            -> ((m-k+1)      < P) ? U SWAP_RECV(k,m+1,n)  /* Distributed reduction */
-            -> ((descA.mt-m) > P) ? U SWAP_RECV(k,m+P,n)  /* Local reduction */
+            -> ((m+P) <  descA.mt) ? U SWAP_RECV(k,m+P,n)
+            -> (((m+P) >= descA.mt) && (n>(k+1)) && ((k+1)%P == (m%P))) ? ACOPY SWAP_COPY(k+1, n)
 
-READ     IP <-  IP SWAP_COLLECT(k,m,n)                  [type = PIVOT]
+READ     IP <-  IP SWAP_COLLECT(k, m, n)                  [type = PIVOT]
 
-RW        T <-  T SWAP_COLLECT(k,m,n)
+RW        T <-  T  SWAP_COLLECT(k, m, n)
             ->  (m > k) ? C GEMM(k, m, n)
 
 ; (descA.mt-n-1) * (descA.nt-k-1)
