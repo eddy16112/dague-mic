@@ -782,7 +782,7 @@ SWAP_COPY(k,n)
 k = 0   .. minmnt
 n = k+1 .. descA.nt-1
 
-mmax = inline_c %{ return dague_imin( minmnt, k+P-1 ); %}
+mmax = inline_c %{ return dague_imin( minmnt, k+P ); %}
 row  = inline_c %{ return descA.mt-((descA.mt-k-1)%P)-1; %}
 
 // Parallel partitioning
@@ -793,7 +793,7 @@ READ      A <-  (k == 0) ? A(k, n) : C GEMM(k-1, k, n)
             ->  C TRSM_U(k, n)
 
 RW    ACOPY <-  (k == 0) ? A ACOPY_in(n) : U SWAP_RECV(k-1, row, n)
-            ->  U SWAP_RECV(k, k..mmax, n)
+            ->  U SWAP_RECV(k, k+1..mmax, n)
 
 ; (descA.mt-n-1) * (descA.nt-k-1)
 
@@ -823,17 +823,17 @@ SWAP_RECV(k,m,n)
 
 // Execution space
 k = 0   .. minmnt
-m = k   .. descA.mt-1
+m = k+1 .. descA.mt-1
 n = k+1 .. descA.nt-1
 
 // Parallel partitioning
 :A(m, n)
 
 // Parameters
-READ      U <-((m-k) <  P) ? ACOPY SWAP_COPY(k, n)
-            <-((m-k) >= P) ? U     SWAP_RECV(k, m-P, n)
+READ      U <-((m-k-1) <  P) ? ACOPY SWAP_COPY(k, n)
+            <-((m-k-1) >= P) ? U     SWAP_RECV(k, m-P, n)
 
-            -> ((m+P) <  descA.mt) ? U SWAP_RECV(k,m+P,n)
+            ->  ((m+P) <  descA.mt) ? U SWAP_RECV(k,m+P,n)
             -> (((m+P) >= descA.mt) && (n>(k+1)) && ((k+1)%P == (m%P))) ? ACOPY SWAP_COPY(k+1, n)
 
 READ     IP <-  IP SWAP_COLLECT(k, m, n)                  [type = PIVOT]
@@ -848,30 +848,28 @@ BODY
     printlog("SWAP_RECV(k=%d,m=%d,n=%d)\n",k,m,n);
 
     DRYRUN(
-        if(m != k) {
-            int tempkm = ((k)==(descA.mt-1)) ? (descA.m-(k*descA.mb)) : (descA.mb);
-            int tempkn = ((k)==(descA.nt-1)) ? (descA.n-(k*descA.nb)) : (descA.nb);
-            int hmax = ((tempkm<tempkn)? tempkm : tempkn);
-            int ldam = BLKLDD( descA, m );
-            int owner_index;
-            int index;
+        int tempkm = (k == (descA.mt-1)) ? descA.m - k * descA.mb : descA.mb;
+        int tempkn = (k == (descA.nt-1)) ? descA.n - k * descA.nb : descA.nb;
+        int tempnn = (n == (descA.nt-1)) ? descA.n - n * descA.nb : descA.nb;
+        int minmn = dague_imin( tempkm, tempkn );
+        int ldam = BLKLDD( descA, m );
+        int perm[minmn];
+        int invperm[minmn];
+        int owner_index;
+        int index;
+        int i;
 
-            Dague_Complex64_t *lT = (Dague_Complex64_t*)T;
-            Dague_Complex64_t *lU = (Dague_Complex64_t*)U;
+        Dague_Complex64_t *lU = (Dague_Complex64_t*)U;
+        Dague_Complex64_t *lT = (Dague_Complex64_t*)T;
 
-            int upermut[hmax];
-            int opermut[hmax];
-            pivot_to_permutation(((int *) IP), hmax, upermut, opermut, k*descA.mb);
+        pivot_to_permutation(((int *) IP), minmn, perm, invperm, k*descA.mb);
 
-            int i;
-
-            for(i = 0; i < hmax; i++) {
-                owner_index = opermut[i]/descA.mb;
-                index       = opermut[i]%descA.mb;
-                if(owner_index == m) {
-                    cblas_zcopy(tempkn, lU + i    , descA.mb,
-                                        lT + index, ldam);
-                }
+        for(i = 0; i < minmn; i++) {
+            owner_index = invperm[i]/descA.mb;
+            index       = invperm[i]%descA.mb;
+            if(owner_index == m) {
+                cblas_zcopy(tempnn, lU + i    , descA.mb,
+                                    lT + index, ldam);
             }
         }
            );
@@ -1094,25 +1092,20 @@ READ   IP <- IP     SWAP_SND(k, d, 0, n)
 BODY
 {
     int tempkm = (k == (descA.mt-1)) ? descA.m - k * descA.mb : descA.mb;
-    int tempkn = (k == (descA.nt-1)) ? descA.n - k * descA.nb : descA.nb;
     int tempnn = (n == (descA.nt-1)) ? descA.n - n * descA.nb : descA.nb;
-    int minmn = dague_imin( tempkm, tempkn );
     int ldak = BLKLDD( descA, k );
-    int perm[minmn];
-    int invperm[minmn];
    
-    printlog("TRSM_U(k=%d, n=%d)"
+    printlog("TRSM_U(k=%d, n=%d)\n"
              "\t(M=%d, N=%d, LDA=LDC=%d)\n", k, n, tempkm, tempnn, ldak );
 
     DRYRUN(
-
-        pivot_to_permutation(((int *) IP), minmn, perm, invperm, k*descA.mb);
-
+        /* Put back the swapped tile */
         LAPACKE_zlacpy_work(LAPACK_COL_MAJOR, 'A',
                             tempkm, tempnn, 
                             B /* Buf(k,n)*/, descA.mb,
                             C /* A(k, n) */, ldak );
 
+        
         CORE_ztrsm(
             PlasmaLeft, PlasmaLower, PlasmaNoTrans, PlasmaUnit,
             tempkm, tempnn,
