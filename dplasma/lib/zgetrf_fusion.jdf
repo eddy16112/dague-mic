@@ -51,15 +51,16 @@ static Dague_Complex64_t mzone = -1.;
  * the inverse permutation of those same elements.
  *
  * Let's have i the element to pivot with ip. IPIV[i] = ip;
- * We set i_1 as such iperm[ i_1 ] = i or perm[ i ] = i_1
- *  and  ip_1 as such iperm[ ip_1 ] = ip or perm[ ip ] = ip_1
+ * We set i_1 as such iperm[ i_1  ] = i
+ *  and  ip_1 as such iperm[ ip_1 ] = ip
  * 
- * At each step we want to swap:
- *          perm[i] and perm[ip]
- * as well as iperm[i_1] and iperm[ip_1]
+ * At each step we want to:
+ *   - swap perm[i] and perm[ip]
+ *   - set iperm[i_1] to ip
+ *   - set iperm[ip_1] to i
  *
  */
-static void pivot_to_permutation(int *IP, int hmax, int *perm, int *invperm, int diff )
+static inline void pivot_to_permutation(int *IP, int hmax, int *perm, int *invperm, int diff )
 {
     int i, j, ip;
     int i_1, ip_1;
@@ -721,10 +722,10 @@ BODY
         /* Applying the previous swap */
         if(m == k)
             cblas_zcopy(tempkn, lV + MAXI, 1,
-                        lT + hmax, ldam);
+                                lT + hmax, ldam);
 
         int owner_last_index = ((int) (((Dague_Complex64_t *) V)[PIVO + hmax]))/descA.mb;
-        int last_index = ((int) (((Dague_Complex64_t *) V)[PIVO + hmax]))%descA.mb;
+        int last_index       = ((int) (((Dague_Complex64_t *) V)[PIVO + hmax]))%descA.mb;
         if(owner_last_index == m) {
             cblas_zcopy(tempkn, lV + IRCV( hmax+1 ), 1,
                                 lT + last_index,     ldam);
@@ -937,27 +938,28 @@ BODY
     printlog("SWAP_COLLECT(k=%d,m=%d,n=%d)\n",k,m,n);
 
     DRYRUN(
-        int tempkm = ((k)==(descA.mt-1)) ? (descA.m-(k*descA.mb)) : (descA.mb);
-        int tempkn = ((k)==(descA.nt-1)) ? (descA.n-(k*descA.nb)) : (descA.nb);
-        int hmax = ((tempkm<tempkn)? tempkm : tempkn);
+        int tempkm = (k == (descA.mt-1)) ? descA.m - k * descA.mb : descA.mb;
+        int tempkn = (k == (descA.nt-1)) ? descA.n - k * descA.nb : descA.nb;
+        int tempnn = (n == (descA.nt-1)) ? descA.n - n * descA.nb : descA.nb;
+        int minmn = dague_imin( tempkm, tempkn );
         int ldam = BLKLDD( descA, m );
+        int perm[minmn];
+        int invperm[minmn];
         int owner_index;
         int index;
+        int i;
 
         Dague_Complex64_t *lT = (Dague_Complex64_t*)T;
         Dague_Complex64_t *lM = (Dague_Complex64_t*)MYBUF;
 
-        int upermut[hmax];
-        int opermut[hmax];
-        pivot_to_permutation(((int *) IP), hmax, upermut, opermut, k*descA.mb);
+        pivot_to_permutation(((int *) IP), minmn, perm, invperm, k*descA.mb);
 
-        int i;
-        for(i = 0; i < hmax; i++) {
-            owner_index = upermut[i]/descA.mb;
-            index       = upermut[i]%descA.mb;
+        for(i = 0; i < minmn; i++) {
+            owner_index = perm[i] / descA.mb;
+            index       = perm[i] % descA.mb;
 
             if(owner_index == m) {
-                cblas_zcopy(tempkn, lT + index, ldam,
+                cblas_zcopy(tempnn, lT + index, ldam,
                                     lM + i    , descA.mb);
             }
 
@@ -1008,10 +1010,12 @@ pui = inline_c %{ return (int) pow(2,d+1);%}
 // Parameters
 READ  MYBUF <-  (d == 0)? MYBUF SWAP_COLLECT(k,descA.mt-((descA.mt-k-((m*2)+1))%P)-1,n) : MYBUF SWAP_SND(k,d-1,m*2,n)
             ->  ((m%2==0) && (d != dmax))? MYBUF SWAP_SND(k,d+1,m/2,n)
+
 RW   BUFFER <-  ((d == 0) && (m == (((xmax+1)/2)-1)) && (xmax%2 == 1))? MYBUF SWAP_COLLECT(k,descA.mt-((descA.mt-k-((m*2)+1))%P)-1,n)
             <-  (d == 0)? MYBUF SWAP_COLLECT(k,descA.mt-((descA.mt-k-((m*2)+2))%P)-1,n)
             <-  ((d != 0) && (m == (((xmax+1)/2)-1)) && (xmax%2 == 1))? BUFFER SWAP_SND(k,d-1,m*2,n)
             <-  (d != 0)? BUFFER SWAP_SND(k,d-1,m*2+1,n)
+
             ->  ((d != dmax) && (m%2==1))? BUFFER SWAP_SND(k,d+1,m/2,n)
             ->  ((d != dmax) && (m == (((xmax+1)/2)-1)) && (((xmax+1)/2)%2 == 1))? BUFFER SWAP_SND(k,d+1,m/2,n)
             ->  (d == dmax)? B  TRSM_U(k,n)
@@ -1020,35 +1024,35 @@ RW   BUFFER <-  ((d == 0) && (m == (((xmax+1)/2)-1)) && (xmax%2 == 1))? MYBUF SW
 
 BODY
 {
-    DRYRUN(
-        /*      int tempkm = ((k)==(descA.mt-1)) ? (descA.m-(k*descA.mb)) : (descA.mb); */
-        /*        int tempkn = ((k)==(descA.nt-1)) ? (descA.n-(k*descA.nb)) : (descA.nb); */
-        /*        int hmax = ((tempkm<tempkn)? tempkm : tempkn); */
-        /*        int owner_index; */
-        /*        int index; */
-
-        /*        Dague_Complex64_t *lM = (Dague_Complex64_t*)MYBUF; */
-        /*        Dague_Complex64_t *lB = (Dague_Complex64_t*)BUFFER; */
-
-        /*        int upermut[hmax]; */
-        /*        int opermut[hmax]; */
-        /*        pivot_to_permutation(((int *) IP), hmax, upermut, opermut, k*descA.mb); */
-
-        /*        int i; */
-        /*        if(!((m == (((xmax+1)/2)-1)) && (xmax%2 == 1))) { */
-        /*          for(i = 0; i < hmax; i++) { */
-        /*            owner_index = ((upermut[i]/descA.mb) - k)%P; */
-        /*            index       = upermut[i]%descA.mb; */
-
-        /*            if(((m*(pui/2)) <= owner_index) && (owner_index < ((m+1)*(pui/2)))) { */
-        /*              cblas_zcopy(tempkn, lM + i, descA.mb, */
-        /*                          lB + i, descA.mb); */
-        /*            } */
-        /*          } */
-        /*        } */
-          );
-
     printlog("SWAP_SND(k=%d,d=%d,m=%d,n=%d)\n",k,d,m,n);
+
+    DRYRUN(
+    /*      int tempkm = ((k)==(descA.mt-1)) ? (descA.m-(k*descA.mb)) : (descA.mb); */
+    /*        int tempkn = ((k)==(descA.nt-1)) ? (descA.n-(k*descA.nb)) : (descA.nb); */
+    /*        int hmax = ((tempkm<tempkn)? tempkm : tempkn); */
+    /*        int owner_index; */
+    /*        int index; */
+    
+    /*        Dague_Complex64_t *lM = (Dague_Complex64_t*)MYBUF; */
+    /*        Dague_Complex64_t *lB = (Dague_Complex64_t*)BUFFER; */
+    
+    /*        int upermut[hmax]; */
+    /*        int opermut[hmax]; */
+    /*        pivot_to_permutation(((int *) IP), hmax, upermut, opermut, k*descA.mb); */
+    
+    /*        int i; */
+    /*        if(!((m == (((xmax+1)/2)-1)) && (xmax%2 == 1))) { */
+    /*          for(i = 0; i < hmax; i++) { */
+    /*            owner_index = ((upermut[i]/descA.mb) - k)%P; */
+    /*            index       = upermut[i]%descA.mb; */
+    
+    /*            if(((m*(pui/2)) <= owner_index) && (owner_index < ((m+1)*(pui/2)))) { */
+    /*              cblas_zcopy(tempkn, lM + i, descA.mb, */
+    /*                          lB + i, descA.mb); */
+    /*            } */
+    /*          } */
+    /*        } */
+      );
 }
 END
 
