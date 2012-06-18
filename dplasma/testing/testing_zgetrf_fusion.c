@@ -21,10 +21,6 @@ static int check_solution( dague_context_t *dague, int loud,
 static inline int dague_imin(int a, int b) { return (a <= b) ? a : b; };
 static inline int dague_imax(int a, int b) { return (a >= b) ? a : b; };
 
-int dplasma_iprint( dague_context_t *dague, 
-                    PLASMA_enum uplo,
-                    tiled_matrix_desc_t *A);
-
 int main(int argc, char ** argv)
 {
     dague_context_t* dague;
@@ -202,9 +198,7 @@ int main(int argc, char ** argv)
             }
             printf("\n");
         }
-        dplasma_iprint(dague, PlasmaUpperLower, (tiled_matrix_desc_t*)&ddescIPIV);
-
-/*         dplasma_zprint(dague, PlasmaUpperLower, (tiled_matrix_desc_t*)&ddescA); */
+        dplasma_zprint(dague, PlasmaUpperLower, (tiled_matrix_desc_t*)&ddescA);
         dplasma_zprint(dague, PlasmaUpperLower, (tiled_matrix_desc_t*)&ddescAl);
 
         dplasma_zgeadd( dague, PlasmaUpper, -1.0, 
