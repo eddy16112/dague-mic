@@ -110,6 +110,7 @@ LMAX         [type = "dague_ddesc_t *"]
 V            [type = "dague_ddesc_t *"]
 BUFFER       [type = "dague_ddesc_t *"]
 ACOPY        [type = "dague_ddesc_t *"]
+Wperm        [type = "dague_ddesc_t *"]
 IB           [type = "int"]
 P            [type = "int"]
 Q            [type = "int"]
@@ -121,18 +122,40 @@ minmnt       [type = "int" hidden=on default="( dague_imin( ((tiled_matrix_desc_
 /**************************************************
  *                    IP_in (pseudo task)
  **************************************************/
-IP_in(k,m) [profile = off]
+IP_in(k, m) [profile = off]
 
 // Execution space
 k = 0..minmnt
 m = 0..inline_c %{ return dague_imin( descA.mt-k-1, P-1 ); %}
 
 // Parallel partitioning
-:IPIV((k+m)%P,k)
+:IPIV((k+m)%P, k)
 
 // Parameters
 READ  IP <- IPIV((k+m)%P,k)                                                               [type = PIVOT]
-         -> IP GETRF_FNL(k,(k+m)..(descA.mt-((descA.mt-k-m-1)%P)-1)..P)                   [type = PIVOT]
+         -> IP GETRF_FNL(k, (k+m) .. (descA.mt-((descA.mt-k-m-1)%P)-1) .. P)              [type = PIVOT]
+
+;descA.mt-k-1
+
+BODY
+        /* Nothing to do */
+END
+
+/**************************************************
+ *                    PERM_in (pseudo task)
+ **************************************************/
+PERM_in(k, m) [profile = off]
+
+// Execution space
+k = 0 .. minmnt
+m = 0 .. inline_c %{ return dague_imin( descA.mt-k-1, P-1 ); %}
+
+// Parallel partitioning
+:Wperm( (k+m)%P, k )
+
+// Parameters
+READ PERM <- Wperm( (k+m)%P, k )                               [type = PERMUT]
+          -> PERM GETRF_FNL(k, (k+m) .. descA.mt-1 .. P)       [type = PERMUT]
 
 ;descA.mt-k-1
 
@@ -673,6 +696,10 @@ GETRF_FNL(k,m)
 k = 0 .. minmnt
 m = k .. descA.mt-1
 
+tempkm = inline_c %{ return (k == (descA.mt-1)) ? descA.m - k * descA.mb : descA.mb; %}
+tempkn = inline_c %{ return (k == (descA.nt-1)) ? descA.n - k * descA.nb : descA.nb; %}
+minmn  = inline_c %{ return dague_imin( tempkm, tempkn ); %}
+ 
 dmax = inline_c %{
   int nb_init = (descA.mt-k < P) ? descA.mt-k : P;
   int i;
@@ -680,27 +707,21 @@ dmax = inline_c %{
       nb_init/=2;
   return i;%}
 
-hmax = inline_c %{
-  int tempkm = ((k)==(descA.mt-1)) ? (descA.m-(k*descA.mb)) : (descA.mb);
-  int tempkn = ((k)==(descA.nt-1)) ? (descA.n-(k*descA.nb)) : (descA.nb);
-  return ((tempkm<tempkn)? tempkm : tempkn)-1;%}
-
-imax = inline_c %{
-  int tempkm = ((k)==(descA.mt-1)) ? (descA.m-(k*descA.mb)) : (descA.mb);
-  int tempkn = ((k)==(descA.nt-1)) ? (descA.n-(k*descA.nb)) : (descA.nb);
-  int ret = ((tempkm<tempkn)? tempkm : tempkn);
-  return ((ret%IB) == 0)? (ret/IB-1) : ret/IB; %}
+imax = inline_c %{ return ((minmn%IB) == 0)? (minmn/IB-1) : minmn/IB; %}
 
 // Parallel partitioning
 :A(m, k)
 
-RW    T <- T GETRF_MAX(k,m,hmax)
-        -> (m == k) ? T TRSM_U(k, k+1..descA.nt-1) : A GEMM(k,m, k+1..descA.nt-1)
+RW    T <- T GETRF_MAX(k,m, minmn-1)
+        -> (m == k) ? T TRSM_U(k, (k+1) .. (descA.nt-1)) : A GEMM(k,m, (k+1) .. (descA.nt-1))
         -> A(m, k)
 READ  V <- V GETRF_MDL(k,(m-k)%P,imax)                                                         [type = SWAP]
-RW   IP <-  IP IP_in(k,(m-k)%P)                                                                [type = PIVOT]
-        -> (m-k < P)? IP IP_out(k,(m-k))                                                       [type = PIVOT]
-        -> IP SWAP_COLLECT(k, m, k+1..descA.nt-1)                                              [type = PIVOT]
+
+RW   IP <- IP IP_in(k, (m-k)%P )                                                               [type = PIVOT]
+        -> (m-k < P) ? IP IP_out(k,(m-k))                                                      [type = PIVOT]
+
+RW PERM <- PERM PERM_in(k, (m-k)%P )                                                           [type = PERMUT]
+        -> (m-k < P) ? PERM SWAP_COLLECT(k, m .. (descA.mt-1) .. P, (k+1) .. (descA.nt-1))     [type = PERMUT]
 
 // Priority
 ;1000000
@@ -711,35 +732,43 @@ BODY
 
     DRYRUN(
         int tempmm = ((m)==(descA.mt-1)) ? (descA.m-(m*descA.mb)) : (descA.mb);
-        int tempkn = ((k)==(descA.nt-1)) ? (descA.n-(k*descA.nb)) : (descA.nb);
         int ldam = BLKLDD( descA, m );
-        int p = (m == k)? hmax+1 : 0;
-        int i;
+        int p = (m == k) ? minmn : 0;
 
         Dague_Complex64_t *lV = (Dague_Complex64_t*)V;
         Dague_Complex64_t *lT = (Dague_Complex64_t*)T;
 
         /* Applying the previous swap */
         if(m == k)
-            cblas_zcopy(tempkn, lV + MAXI, 1,
-                                lT + hmax, ldam);
+            cblas_zcopy(tempkn, lV + MAXI,    1,
+                                lT + minmn-1, ldam);
 
-        int owner_last_index = ((int) (((Dague_Complex64_t *) V)[PIVO + hmax]))/descA.mb;
-        int last_index       = ((int) (((Dague_Complex64_t *) V)[PIVO + hmax]))%descA.mb;
+        int owner_last_index = ((int) (((Dague_Complex64_t *) V)[PIVO + minmn - 1]))/descA.mb;
+        int last_index       = ((int) (((Dague_Complex64_t *) V)[PIVO + minmn - 1]))%descA.mb;
         if(owner_last_index == m) {
-            cblas_zcopy(tempkn, lV + IRCV( hmax+1 ), 1,
+            cblas_zcopy(tempkn, lV + IRCV( minmn ), 1,
                                 lT + last_index,     ldam);
         }
 
         /* Appliying the update */
-        Dague_Complex64_t alpha = ((Dague_Complex64_t) 1.) / (lV[MAXI + hmax]);
-        cblas_zscal(tempmm-p, CBLAS_SADDR( alpha ), lT + hmax*ldam + p, 1 );
+        Dague_Complex64_t alpha = ((Dague_Complex64_t) 1.) / (lV[MAXI +minmn-1]);
+        cblas_zscal(tempmm-p, CBLAS_SADDR( alpha ), lT + (minmn-1)*ldam + p, 1 );
 
         if(m - k < P) {
+            int *ipiv = (int*)IP;
+            int i;
+
+            lV += PIVO;
             /* Saving the pivots */
-            for(i = 0;i <= hmax;i++) {
-                ((int *) IP)[i] = ((int) lV[PIVO + i]) + 1;
-            }
+            for(i=0; i<minmn; i++) {
+                *ipiv = (int)(*lV) + 1;
+                ipiv++; lV++;
+           }
+
+            pivot_to_permutation( (int*)IP, minmn, 
+                                  (int*)PERM, 
+                                  (int*)PERM + descA.mb, 
+                                  k * descA.mb );
         }
            );
 
@@ -837,7 +866,7 @@ READ      U <-((m-k-1) <  P) ? ACOPY SWAP_COPY(k, n)
             ->  ((m+P) <  descA.mt) ? U SWAP_RECV(k,m+P,n)
             -> (((m+P) >= descA.mt) && (n>(k+1)) && ((k+1)%P == (m%P))) ? ACOPY SWAP_COPY(k+1, n)
 
-READ     IP <-  IP SWAP_COLLECT(k, m, n)                  [type = PIVOT]
+READ   PERM <-  PERM SWAP_COLLECT(k, m, n)                  [type = PERMUT]
 
 RW        T <-  T  SWAP_COLLECT(k, m, n)
             ->  (m > k) ? C GEMM(k, m, n)
@@ -854,8 +883,7 @@ BODY
         int tempnn = (n == (descA.nt-1)) ? descA.n - n * descA.nb : descA.nb;
         int minmn = dague_imin( tempkm, tempkn );
         int ldam = BLKLDD( descA, m );
-        int perm[minmn];
-        int invperm[minmn];
+        int *invperm = (int*)PERM + descA.nb;
         int owner_index;
         int index;
         int i;
@@ -863,15 +891,14 @@ BODY
         Dague_Complex64_t *lU = (Dague_Complex64_t*)U;
         Dague_Complex64_t *lT = (Dague_Complex64_t*)T;
 
-        pivot_to_permutation(((int *) IP), minmn, perm, invperm, k*descA.mb);
-
         for(i = 0; i < minmn; i++) {
-            owner_index = invperm[i]/descA.mb;
-            index       = invperm[i]%descA.mb;
+            owner_index = *invperm / descA.mb;
+            index       = *invperm % descA.mb;
             if(owner_index == m) {
                 cblas_zcopy(tempnn, lU + i    , descA.mb,
                                     lT + index, ldam);
             }
+            invperm++;
         }
            );
 #if defined(HAVE_CUDA)
@@ -926,10 +953,12 @@ RW   MYBUF  <-  (m-k>=P)? MYBUF SWAP_COLLECT(k,m-P,n) : B BUFFER_in(k,m-k,n)
             ->  ( ((descA.mt-m) <= P) && (((m-k)%P)%2 == 1) )? BUFFER  SWAP_SND(k,0,((m-k)%P)/2,n)
             ->  ( ((descA.mt-m) <= P) && (descA.mt-k <  P) && (((descA.mt-k)%2)==1) && (m == descA.mt-1) )? BUFFER SWAP_SND(k,0,((m-k)%P)/2,n)
             ->  ( ((descA.mt-m) <= P) && (descA.mt-k >= P) && (((P)%2)==1) && (((m+1)%P) == (k%P)) )? BUFFER SWAP_SND(k,0,((m-k)%P)/2,n)
+
 READ      T <-  (k == 0)? A(m,n) : C GEMM(k-1, m, n)
             ->  T SWAP_RECV(k,m,n)
-READ     IP <-  IP GETRF_FNL(k,m)                                                                              [type = PIVOT]
-            ->  IP SWAP_RECV(k,m,n)                                                                            [type = PIVOT]
+
+READ  PERM  <-  PERM GETRF_FNL(k, k + ((m-k)%P) )       [type = PERMUT]
+            ->  PERM SWAP_RECV(k, m, n )                [type = PERMUT]
 
 ; (descA.mt-n-1) * (descA.nt-k-1)
 
@@ -943,8 +972,7 @@ BODY
         int tempnn = (n == (descA.nt-1)) ? descA.n - n * descA.nb : descA.nb;
         int minmn = dague_imin( tempkm, tempkn );
         int ldam = BLKLDD( descA, m );
-        int perm[minmn];
-        int invperm[minmn];
+        int *perm = (int*)PERM;
         int owner_index;
         int index;
         int i;
@@ -952,17 +980,15 @@ BODY
         Dague_Complex64_t *lT = (Dague_Complex64_t*)T;
         Dague_Complex64_t *lM = (Dague_Complex64_t*)MYBUF;
 
-        pivot_to_permutation(((int *) IP), minmn, perm, invperm, k*descA.mb);
-
         for(i = 0; i < minmn; i++) {
-            owner_index = perm[i] / descA.mb;
-            index       = perm[i] % descA.mb;
+            owner_index = *perm / descA.mb;
+            index       = *perm % descA.mb;
 
             if(owner_index == m) {
                 cblas_zcopy(tempnn, lT + index, ldam,
                                     lM + i    , descA.mb);
             }
-
+            perm++;
         }
            );
 }
