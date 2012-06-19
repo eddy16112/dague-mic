@@ -41,6 +41,7 @@ set(JDF
   ztrdsm.jdf
   zgetrf_incpiv.jdf zgetrf_incpiv_sd.jdf
   ztrsmpl.jdf ztrsmpl_sd.jdf
+  ztrsmpl_fusion.jdf
   zgeqrf.jdf
   zgelqf.jdf
   zherbt_L.jdf
@@ -64,8 +65,10 @@ if( NOT ${CMAKE_CURRENT_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR} )
 #  endforeach()
 endif( NOT ${CMAKE_CURRENT_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR} )
 
-list(APPEND generated_jdf
-  "${CMAKE_CURRENT_SOURCE_DIR}/map2.jdf")
+SET(generated_jdf
+    ${generated_jdf}
+    ${CMAKE_CURRENT_SOURCE_DIR}/map2.jdf
+)
 
 jdf_rules(generated_files "${generated_jdf}")
 
@@ -80,6 +83,7 @@ set(SOURCES
   ztrsm_wrapper.c
   ztrmm_wrapper.c
   ztrsmpl_wrapper.c
+  ztrsmpl_fusion_wrapper.c
   zsymm_wrapper.c
   # Lapack Auxiliary
   zgeadd_wrapper.c
@@ -125,7 +129,8 @@ precisions_rules_py(generated_files
 if (MPI_FOUND)
   add_library(dplasma-mpi
     ${generated_files}
-    ${EXTRA_SOURCES})
+    ${EXTRA_SOURCES}
+    )
   set_target_properties(dplasma-mpi PROPERTIES COMPILE_FLAGS "${MPI_COMPILE_FLAGS}")
   target_link_libraries(dplasma-mpi dplasma_cores)
   add_dependencies(dplasma-mpi dplasma_includes)
@@ -133,7 +138,8 @@ if (MPI_FOUND)
 else (MPI_FOUND)
   add_library(dplasma
     ${generated_files}
-    ${EXTRA_SOURCES})
+    ${EXTRA_SOURCES}
+    )
   target_link_libraries(dplasma dplasma_cores)
   add_dependencies(dplasma dplasma_includes)
   install(TARGETS dplasma ARCHIVE DESTINATION lib)
