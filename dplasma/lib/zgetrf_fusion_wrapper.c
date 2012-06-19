@@ -145,7 +145,7 @@ dague_object_t* dplasma_zgetrf_fusion_New( tiled_matrix_desc_t *A,
 
     /* PERMUT */
     dplasma_add2arena_rectangle( ((dague_zgetrf_fusion_object_t*)dague_zgetrf_fusion)->arenas[DAGUE_zgetrf_fusion_PERMUT_ARENA],
-                                 A->mb*sizeof(int),
+                                 Wperm->super.mb * Wperm->super.nb * sizeof(int),
                                  DAGUE_ARENA_ALIGNMENT_SSE,
                                  MPI_INT, Wperm->super.mb, Wperm->super.nb, -1 );
 
