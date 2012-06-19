@@ -132,8 +132,30 @@ m = 0..inline_c %{ return dague_imin( descA.mt-k-1, P-1 ); %}
 :IPIV((k+m)%P, k)
 
 // Parameters
-READ  IP <- IPIV((k+m)%P,k)                                                               [type = PIVOT]
-         -> IP GETRF_FNL(k, (k+m) .. (descA.mt-((descA.mt-k-m-1)%P)-1) .. P)              [type = PIVOT]
+READ  IP <- IPIV((k+m)%P,k)                                                    [type = PIVOT]
+         -> IP GETRF_FNL(k, (k+m) .. (descA.mt-((descA.mt-k-m-1)%P)-1) .. P)   [type = PIVOT]
+
+;descA.mt-k-1
+
+BODY
+        /* Nothing to do */
+END
+
+/**************************************************
+ *                    IP_out (pseudo task)
+ **************************************************/
+IP_out(k,m) [profile = off]
+
+// Execution space
+k = 0..minmnt
+m = 0..inline_c %{ return dague_imin( descA.mt-k-1, P-1 ); %}
+
+// Parallel partitioning
+:IPIV((k+m)%P,k)
+
+// Parameters
+READ  IP <- IP GETRF_FNL(k,k+m)                                                [type = PIVOT]
+         -> IPIV((k+m)%P,k)                                                    [type = PIVOT]
 
 ;descA.mt-k-1
 
@@ -162,29 +184,6 @@ READ PERM <- Wperm( (k+m)%P, k )                               [type = PERMUT]
 BODY
         /* Nothing to do */
 END
-
-/**************************************************
- *                    IP_out (pseudo task)
- **************************************************/
-IP_out(k,m) [profile = off]
-
-// Execution space
-k = 0..minmnt
-m = 0..inline_c %{ return dague_imin( descA.mt-k-1, P-1 ); %}
-
-// Parallel partitioning
-:IPIV((k+m)%P,k)
-
-// Parameters
-READ  IP <- IP GETRF_FNL(k,k+m)                                                           [type = PIVOT]
-         -> IPIV((k+m)%P,k)                                                               [type = PIVOT]
-
-;descA.mt-k-1
-
-BODY
-        /* Nothing to do */
-END
-
 
 /**************************************************
  *                    V_in (pseudo task)
@@ -700,13 +699,6 @@ tempkm = inline_c %{ return (k == (descA.mt-1)) ? descA.m - k * descA.mb : descA
 tempkn = inline_c %{ return (k == (descA.nt-1)) ? descA.n - k * descA.nb : descA.nb; %}
 minmn  = inline_c %{ return dague_imin( tempkm, tempkn ); %}
  
-dmax = inline_c %{
-  int nb_init = (descA.mt-k < P) ? descA.mt-k : P;
-  int i;
-  for(i = 0;nb_init != 1 ;i++)
-      nb_init/=2;
-  return i;%}
-
 imax = inline_c %{ return ((minmn%IB) == 0)? (minmn/IB-1) : minmn/IB; %}
 
 // Parallel partitioning
@@ -923,7 +915,7 @@ n = k+1 .. descA.nt-1
 
 // Parameters
 READ  B  <- BUFFER((k+m)%P,n)
-         -> MYBUF SWAP_COLLECT(k,k+m,n)
+         -> BUF SWAP_COLLECT(k, k+m, n)
 
 ; (descA.mt-n-1) * (descA.nt-k-1)
 
@@ -942,23 +934,25 @@ SWAP_COLLECT(k,m,n)
 k = 0   .. minmnt
 m = k   .. descA.mt-1
 n = k+1 .. descA.nt-1
+i = inline_c %{ return ((m-k)%P); %}
 
 // Parallel partitioning
 :A(m, n)
 
 // Parameters
-RW   MYBUF  <-  (m-k>=P)? MYBUF SWAP_COLLECT(k,m-P,n) : B BUFFER_in(k,m-k,n)
-            ->  (descA.mt-m>P)? MYBUF SWAP_COLLECT(k,m+P,n)
-            ->  ( ((descA.mt-m) <= P) && (((m-k)%P)%2 == 0) )? MYBUF   SWAP_SND(k,0,((m-k)%P)/2,n)
-            ->  ( ((descA.mt-m) <= P) && (((m-k)%P)%2 == 1) )? BUFFER  SWAP_SND(k,0,((m-k)%P)/2,n)
-            ->  ( ((descA.mt-m) <= P) && (descA.mt-k <  P) && (((descA.mt-k)%2)==1) && (m == descA.mt-1) )? BUFFER SWAP_SND(k,0,((m-k)%P)/2,n)
-            ->  ( ((descA.mt-m) <= P) && (descA.mt-k >= P) && (((P)%2)==1) && (((m+1)%P) == (k%P)) )? BUFFER SWAP_SND(k,0,((m-k)%P)/2,n)
+RW    BUF   <-  ((m-k) <  P ) ? B   BUFFER_in(k, m-k, n)
+            <-  ((m-k) >= P ) ? BUF SWAP_COLLECT(k, m-P, n)
 
-READ      T <-  (k == 0)? A(m,n) : C GEMM(k-1, m, n)
+            ->   ((descA.mt-m-1) >= P) ? BUF SWAP_COLLECT(k, m+P, n)
+            ->  (((descA.mt-m-1) <  P) && (i%2 == 0) ) ? Rtop    SWAP_SND(k, 1, i/2, n )
+            ->  (((descA.mt-m-1) <  P) && (i%2 == 1) ) ? Rbottom SWAP_SND(k, 1, i/2, n )
+
+READ  T     <-  (k == 0)? A(m,n) : C GEMM(k-1, m, n)
             ->  T SWAP_RECV(k,m,n)
 
-READ  PERM  <-  PERM GETRF_FNL(k, k + ((m-k)%P) )       [type = PERMUT]
-            ->  PERM SWAP_RECV(k, m, n )                [type = PERMUT]
+READ  PERM  <-  PERM GETRF_FNL(k, k + ((m-k)%P) )                                      [type = PERMUT]
+            ->  PERM SWAP_RECV(k, m, n )                                               [type = PERMUT]
+            ->  (((descA.mt-m-1) <  P) && (i%2 == 0) ) ? PERM SWAP_SND(k, 1, i/2, n )  [type = PERMUT]
 
 ; (descA.mt-n-1) * (descA.nt-k-1)
 
@@ -978,7 +972,7 @@ BODY
         int i;
 
         Dague_Complex64_t *lT = (Dague_Complex64_t*)T;
-        Dague_Complex64_t *lM = (Dague_Complex64_t*)MYBUF;
+        Dague_Complex64_t *lM = (Dague_Complex64_t*)BUF;
 
         for(i = 0; i < minmn; i++) {
             owner_index = *perm / descA.mb;
@@ -994,90 +988,79 @@ BODY
 }
 END
 
-
 /**************************************************
  *                    SWAP_SND
- * Sending the temporary buffer to the logarithmic
- * neighbor
+ *      Reduction tree of the collected rows
  **************************************************/
-SWAP_SND(k,d,m,n) [immediate=on]
+SWAP_SND(k, l, i, n) [immediate=on]
 
 // Execution space
 k = 0 .. minmnt
+height = inline_c %{ return dague_imin( descA.mt-k, P ); %}
+depth  = inline_c %{ return (int)ceil( log ( dague_imax(height,2) ) / log(2.) ); %}
+l = 1   .. depth
+i = 0   .. inline_c %{ return dague_imin( ((1 << (depth - l)) - 1), height / 2 ); %}
+n = k+1 .. descA.nt-1
 
-dmax = inline_c %{
-  int nb_init = (descA.mt-k < P) ? descA.mt-k : P;
-  int i;
-  for(i = 0;nb_init != 1 ;i++)
-      nb_init/=2;
-  return i;%}
-d = 0 .. dmax
-
-m = 0 .. inline_c %{
-  int nb_init = (descA.mt-k < P) ? descA.mt-k : P;
-  int i;
-  for(i = 0;i <= d ;i++)
-      nb_init = (nb_init+1)/2;
-  return nb_init-1;%}
-n = k+1..descA.nt-1
-
-xmax = inline_c %{
-    int nb_init = (descA.mt-k < P) ? descA.mt-k : P;
-    int i;
-    for(i = 0;i < d ;i++)
-        nb_init = (nb_init+1)/2;
-    return nb_init;%}
-
-pui = inline_c %{ return (int) pow(2,d+1);%}
+size = inline_c %{ return 1<<(l-1); %}
+iT = inline_c %{ return  2*i   *size; %}
+iB = inline_c %{ return (2*i+1)*size; %}
+mT = inline_c %{ return descA.mt - ( descA.mt - 1 - k - iT)%P - 1; %}
+mB = inline_c %{ return descA.mt - ( descA.mt - 1 - k - iB)%P - 1; %}
 
 // Parallel partitioning
-:A(k+(m*pui), n)
+:A(k+iT, n)
 
 // Parameters
-READ  MYBUF <-  (d == 0)? MYBUF SWAP_COLLECT(k,descA.mt-((descA.mt-k-((m*2)+1))%P)-1,n) : MYBUF SWAP_SND(k,d-1,m*2,n)
-            ->  ((m%2==0) && (d != dmax))? MYBUF SWAP_SND(k,d+1,m/2,n)
+RW       Rtop    <- (l == 1) ? BUF  SWAP_COLLECT( k, mT, n )
+                 <- (l != 1) ? Rtop SWAP_SND( k, l-1, 2*i, n )
 
-RW   BUFFER <-  ((d == 0) && (m == (((xmax+1)/2)-1)) && (xmax%2 == 1))? MYBUF SWAP_COLLECT(k,descA.mt-((descA.mt-k-((m*2)+1))%P)-1,n)
-            <-  (d == 0)? MYBUF SWAP_COLLECT(k,descA.mt-((descA.mt-k-((m*2)+2))%P)-1,n)
-            <-  ((d != 0) && (m == (((xmax+1)/2)-1)) && (xmax%2 == 1))? BUFFER SWAP_SND(k,d-1,m*2,n)
-            <-  (d != 0)? BUFFER SWAP_SND(k,d-1,m*2+1,n)
+                 -> (( l <  depth) && (0 == (i % 2))) ? Rtop    SWAP_SND( k, l+1, i/2, n )
+                 -> (( l <  depth) && (1 == (i % 2))) ? Rbottom SWAP_SND( k, l+1, i/2, n )
+                 ->  ( l == depth) ? B TRSM_U(k, n)
 
-            ->  ((d != dmax) && (m%2==1))? BUFFER SWAP_SND(k,d+1,m/2,n)
-            ->  ((d != dmax) && (m == (((xmax+1)/2)-1)) && (((xmax+1)/2)%2 == 1))? BUFFER SWAP_SND(k,d+1,m/2,n)
-            ->  (d == dmax)? B  TRSM_U(k,n)
+READ     Rbottom <- (l == 1) && (iB <  height) ? BUF SWAP_COLLECT( k, mB, n )
+                 <- (l == 1) && (iB >= height) ? A(k+iT, n)
+                 <- (l != 1) && (iB >= height) ? A(k+iT, n)
+                 <- (l != 1) && (iB <  height) ? Rtop SWAP_SND( k, l-1, 2*i+1, n )
+
+READ     PERM    <- (l == 1) ? PERM SWAP_COLLECT( k, mT, n )                            [type = PERMUT] 
+                 <- (l != 1) ? PERM SWAP_SND( k, l-1, 2*i, n )                          [type = PERMUT]
+                 -> (( l < depth) && (0 == (i % 2))) ? PERM SWAP_SND( k, l+1, i/2, n )  [type = PERMUT]
+                             
 
 ; (descA.mt-n-1) * (descA.nt-k-1)
 
 BODY
 {
-    printlog("SWAP_SND(k=%d,d=%d,m=%d,n=%d)\n",k,d,m,n);
+    printlog("SWAP_SND(k=%d,l=%d,i=%d,n=%d) => Merge( %d [%d], %d [%d])\n", 
+             k, l, i, n, mT, iT, mB, iB );
 
     DRYRUN(
-    /*      int tempkm = ((k)==(descA.mt-1)) ? (descA.m-(k*descA.mb)) : (descA.mb); */
-    /*        int tempkn = ((k)==(descA.nt-1)) ? (descA.n-(k*descA.nb)) : (descA.nb); */
-    /*        int hmax = ((tempkm<tempkn)? tempkm : tempkn); */
-    /*        int owner_index; */
-    /*        int index; */
-    
-    /*        Dague_Complex64_t *lM = (Dague_Complex64_t*)MYBUF; */
-    /*        Dague_Complex64_t *lB = (Dague_Complex64_t*)BUFFER; */
-    
-    /*        int upermut[hmax]; */
-    /*        int opermut[hmax]; */
-    /*        pivot_to_permutation(((int *) IP), hmax, upermut, opermut, k*descA.mb); */
-    
-    /*        int i; */
-    /*        if(!((m == (((xmax+1)/2)-1)) && (xmax%2 == 1))) { */
-    /*          for(i = 0; i < hmax; i++) { */
-    /*            owner_index = ((upermut[i]/descA.mb) - k)%P; */
-    /*            index       = upermut[i]%descA.mb; */
-    
-    /*            if(((m*(pui/2)) <= owner_index) && (owner_index < ((m+1)*(pui/2)))) { */
-    /*              cblas_zcopy(tempkn, lM + i, descA.mb, */
-    /*                          lB + i, descA.mb); */
-    /*            } */
-    /*          } */
-    /*        } */
+        if ( iB < height ) {
+            
+            int tempkm = (k == (descA.mt-1)) ? descA.m - k * descA.mb : descA.mb;
+            int tempkn = (k == (descA.nt-1)) ? descA.n - k * descA.nb : descA.nb;
+            int tempnn = (n == (descA.nt-1)) ? descA.n - n * descA.nb : descA.nb;
+            int minmn = dague_imin( tempkm, tempkn );
+            int *perm = (int*)PERM;
+            int owner_index;
+            int index;
+            int j;
+            
+            Dague_Complex64_t *lT = (Dague_Complex64_t*)Rtop;
+            Dague_Complex64_t *lB = (Dague_Complex64_t*)Rbottom;
+        
+            for(j=0; j<minmn; j++) {
+                owner_index = (*perm) / descA.mb;
+                index       = (*perm) % descA.mb;
+                
+                if( (owner_index >= mB) && (owner_index < (mB+size)) ) {
+                    cblas_zcopy(tempnn, lB + index, descA.mb,
+                                        lT + j,     descA.mb);
+                }
+            }
+        }
       );
 }
 END
@@ -1093,13 +1076,7 @@ TRSM_U(k, n)
 k = 0   .. minmnt
 n = k+1 .. descA.nt-1
 
-d = inline_c %{
-  int nb_init = (descA.mt-k < P) ? descA.mt-k : P;
-  int i;
-  for(i = 0;nb_init != 1 ;i++)
-      nb_init/=2;
-  return i;
-%}
+depth = inline_c %{ return (int)ceil( log ( dague_imin( descA.mt-k, P ) ) / log(2.) ); %}
 
 // Parallel partitioning
 : A(k, n)
@@ -1110,7 +1087,7 @@ RW      C <- A SWAP_COPY(k, n)
           -> B GEMM(k, k+1..descA.mt-1, n)
           -> A(k, n)
 
-READ    B <- BUFFER SWAP_SND(k, d, 0, n)
+READ    B <- Rtop SWAP_SND(k, depth, 0, n)
 
 ; (descA.mt-n-1) * (descA.nt-k-1)
 
