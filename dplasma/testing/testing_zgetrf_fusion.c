@@ -45,7 +45,7 @@ int main(int argc, char ** argv)
 /*         fprintf(stderr, "Check cannot be perfomed with M != N\n"); */
 /*         check = 0; */
 /*     } */
-    
+
     LDA = dague_imax( LDA, MT * MB );
 
     /* initializing matrix structure */
@@ -241,6 +241,10 @@ int main(int argc, char ** argv)
 /*                 printf("\n"); */
 /*             } */
 /*         } */
+        dague_data_free(ddescAl.mat);
+        dague_ddesc_destroy( (dague_ddesc_t*)&ddescAl);
+        dague_data_free(ddescIPIVl.mat);
+        dague_ddesc_destroy( (dague_ddesc_t*)&ddescIPIVl);
 #else
         dplasma_ztrsm(dague, PlasmaLeft, PlasmaLower, PlasmaNoTrans, PlasmaUnit,
                       1.0, (tiled_matrix_desc_t *)&ddescA,
