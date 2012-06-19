@@ -1063,7 +1063,8 @@ TRSM_U(k, n)
 k = 0   .. minmnt
 n = k+1 .. descA.nt-1
 
-depth = inline_c %{ return (int)ceil( log ( dague_imin( descA.mt-k, P ) ) / log(2.) ); %}
+depth = inline_c %{ int height = dague_imax(dague_imin( descA.mt-k, P ),2);
+                    return (int)ceil( log ( height ) / log(2.) ); %}
 
 // Parallel partitioning
 : A(k, n)
