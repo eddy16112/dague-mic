@@ -44,6 +44,35 @@ static Dague_Complex64_t zone  = 1.;
 static Dague_Complex64_t mzone = -1.;
 
 /*
+ * This jdf is composed of two parts: the panel and the update.
+ *
+ * The panel factorization is a loop over the following serie of tasks (prefixed by GETRF):
+ *    
+ *    For each tile of the panel:  (MAX)**size -> FNL
+ *    For the buffer V:    SND -> MDL -> FNL
+ *
+ *
+ *  GETRF_MAX(k,m,h)   - Work on A(m, k). apply update from h-1 and search max for step h
+ *  GETRF_RDC(k,r,m,h) - Work on LMAX(m). Reduce the local maxima in one result
+ *  GETRF_SVM(k,m,h)   - Copy the local maximum stored in LMAX into V
+ *  GETRF_MDL(k,m,h)   - Work on Umes. Compute the TRSM of U on each node before to broadcast it locally
+ *  GETRF_SND(k,d,m,h) - Work on V. Exchange the global maximum between nodes
+ *  GETRF_FNL(k,m)     - Work on A(m,k). Apply the last update and release the TRSM and GEMMs
+ *
+ * Every tile in the trailing submatrix follow the cycle (prefixed by SWAP):
+ *    (m==k) GEMM -> COPY    -> TRSM_U
+ *                -> COLLECT -> RECV
+ *             
+ *    (m!=k) GEMM -> COLLECT -> RECV -> GEMM
+ *
+ * In the meantime: COLLECT -> SND -> TRSM_U
+ *    (COPY, COLLECT and SND are immediate)
+ *
+ */
+
+
+
+/*
  * The idea here is to generate a permutation from the sequence of
  * pivot.  To avoid storing one whole column at each step, we keep
  * track of two vectors of nb elements, the first one contains the
@@ -154,8 +183,8 @@ m = 0..inline_c %{ return dague_imin( descA.mt-k-1, P-1 ); %}
 :IPIV((k+m)%P,k)
 
 // Parameters
-READ  IP <- IP GETRF_FNL(k,k+m)                                                [type = PIVOT]
-         -> IPIV((k+m)%P,k)                                                    [type = PIVOT]
+READ  IP <- IP GETRF_FNL(k,k+m)                                [type = PIVOT]
+         -> IPIV((k+m)%P,k)                                    [type = PIVOT]
 
 ;descA.mt-k-1
 
@@ -429,7 +458,7 @@ END
  * Look for the local node max of the step h
  *
  **************************************************/
-GETRF_RDC(k,r,m,h)
+GETRF_RDC(k,r,m,h) [immediate=on]
 
 k = 0 .. minmnt
 
@@ -496,7 +525,7 @@ END
  * Saving the local node max in the V workspace
  *
  **************************************************/
-GETRF_SVM(k,m,h)
+GETRF_SVM(k,m,h) [immediate=on]
 
 k = 0 .. minmnt
 
@@ -570,7 +599,7 @@ sender = inline_c %{ return ((h == hmax) ? nmax : ((h+1)*IB)-1); %}
 
 READ  V <- W GETRF_SND(k,dmax,m,sender)                                                                  [type = SWAP]
         -> (h == hmax)? V GETRF_FNL(k,(k+m)..(descA.mt-((descA.mt-(k+m+1))%P)-1)..P)                     [type = SWAP]
-RW    U <- U GETRF_MAX(k,k+m,sender                  )                                                   [type = UMES]
+RW    U <- U GETRF_MAX(k, k+m, sender)                                                                   [type = UMES]
         -> (h != hmax)? U GETRF_MAX(k,(k+m)..(descA.mt-((descA.mt-(k+m+1))%P)-1)..P,((h+1)*IB))          [type = UMES]
 
 // Priority
@@ -586,16 +615,16 @@ BODY
         /* Copying the max line in the local U */
         if(h != hmax) {
             cblas_zcopy(tempkn, lV + MAXI, 1,
-                        lU + IB-1, IB);
+                                lU + IB-1, IB);
             cblas_ztrsm(CblasColMajor,
                         (CBLAS_SIDE)CblasLeft, (CBLAS_UPLO)CblasLower,
                         (CBLAS_TRANSPOSE)CblasNoTrans, (CBLAS_DIAG)CblasUnit,
                         IB, tempkn - (h+1)*IB,
                         CBLAS_SADDR(zone), lU + h    * IB * IB, IB,
-                        lU + (h+1)* IB * IB, IB);
+                                           lU + (h+1)* IB * IB, IB);
         } else {
             cblas_zcopy(tempkn, lV + MAXI     , 1,
-                        lU + (nmax%IB), IB);
+                                lU + (nmax%IB), IB);
         }
            );
 }
@@ -914,7 +943,7 @@ END
  * Swapping all the lines for the current process
  * in the temporary buffer
  **************************************************/
-SWAP_COLLECT(k, m, n)
+SWAP_COLLECT(k, m, n) [immediate=on]
 
 // Execution space
 k = 0   .. minmnt
