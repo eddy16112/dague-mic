@@ -29,6 +29,7 @@ set(TESTS
   testing_zhbrdt.c
   testing_zheev.c
   testing_zlange.c
+  testing_zprint.c
   #testing_zgesvd.c
 )
 if( DPLASMA_DEBUG_QR_PIVGEN )
