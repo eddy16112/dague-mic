@@ -313,13 +313,16 @@ tests/pingpong/rtt\.h
 dplasma/cores/core_[sdc]getrf_sp\.c
 dplasma/lib/[sdc]gerfs\.jdf
 dplasma/lib/[sdc]gerfs_exp\.jdf
+dplasma/lib/[sdc]trsmpl_fusion\.jdf
 dplasma/lib/[sdcz]gerfs\.[ch]
 dplasma/lib/[sdcz]gerfs_exp\.[ch]
 dplasma/lib/[sdc]gerfs_wrapper\.c
+dplasma/lib/[sdc]trsmpl_fusion_wrapper\.c
 dplasma/lib/[sdcz]getrf_sp\.[ch]
 dplasma/lib/[sdcz]getrf_fusion\.[ch]
 dplasma/lib/[sdcz]getrf_std\.[ch]
 dplasma/lib/[sdcz]getrf_panel\.[ch]
+dplasma/lib/[sdcz]trsmpl_fusion\.[ch]
 dplasma/testing/testing_[sdc]gerfs\.c
 dplasma/testing/testing_[sdc]getrf_fusion\.c
 dplasma/testing/testing_[sdc]getrf_panel\.c
