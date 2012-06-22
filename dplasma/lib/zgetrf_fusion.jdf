@@ -289,17 +289,22 @@ END
 GETRF_MAX(k,m,h)
 
 // Execution space
-k = 0..minmnt
-m = k..descA.mt-1
+k = 0 .. minmnt
+m = k .. descA.mt-1
 
 tempkm = inline_c %{ return (k == (descA.mt-1)) ? descA.m - k * descA.mb : descA.mb; %}
 tempkn = inline_c %{ return (k == (descA.nt-1)) ? descA.n - k * descA.nb : descA.nb; %}
 hmax   = inline_c %{ return dague_imin( tempkm, tempkn )-1; %}
-h = 0..hmax
+h  = 0 .. hmax
 
-mmax = inline_c %{ return dague_imin( descA.mt-k, P); %}
+/* Indices for Maximum reduction */
+size = inline_c %{ int ret = (descA.mt-k) / P; 
+                   return (m-k)%P < (descA.mt-k)%P ? ret+1 : ret;%} 
+mmax = inline_c %{ return (size / 2) - 1; %}
+lm   = inline_c %{ return (m-k) / P; %} 
+
 dmax = inline_c %{
-  int nb_init = mmax;
+  int nb_init = dague_imin( descA.mt-k, P);
   int i;
   for(i = 0;nb_init != 1 ;i++)
       nb_init/=2;
@@ -331,17 +336,20 @@ RW  U <- (h == 0)? U U_in(k,m)                                                  
       -> ((((h%IB) == IB-1) || (h == hmax)) && (m-k<P))? U GETRF_MDL(k,(m-k)%P,h/IB)             [type = UMES]
       -> ((h != hmax) && (h%IB != IB-1))? U GETRF_MAX(k,m,h+1)                                   [type = UMES]
 
+                                                                                                 
  /* Store the selected i and the associated row for comparison with other tiles */
-RW  M <- (h == 0) ? M LMAX_in(k, m)                                                              [type = MAXL]
-      <- (h != 0) ? M GETRF_MAX(k, m, h-1)                                                       [type = MAXL]
+RW  M <- (h == 0) ? M LMAX_in(k, m)                                                          [type = MAXL]
 
-      /* Keep the line here for simplicity reason (dependency is guaranty by other dependencies) */
-      -> (h != hmax) ? M GETRF_MAX(k, m, h+1)                                                    [type = MAXL]
+      /* Keep the line here for simplicity reason, so M goes from Max(k-1) to Max(k) 
+       * (dependency is guaranty by other dependencies) */
+      <- (h != 0)    ? M GETRF_MAX(k, m, h-1)                                                [type = MAXL]
+      -> (h != hmax) ? M GETRF_MAX(k, m, h+1)                                                [type = MAXL]
 
       /* Send to the reduction tree ( left, middle, right ) */
-      -> Mm GETRF_RDC(k,(m-k)%P,(m-k)/P,h)                                                       [type = MAXL]
-      -> ((k+((m-k)%P)+(((m-k)/P)*2+1)*P) >= descA.mt)? Mg GETRF_RDC(k,(m-k)%P,(m-k)/P,h)        [type = MAXL]
-      -> ((k+((m-k)%P)+(((m-k)/P)*2+2)*P) >= descA.mt)? Md GETRF_RDC(k,(m-k)%P,(m-k)/P,h)        [type = MAXL]
+      -> (size == 1) ? M GETRF_SVM(k, (m-k)%P, h)                                            [type = MAXL]
+      -> (size != 1) && (lm <= mmax)                ? Mm GETRF_RDC(k, h, (m-k)%P, lm       ) [type = MAXL]
+      -> (size != 1) && (lm >  mmax) && (lm%2 == 1) ? Mg GETRF_RDC(k, h, (m-k)%P, (lm-1)/2 ) [type = MAXL]
+      -> (size != 1) && (lm >  mmax) && (lm%2 == 0) ? Md GETRF_RDC(k, h, (m-k)%P, (lm-1)/2 ) [type = MAXL]
 
 // Priority
 ;1000000
@@ -358,7 +366,8 @@ BODY
     int tempmm = ( m == (descA.mt-1) ) ? descA.m - m * descA.mb : descA.mb;
     tempmm -= p;
 
-    printlog("GETRF_MAX(k=%d, m=%d, h=%d)\n", k, m, h);
+    printlog("GETRF_MAX(k=%d, m=%d, h=%d) / (hmax=%d, size=%d, lm=%d)\n", 
+             k, m, h, hmax, size, lm);
 
     DRYRUN(
        int nt = ( tempkn - 1 ) / IB ;
@@ -458,64 +467,81 @@ END
  * Look for the local node max of the step h
  *
  **************************************************/
-GETRF_RDC(k,r,m,h) [immediate=on]
+GETRF_RDC(k, h, r, m) [immediate=on]
 
 k = 0 .. minmnt
 
 tempkm = inline_c %{ return (k == (descA.mt-1)) ? descA.m - k * descA.mb : descA.mb; %}
 tempkn = inline_c %{ return (k == (descA.nt-1)) ? descA.n - k * descA.nb : descA.nb; %}
-rmax   = inline_c %{ return ((descA.mt-k < P) ? descA.mt-k-1 : P-1); %}
+hmax   = inline_c %{ return dague_imin(tempkm, tempkn)-1; %}
+rmax   = inline_c %{ return dague_imin(descA.mt-k, P)-1; %}
+
+h = 0 .. hmax
 r = 0 .. rmax
 
-mmax = inline_c %{
-  int ret = -1;
-  int i;
-  for(i = k; i < descA.mt ;i++)
-      if((i-k)%P == r)
-          ret++;
-  return ret;
-%}
-m = 0 .. mmax
+size   = inline_c %{ int ret = (descA.mt-k) / P; 
+                     return r < ((descA.mt-k)%P) ? ret+1 : ret; %}
+mmax   = inline_c %{ return (size/2)-1; %}
 
-hmax = inline_c %{ return dague_imin(tempkm, tempkn)-1; %}
-h = 0 .. hmax
+m = 0 .. mmax
+mg = inline_c %{ return 2 * m + 1; %}
+md = inline_c %{ return 2 * m + 2; %}
 
 // Parallel partitioning
-:A(k+r, k)
+:LMAX(k+r, k%Q)
 
-RW    Mm <- M GETRF_MAX(k,k+r+P*m,h)                                                                           [type = MAXL]
-         -> ((m != 0) && ((m%2) == 0)) ? Md GETRF_RDC(k,r,(m-1)/2,h)                                           [type = MAXL]
-         -> ((m != 0) && ((m%2) == 1)) ? Mg GETRF_RDC(k,r,(m-1)/2,h)                                           [type = MAXL]
-         -> (m == 0)? M GETRF_SVM(k,r,h)                                                                       [type = MAXL]
-READ  Mg <- ((m*2+1) <= mmax)? Mm GETRF_RDC(k, r, m*2+1, h ) : M GETRF_MAX(k, k+r+P*m, h)                      [type = MAXL]
-READ  Md <- ((m*2+2) <= mmax)? Mm GETRF_RDC(k, r, m*2+2, h ) : M GETRF_MAX(k, k+r+P*m, h)                      [type = MAXL]
+RW    Mm <- M GETRF_MAX(k, k+r+P*m, h)                                   [type = MAXL]
+         -> (m == 0) ? M GETRF_SVM(k, r, h)                              [type = MAXL]
+         -> (m != 0) && ((m%2) == 1) ? Mg GETRF_RDC(k, h, r, (m-1)/2 )   [type = MAXL]
+         -> (m != 0) && ((m%2) == 0) ? Md GETRF_RDC(k, h, r, (m-1)/2 )   [type = MAXL]
+
+READ  Mg <- (mg <= mmax) ? Mm GETRF_RDC(k, h, r, mg )                    [type = MAXL]
+         <- (mg >  mmax) && (mg <  size) ? M GETRF_MAX(k, k+r+P*mg, h )  [type = MAXL]
+         <- (mg >  mmax) && (mg >= size) ? LMAX(k+r, k%Q)                /* Unused */
+
+READ  Md <- (md <= mmax) ? Mm GETRF_RDC(k, h, r, md )                    [type = MAXL]
+         <- (md >  mmax) && (md <  size) ? M GETRF_MAX(k, k+r+P*md, h )  [type = MAXL]
+         <- (md >  mmax) && (md >= size) ? LMAX(k+r, k%Q)                /* Unused */
 
 // Priority
-;1000000
+;1000000-h
 
 BODY
 {
-    printlog("GETRF_RDC(k=%d, r=%d, m=%d, h=%d)\n", k, r, m, h );
+    printlog("GETRF_RDC(k=%d, h=%d, r=%d, size=%d, mmax=%d, m=%d, mg=%d, md=%d)\n",
+             k, h, r, size, mmax, m, mg, md );
 
     DRYRUN(
         Dague_Complex64_t *lMm = (Dague_Complex64_t*)Mm;
         Dague_Complex64_t *lMg = (Dague_Complex64_t*)Mg;
         Dague_Complex64_t *lMd = (Dague_Complex64_t*)Md;
-        double vm = cabs(lMm[1+h]);
-        double vg = cabs(lMg[1+h]);
-        double vd = cabs(lMd[1+h]);
 
-        if ( vg > vd ) {
+        if (md < size) {
+            double vm = cabs(lMm[1+h]);
+            double vg = cabs(lMg[1+h]);
+            double vd = cabs(lMd[1+h]);
+
+            if ( vg > vd ) {
+                if ( vg > vm ) {
+                    cblas_zcopy(tempkn+1, lMg, 1,
+                                          lMm, 1);
+                }
+            } else {
+                if ( vd > vm ) {
+                    cblas_zcopy(tempkn+1, lMd, 1,
+                                          lMm, 1);
+                }
+            }
+        } 
+        else if (mg < size) {
+            double vm = cabs(lMm[1+h]);
+            double vg = cabs(lMg[1+h]);
+
             if ( vg > vm ) {
                 cblas_zcopy(tempkn+1, lMg, 1,
-                            lMm, 1);
+                                      lMm, 1);
             }
-        } else {
-            if ( vd > vm ) {
-                cblas_zcopy(tempkn+1, lMd, 1,
-                            lMm, 1);
-            }
-        }
+        } 
            );
 }
 END
@@ -532,6 +558,8 @@ k = 0 .. minmnt
 mmax = inline_c %{return ((descA.mt-k < P) ? descA.mt-k : P);%}
 m = 0 .. mmax-1
 
+size = inline_c %{ int ret = (descA.mt-k) / P; 
+                   return m < ((descA.mt-k)%P) ? ret+1 : ret; %}
 h = 0..inline_c %{
   int tempkm = ((k)==(descA.mt-1)) ? (descA.m-(k*descA.mb)) : (descA.mb);
   int tempkn = ((k)==(descA.nt-1)) ? (descA.n-(k*descA.nb)) : (descA.nb);
@@ -544,7 +572,8 @@ RW    V  <- V GETRF_MAX(k, k+m, h)                     [type = SWAP]
          -> V GETRF_SND(k, 0, m,          h )          [type = SWAP]
          -> W GETRF_SND(k, 0, (m+1)%mmax, h )          [type = SWAP]
 
-READ  M <-  Mm GETRF_RDC(k, m, 0, h )                  [type = MAXL]
+READ  M <- (size == 1) ? M  GETRF_MAX(k, k+m, h)       [type = MAXL]
+        <- (size != 1) ? Mm GETRF_RDC(k, h, m, 0)      [type = MAXL]
 
 // Priority
 ; 1000000
