@@ -444,6 +444,7 @@ BODY
                     cblas_zcopy(tempnn, lB + index, descB.mb,
                                         lT + j,     descB.mb);
                 }
+                perm++;
             }
         }
       );
