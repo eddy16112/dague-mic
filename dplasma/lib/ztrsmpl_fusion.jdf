@@ -430,7 +430,6 @@ BODY
             int *perm = (int*)PERM;
             int owner_max = (mB < mT ) ? dague_imin( mB+size, mT ) : mB+size; /* Check for overlap if mB < mT */
             int owner_index;
-            int index;
             int j;
 
             Dague_Complex64_t *lT = (Dague_Complex64_t*)Rtop;
@@ -438,11 +437,10 @@ BODY
 
             for(j=0; j<minmn; j++) {
                 owner_index = (*perm) / descB.mb;
-                index       = (*perm) % descB.mb;
 
                 if( (owner_index >= mB) && (owner_index < owner_max) ) {
                     cblas_zcopy(tempnn, lB + j, descB.mb,
-                                        lT + j,     descB.mb);
+                                        lT + j, descB.mb);
                 }
                 perm++;
             }
