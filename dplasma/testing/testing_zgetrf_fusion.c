@@ -13,10 +13,15 @@
 #include "dplasma/cores/cuda_zgemm.h"
 #endif
 
+//#define MYDEBUG 1
 static int check_solution( dague_context_t *dague, int loud,
                            tiled_matrix_desc_t *ddescA,
                            tiled_matrix_desc_t *ddescB,
                            tiled_matrix_desc_t *ddescX );
+
+int dplasma_iprint( dague_context_t *dague,
+                    PLASMA_enum uplo,
+                    tiled_matrix_desc_t *A);
 
 static inline int dague_imin(int a, int b) { return (a <= b) ? a : b; };
 static inline int dague_imax(int a, int b) { return (a >= b) ? a : b; };
@@ -41,11 +46,12 @@ int main(int argc, char ** argv)
     PASTE_CODE_IPARAM_LOCALS(iparam);
     PASTE_CODE_FLOPS(FLOPS_ZGETRF, ((DagDouble_t)M, (DagDouble_t)N));
 
+#ifndef MYDEBUG
     if ( M != N && check ) {
         fprintf(stderr, "Check cannot be perfomed with M != N\n");
         check = 0;
     }
-
+#endif
     LDA = dague_imax( LDA, MT * MB );
 
     /* initializing matrix structure */
@@ -74,6 +80,19 @@ int main(int argc, char ** argv)
                                nodes, cores, rank, MB, NB, LDB, NRHS, 0, 0,
                                N, NRHS, SMB, SNB, P));
 
+#define MYDEBUG 1
+#ifdef MYDEBUG
+    PASTE_CODE_ALLOCATE_MATRIX(ddescAl, check,
+                               two_dim_block_cyclic, (&ddescAl, matrix_ComplexDouble, matrix_Lapack,
+                                                      1, cores, rank, MB, NB, LDA, N, 0, 0,
+                                                      M, N, SMB, SNB, 1));
+
+    PASTE_CODE_ALLOCATE_MATRIX(ddescIPIVl, check,
+                               two_dim_block_cyclic, (&ddescIPIVl, matrix_Integer, matrix_Lapack,
+                                                      1, cores, rank, 1, NB, 1, dague_imin(M, N), 0, 0,
+                                                      1, dague_imin(M, N), SMB, SNB, 1));
+#endif
+
     /* matrix generation */
     if(loud > 2) printf("+++ Generate matrices ... ");
     dplasma_zplrnt( dague, (tiled_matrix_desc_t *)&ddescA, 7657);
@@ -87,12 +106,12 @@ int main(int argc, char ** argv)
         int t, e;
 
         for(t = 0; t < minmnt; t++ ) {
-	  if(((dague_ddesc_t*) &ddescA)->rank_of(((dague_ddesc_t*) &ddescA), t, t)  == ((dague_ddesc_t*) &ddescA)->myrank)
-	    {
-	      Dague_Complex64_t *tab = ((dague_ddesc_t*) &ddescA)->data_of(((dague_ddesc_t*) &ddescA), t, t);
-	      for(e = 0; e < descA->mb; e++)
+          if(((dague_ddesc_t*) &ddescA)->rank_of(((dague_ddesc_t*) &ddescA), t, t)  == ((dague_ddesc_t*) &ddescA)->myrank)
+            {
+              Dague_Complex64_t *tab = ((dague_ddesc_t*) &ddescA)->data_of(((dague_ddesc_t*) &ddescA), t, t);
+              for(e = 0; e < descA->mb; e++)
                 tab[e * descA->mb + e] += (Dague_Complex64_t)minmn;
-	    }
+            }
         }
     }
 
@@ -101,6 +120,11 @@ int main(int argc, char ** argv)
         dplasma_zlacpy( dague, PlasmaUpperLower,
                         (tiled_matrix_desc_t *)&ddescA,
                         (tiled_matrix_desc_t *)&ddescA0 );
+#ifdef MYDEBUG
+        dplasma_zlacpy( dague, PlasmaUpperLower,
+                        (tiled_matrix_desc_t *)&ddescA,
+                        (tiled_matrix_desc_t *)&ddescAl );
+#endif
         dplasma_zplrnt( dague, (tiled_matrix_desc_t *)&ddescB, 2354);
         dplasma_zlacpy( dague, PlasmaUpperLower,
                         (tiled_matrix_desc_t *)&ddescB,
@@ -125,6 +149,8 @@ int main(int argc, char ** argv)
         }
 #endif
 
+    dplasma_zprint(dague, PlasmaUpperLower, (tiled_matrix_desc_t*)&ddescA);
+
     /* Create DAGuE */
     if(loud > 2) printf("+++ Computing getrf ... ");
     PASTE_CODE_ENQUEUE_KERNEL(dague, zgetrf_fusion,
@@ -143,7 +169,36 @@ int main(int argc, char ** argv)
         ret |= 1;
     }
     else if ( check ) {
-        dplasma_ztrsmpl_fusion(dague, 
+#ifdef MYDEBUG
+        if( rank  == 0 ) {
+            int i;
+            LAPACKE_zgetrf_work(LAPACK_COL_MAJOR, M, N,
+                                (Dague_Complex64_t*)(ddescAl.mat), LDA,
+                                (int *)(ddescIPIVl.mat));
+
+            printf("The Lapack swap are :\n");
+            for(i=0; i < dague_imin(M, N); i++) {
+                if ( i%NB == 0 )
+                    printf("\n(%d, %d) ", 0, i/NB );
+                printf( "%d ", ((int *)ddescIPIVl.mat)[i] );
+            }
+            printf("\n");
+        }
+/*         dplasma_iprint(dague, PlasmaUpperLower, (tiled_matrix_desc_t*)&ddescIPIV);  */
+        dplasma_zprint(dague, PlasmaUpperLower, (tiled_matrix_desc_t*)&ddescA);
+        dplasma_zprint(dague, PlasmaUpperLower, (tiled_matrix_desc_t*)&ddescAl);
+
+        dplasma_zgeadd( dague, PlasmaUpperLower, -1.0,
+                        (tiled_matrix_desc_t*)&ddescA,
+                        (tiled_matrix_desc_t*)&ddescAl );
+        dplasma_zprint(dague, PlasmaUpperLower, (tiled_matrix_desc_t*)&ddescAl);
+
+        dague_data_free(ddescAl.mat);
+        dague_ddesc_destroy( (dague_ddesc_t*)&ddescAl);
+        dague_data_free(ddescIPIVl.mat);
+        dague_ddesc_destroy( (dague_ddesc_t*)&ddescIPIVl);
+#else
+        dplasma_ztrsmpl_fusion(dague,
                                (tiled_matrix_desc_t *)&ddescA,
                                (tiled_matrix_desc_t *)&ddescIPIV,
                                (tiled_matrix_desc_t *)&ddescX);
@@ -157,6 +212,7 @@ int main(int argc, char ** argv)
                                (tiled_matrix_desc_t *)&ddescA0,
                                (tiled_matrix_desc_t *)&ddescB,
                                (tiled_matrix_desc_t *)&ddescX);
+#endif
     }
 
     if ( check ) {
