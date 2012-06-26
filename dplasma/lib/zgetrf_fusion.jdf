@@ -47,7 +47,7 @@ static Dague_Complex64_t mzone = -1.;
  * This jdf is composed of two parts: the panel and the update.
  *
  * The panel factorization is a loop over the following serie of tasks (prefixed by GETRF):
- *    
+ *
  *    For each tile of the panel:  (MAX)**size -> FNL
  *    For the buffer V:    SND -> MDL -> FNL
  *
@@ -69,7 +69,7 @@ static Dague_Complex64_t mzone = -1.;
  * Every tile in the trailing submatrix follow the cycle (prefixed by SWAP):
  *    (m==k) GEMM -> COPY    -> TRSM_U
  *                -> COLLECT -> RECV
- *             
+ *
  *    (m!=k) GEMM -> COLLECT -> RECV -> GEMM
  *
  * In the meantime: COLLECT -> SND -> TRSM_U
@@ -133,7 +133,6 @@ static inline void pivot_to_permutation(int *IP, int hmax, int *perm, int *invpe
         }
     }
 }
-
 
 %}
 
@@ -305,10 +304,10 @@ hmax   = inline_c %{ return dague_imin( tempkm, tempkn )-1; %}
 h  = 0 .. hmax
 
 /* Indices for Maximum reduction */
-size = inline_c %{ int ret = (descA.mt-k) / P; 
-                   return (m-k)%P < (descA.mt-k)%P ? ret+1 : ret;%} 
+size = inline_c %{ int ret = (descA.mt-k) / P;
+                   return (m-k)%P < (descA.mt-k)%P ? ret+1 : ret;%}
 lmmax= inline_c %{ return (size / 2) - 1; %}
-lm   = inline_c %{ return (m-k) / P; %} 
+lm   = inline_c %{ return (m-k) / P; %}
 
 dmax = inline_c %{
   int nb_init = dague_imin( descA.mt-k, P);
@@ -343,11 +342,11 @@ RW  U <- (h == 0)? U U_in(k,m)                                                  
       -> ((((h%IB) == IB-1) || (h == hmax)) && (m-k<P))? U GETRF_MDL(k,(m-k)%P,h/IB)          [type = UMES]
       -> ((h != hmax) && (h%IB != IB-1))? U GETRF_MAX(k,m,h+1)                                [type = UMES]
 
-                                                                                                 
+
  /* Store the selected i and the associated row for comparison with other tiles */
 RW  M <- (h == 0) ? M LMAX_in(k, m)                                                           [type = MAXL]
 
-      /* Keep the line here for simplicity reason, so M goes from Max(k-1) to Max(k) 
+      /* Keep the line here for simplicity reason, so M goes from Max(k-1) to Max(k)
        * (dependency is guaranty by other dependencies) */
       <- (h != 0)    ? M GETRF_MAX(k, m, h-1)                                                 [type = MAXL]
       -> (h != hmax) ? M GETRF_MAX(k, m, h+1)                                                 [type = MAXL]
@@ -373,7 +372,7 @@ BODY
     int tempmm = ( m == (descA.mt-1) ) ? descA.m - m * descA.mb : descA.mb;
     tempmm -= p;
 
-    printlog("GETRF_MAX(k=%d, m=%d, h=%d) / (hmax=%d, size=%d, lm=%d)\n", 
+    printlog("GETRF_MAX(k=%d, m=%d, h=%d) / (hmax=%d, size=%d, lm=%d)\n",
              k, m, h, hmax, size, lm);
 
     DRYRUN(
@@ -465,7 +464,6 @@ BODY
 #if defined(HAVE_CUDA)
     dague_gpu_update_data_version( &dague_gpu_map, GEMM_KEY( &descA, m, k) );
 #endif  /* defined(HAVE_CUDA) */
-
 }
 END
 
@@ -486,7 +484,7 @@ rmax   = inline_c %{ return dague_imin(descA.mt-k, P)-1; %}
 h = 0 .. hmax
 r = 0 .. rmax
 
-size   = inline_c %{ int ret = (descA.mt-k) / P; 
+size   = inline_c %{ int ret = (descA.mt-k) / P;
                      return r < ((descA.mt-k)%P) ? ret+1 : ret; %}
 mmax   = inline_c %{ return (size/2)-1; %}
 
@@ -540,7 +538,7 @@ BODY
                                           lMm, 1);
                 }
             }
-        } 
+        }
         else if (mg < size) {
             double vm = cabs(lMm[1+h]);
             double vg = cabs(lMg[1+h]);
@@ -549,7 +547,7 @@ BODY
                 cblas_zcopy(tempkn+1, lMg, 1,
                                       lMm, 1);
             }
-        } 
+        }
            );
 }
 END
@@ -571,7 +569,7 @@ rmax   = inline_c %{ return dague_imin(descA.mt-k, P); %}
 h = 0 .. hmax
 r = 0 .. rmax-1
 
-size = inline_c %{ int ret = (descA.mt-k) / P; 
+size = inline_c %{ int ret = (descA.mt-k) / P;
                    return r < ((descA.mt-k)%P) ? ret+1 : ret; %}
 
 // Parallel partitioning
@@ -626,7 +624,7 @@ dmax = inline_c %{
 h = 0 .. hmax
 d = 0 .. dmax
 r = 0 .. rmax-1
-      
+
 pui = inline_c %{ return 1 << d; %}
 
 // Parallel partitioning
@@ -638,7 +636,7 @@ RW    T <- (d > 0   ) ? T GETRF_SND(k, h, d-1, r) : V GETRF_SVM(k, h, r)        
         -> (d <  dmax) ? T GETRF_SND(k, h, d+1, r)                                     [type = SWAP]
         -> (d == dmax) && ((h == hmax) || ((h+1)%IB == 0)) ? V GETRF_MDL(k, r, h/IB)   [type = SWAP]
         -> (d == dmax) &&  (h != hmax) ? V GETRF_MAX(k, (k+r)..(descA.mt-1)..P, h+1)   [type = SWAP]
-                                                                                        
+
         /* Send T to the bottom */
         -> (d <  dmax) ? B GETRF_SND(k, h, d+1, (r+2*pui)%rmax)                        [type = SWAP]
 
@@ -657,9 +655,10 @@ BODY
         Dague_Complex64_t *lB = (Dague_Complex64_t*)B;
 
         /* The received buffer contains the diagonal line */
-        if( r <= pui && pui/2 < r)
+        if( (r >= pui) && (r < 2*pui) ) {
             cblas_zcopy(tempkn, lB + ISND( h ), 1,
                                 lT + ISND( h ), 1);
+        }
 
         if(cabs(lB[SRCH + h]) > cabs(lT[SRCH + h]))
         {
