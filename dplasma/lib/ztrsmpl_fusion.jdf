@@ -441,7 +441,7 @@ BODY
                 index       = (*perm) % descB.mb;
 
                 if( (owner_index >= mB) && (owner_index < owner_max) ) {
-                    cblas_zcopy(tempnn, lB + index, descB.mb,
+                    cblas_zcopy(tempnn, lB + j, descB.mb,
                                         lT + j,     descB.mb);
                 }
                 perm++;
@@ -506,7 +506,7 @@ BODY
 END
 
 /**************************************************
- *                      GEMM                      *
+* *                      GEMM                      *
  **************************************************/
 B_GEMM(k, m, n)
 

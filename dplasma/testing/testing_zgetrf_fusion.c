@@ -46,6 +46,7 @@ int main(int argc, char ** argv)
     PASTE_CODE_IPARAM_LOCALS(iparam);
     PASTE_CODE_FLOPS(FLOPS_ZGETRF, ((DagDouble_t)M, (DagDouble_t)N));
 
+#define MYDEBUG 1
 #ifndef MYDEBUG
     if ( M != N && check ) {
         fprintf(stderr, "Check cannot be perfomed with M != N\n");
@@ -80,7 +81,6 @@ int main(int argc, char ** argv)
                                nodes, cores, rank, MB, NB, LDB, NRHS, 0, 0,
                                N, NRHS, SMB, SNB, P));
 
-#define MYDEBUG 1
 #ifdef MYDEBUG
     PASTE_CODE_ALLOCATE_MATRIX(ddescAl, check,
                                two_dim_block_cyclic, (&ddescAl, matrix_ComplexDouble, matrix_Lapack,

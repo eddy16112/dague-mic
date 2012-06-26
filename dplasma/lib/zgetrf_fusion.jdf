@@ -655,7 +655,7 @@ BODY
         Dague_Complex64_t *lB = (Dague_Complex64_t*)B;
 
         /* The received buffer contains the diagonal line */
-        if( (r >= pui) && (r < 2*pui) ) {
+        if( (r >= pui) && (r > pui/2) ) {
             cblas_zcopy(tempkn, lB + ISND( h ), 1,
                                 lT + ISND( h ), 1);
         }
