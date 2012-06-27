@@ -79,7 +79,6 @@ static inline void pivot_to_permutation(int *IP, int hmax, int *perm, int *invpe
     }
 }
 
-
 %}
 
 /* Globals
@@ -105,14 +104,15 @@ PERM_in_TR(k, m) [profile = off]
 // Execution space
 k = 0 .. minmnt
 m = 0 .. inline_c %{ return dague_imin( descA.mt-k-1, P-1 ); %}
+r = inline_c %{ return (k+m) % P; %}
 
 // Parallel partitioning
-:IPIV( (k+m)%P, k )
+:IPIV( r, k )
 
 // Parameters
-READ IP   <- IPIV( (k+m)%P, k )
+READ IP   <- IPIV( r, k )
 
-READ PERM <- Wperm( (k+m)%P, k )                                                   [type = PERMUT]
+READ PERM <- Wperm( r, k )                                                           [type = PERMUT]
           -> PERM B_SWAP_COLLECT(k, (k+m) .. (descB.mt-1) .. P, 0 .. (descB.nt-1) )  [type = PERMUT]
 
 ;descB.mt-k-1
@@ -428,7 +428,6 @@ BODY
             int tempnn = (n == (descB.nt-1)) ? descB.n - n * descB.nb : descB.nb;
             int minmn = dague_imin( tempkm, tempkn );
             int *perm = (int*)PERM;
-            int owner_max = (mB < mT ) ? dague_imin( mB+size, mT ) : mB+size; /* Check for overlap if mB < mT */
             int owner_index;
             int j;
 
@@ -437,8 +436,9 @@ BODY
 
             for(j=0; j<minmn; j++) {
                 owner_index = (*perm) / descB.mb;
+                owner_index = (owner_index - k)%P - iB;
 
-                if( (owner_index >= mB) && (owner_index < owner_max) ) {
+                if( (0 <= owner_index) && (owner_index < size) ) {
                     cblas_zcopy(tempnn, lB + j, descB.mb,
                                         lT + j, descB.mb);
                 }

@@ -31,18 +31,9 @@ extern int *gpu_counter;
 extern dague_gpu_data_map_t dague_gpu_map;
 #endif  /* defined(HAVE_CUDA) */
 
-#define IEVN 0
-#define IODD (descA.nb)
-#define MAXI (descA.nb*2)
-#define SRCH (descA.nb*3)
-#define PIVO (descA.nb*4)
-
 #define get_pivot( _buf_ ) (*( (int*)( ((Dague_Complex64_t*)(_buf_)) + 2*descA.nb ) ))
 #define get_diag( _buf_ )  (((Dague_Complex64_t*)(_buf_)))
 #define get_rmax( _buf_ )  (((Dague_Complex64_t*)(_buf_)) + descA.nb)
-
-#define IRCV( _h_ ) ( ((_h_)%2 == 0) ? 0 : descA.nb )
-#define ISND( _h_ ) ( ((_h_)%2 == 1) ? 0 : descA.nb )
 
 static Dague_Complex64_t zone  = 1.;
 static Dague_Complex64_t mzone = -1.;
@@ -296,14 +287,12 @@ BODY
     /* Nothing to do */
 END
 
-
-
 /**************************************************
  *                    GETRF_MAX
  * Apply the scale and the update of the step h-1
  * Look for the local tile max of the step h
  **************************************************/
-GETRF_MAX(k,m,h)
+GETRF_MAX(k, m, h)
 
 // Execution space
 k = 0 .. minmnt
@@ -432,7 +421,7 @@ BODY
                /* Store the pivot */
                ((int*)IP)[h-1] = pivot + 1;
 
-               /* Copying the max line in the local U */
+               /* Save the previous max line in the local U (when h%IB == 0, done in MDL) */
                if( (h%IB) != 0) {
                    cblas_zcopy(tempkn, lmaxi,           1,
                                        lU + ((h-1)%IB), IB);
@@ -749,13 +738,14 @@ BODY
     DRYRUN(
         Dague_Complex64_t *lU = (Dague_Complex64_t*)U;
 
-        /* Copying the max line in the local U */
+        /* Copying the previous max line in the local U */
         if(h != hmax) {
             cblas_zcopy(tempkn, get_rmax( V ), 1,
                                 lU + IB-1,     IB);
+
             cblas_ztrsm(CblasColMajor,
-                        (CBLAS_SIDE)CblasLeft, (CBLAS_UPLO)CblasLower,
-                        (CBLAS_TRANSPOSE)CblasNoTrans, (CBLAS_DIAG)CblasUnit,
+                        CblasLeft, CblasLower,
+                        CblasNoTrans, CblasUnit,
                         IB, tempkn - (h+1)*IB,
                         CBLAS_SADDR(zone), lU + h    * IB * IB, IB,
                                            lU + (h+1)* IB * IB, IB);
@@ -787,13 +777,14 @@ imax = inline_c %{ return ((minmn%IB) == 0)? (minmn/IB-1) : minmn/IB; %}
 // Parallel partitioning
 :A(m, k)
 
-RW    T <- T GETRF_MAX(k,m, minmn-1)
-        -> (m == k) ? T TRSM_U(k, (k+1) .. (descA.nt-1)) : A GEMM(k,m, (k+1) .. (descA.nt-1))
+RW    T <- T GETRF_MAX(k, m, minmn-1)
+        -> (m == k) ? T TRSM_U(k, (k+1) .. (descA.nt-1)) : A GEMM(k, m, (k+1) .. (descA.nt-1))
         -> A(m, k)
+
 READ  V <- V GETRF_MDL(k,(m-k)%P,imax)                                                         [type = SWAP]
 
 RW   IP <- IP GETRF_MAX( k, m, minmn-1 )                                                       [type = PIVOT]
-        -> (m-k < P) ? IP IP_out(k,(m-k))                                                      [type = PIVOT]
+        -> ((m-k) < P) ? IP IP_out(k,(m-k))                                                    [type = PIVOT]
 
 RW PERM <- PERM PERM_in(k, (m-k)%P )                                                           [type = PERMUT]
         -> ((m-k) < P) ? PERM SWAP_COLLECT(k, m .. (descA.mt-1) .. P, (k+1) .. (descA.nt-1))   [type = PERMUT]
@@ -1110,7 +1101,7 @@ READ     PERM    <- (l == 1) ? PERM SWAP_COLLECT( k, mT, n )                    
 BODY
 {
     printlog("SWAP_SND(k=%d,l=%d,i=%d,n=%d) => Merge( %d [%d], %d [%d])\n",
-             k, l, i, n, mT, iT, mB, iB );
+             k, l, i, n, iT, mT, iB, mB );
 
     DRYRUN(
         if ( iB < height ) {
@@ -1120,7 +1111,6 @@ BODY
             int tempnn = (n == (descA.nt-1)) ? descA.n - n * descA.nb : descA.nb;
             int minmn = dague_imin( tempkm, tempkn );
             int *perm = (int*)PERM;
-            int owner_max = (mB < mT ) ? dague_imin( mB+size, mT ) : mB+size; /* Check for overlap if mB < mT */
             int owner_index;
             int j;
 
@@ -1129,8 +1119,9 @@ BODY
 
             for(j=0; j<minmn; j++) {
                 owner_index = (*perm) / descA.mb;
+                owner_index = (owner_index - k)%P - iB;
 
-                if( (owner_index >= mB) && (owner_index < owner_max) ) {
+                if( (0 <= owner_index) && (owner_index < size) ) {
                     cblas_zcopy(tempnn, lB + j, descA.mb,
                                         lT + j, descA.mb);
                 }
