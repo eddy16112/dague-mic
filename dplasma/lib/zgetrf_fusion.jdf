@@ -129,6 +129,10 @@ static inline void pivot_to_permutation(int *IP, int hmax, int *perm, int *invpe
     }
 }
 
+static inline int get_priority(int k, int n) {
+    return - (k * (k+1) + 1 + n - ( ((n-k)%2) * k ));
+}
+
 %}
 
 /* Globals
@@ -166,7 +170,7 @@ r = inline_c %{ return (k+m) % P; %}
 READ  IP <- IPIV( r, k )                                    [type = PIVOT]
          -> IP GETRF_MAX(k, (k+m) .. (descA.mt-1) .. P, 0)  [type = PIVOT]
 
-;descA.mt-k-1
+;inline_c %{ return get_priority(k, k); %}
 
 BODY
         /* Nothing to do */
@@ -189,7 +193,7 @@ r = inline_c %{ return (k+m) % P; %}
 READ  IP <- IP GETRF_FNL(k, k+m)                          [type = PIVOT]
          -> IPIV(r, k)                                    [type = PIVOT]
 
-;descA.mt-k-1
+;inline_c %{ return get_priority(k, k); %}
 
 BODY
         /* Nothing to do */
@@ -212,7 +216,7 @@ r = inline_c %{ return (k+m) % P; %}
 READ PERM <- Wperm( r, k )                               [type = PERMUT]
           -> PERM GETRF_FNL(k, (k+m) .. descA.mt-1 .. P) [type = PERMUT]
 
-;descA.mt-k-1
+;inline_c %{ return get_priority(k, k); %}
 
 BODY
         /* Nothing to do */
@@ -237,7 +241,7 @@ READ  V <- V( r + i*P, k%Q)                                           [type = SW
         -> (i == 0) ? V1 GETRF_MAX(k, (k+m) .. (descA.mt-1) .. P, 0)  [type = SWAP]
         -> (i == 1) ? V2 GETRF_MAX(k, (k+m) .. (descA.mt-1) .. P, 0)  [type = SWAP]
 
-;descA.mt-k-1
+;inline_c %{ return get_priority(k, k); %}
 
 BODY
     /* Nothing to do */
@@ -261,7 +265,7 @@ r = inline_c %{ return (k+m) % P; %}
 READ  U <- UMAT(r, k%Q)                                   [type = UMES]
         -> U GETRF_MAX(k, (k+m) .. (descA.mt-1) .. P, 0)  [type = UMES]
 
-;descA.mt-k-1
+;inline_c %{ return get_priority(k, k); %}
 
 BODY
     /* Nothing to do */
@@ -379,7 +383,7 @@ RW  M <- (h == 0) ? M LMAX_in(k, m)                                             
       -> (size != 1) && (lm >  lmmax) && (lm%2 == 0) ? Md GETRF_RDC(k, h, lr, (lm-1)/2 ) [type = MAXL]
 
 // Priority
-;1000000
+;inline_c %{ return get_priority(k, k); %}
 
 BODY
 {
@@ -498,7 +502,7 @@ END
  * Look for the local node max of the step h
  *
  **************************************************/
-GETRF_RDC(k, h, r, m) [immediate=on]
+GETRF_RDC(k, h, r, m) 
 
 k = 0 .. minmnt
 
@@ -536,7 +540,7 @@ READ  Md <- (md <= mmax) ? Mm GETRF_RDC(k, h, r, md )                    [type =
          <- (md >  mmax) && (md >= size) ? LMAX(k+r, k%Q)                /* Unused */
 
 // Priority
-;1000000
+;inline_c %{ return get_priority(k, k); %}
 
 BODY
 {
@@ -582,7 +586,7 @@ END
  * Saving the local node max in the V workspace
  *
  **************************************************/
-GETRF_SVM(k, h, r) [immediate=on]
+GETRF_SVM(k, h, r) 
 
 k = 0 .. minmnt
 
@@ -608,7 +612,7 @@ READ  M <- (size == 1) ? M  GETRF_MAX(k, k+r, h)       [type = MAXL]
         <- (size != 1) ? Mm GETRF_RDC(k, h, r, 0)      [type = MAXL]
 
 // Priority
-; 1000000
+;inline_c %{ return get_priority(k, k); %}
 
 BODY
 {
@@ -629,7 +633,7 @@ END
  * Look and share the global max of the step h
  * by using the Bruck algorithm
  **************************************************/
-GETRF_SND(k, h, d, r) [immediate=on]
+GETRF_SND(k, h, d, r) 
 
 k = 0 .. minmnt
 
@@ -668,7 +672,7 @@ READ  B <- (d == 0) ? V GETRF_SVM(k, h, (rmax+r-1)%rmax )                       
         <- (d != 0) ? T GETRF_SND(k, h, d-1, (rmax+r-pui)%rmax )                       [type = SWAP]
 
 // Priority
-;1000000
+;inline_c %{ return get_priority(k, k); %}
 
 BODY
 {
@@ -730,7 +734,7 @@ RW    U <- U GETRF_MAX(k, k+r, sender)                                          
         -> (h != hmax) ? U GETRF_MAX(k, (k+r) .. (descA.mt-1) .. P, ((h+1)*IB))         [type = UMES]
 
 // Priority
-; 1000000
+;inline_c %{ return get_priority(k, k); %}
 
 BODY
 {
@@ -790,7 +794,7 @@ RW PERM <- PERM PERM_in(k, (m-k)%P )                                            
         -> ((m-k) < P) ? PERM SWAP_COLLECT(k, m .. (descA.mt-1) .. P, (k+1) .. (descA.nt-1))   [type = PERMUT]
 
 // Priority
-;1000000
+;inline_c %{ return get_priority(k, k); %}
 
 BODY
 {
@@ -853,7 +857,7 @@ n = 1 .. descA.nt-1
 READ  A  <- ACOPY(0, n)
          -> ACOPY SWAP_COPY(0,n)
 
-; (descA.mt-n-1) * (descA.nt-1)
+;inline_c %{ return get_priority(0, n); %}
 
 BODY
 {
@@ -884,7 +888,7 @@ READ      A <-  (k == 0) ? A(k, n) : C GEMM(k-1, k, n)
 RW    ACOPY <-  (k == 0) ? A ACOPY_in(n) : U SWAP_RECV(k-1, row, n)
             ->  U SWAP_RECV(k, k+1..mmax, n)
 
-; (descA.mt-n-1) * (descA.nt-k-1)
+;inline_c %{ return get_priority(k, n); %}
 
 BODY
 {
@@ -930,7 +934,7 @@ READ   PERM <-  PERM SWAP_COLLECT(k, m, n)                  [type = PERMUT]
 RW        T <-  T  SWAP_COLLECT(k, m, n)
             ->  (m > k) ? C GEMM(k, m, n)
 
-; (descA.mt-n-1) * (descA.nt-k-1)
+;inline_c %{ return get_priority(k, n); %}
 
 BODY
 {
@@ -984,7 +988,7 @@ n = k+1 .. descA.nt-1
 READ  B  <- BUFFER((k+m)%P,n)
          -> BUF SWAP_COLLECT(k, k+m, n)
 
-; (descA.mt-n-1) * (descA.nt-k-1)
+;inline_c %{ return get_priority(k, n); %}
 
 BODY
         /* Nothing to do */
@@ -995,7 +999,7 @@ END
  * Swapping all the lines for the current process
  * in the temporary buffer
  **************************************************/
-SWAP_COLLECT(k, m, n) [immediate=on]
+SWAP_COLLECT(k, m, n) 
 
 // Execution space
 k = 0   .. minmnt
@@ -1021,7 +1025,7 @@ READ  PERM  <-  PERM GETRF_FNL(k, k + ((m-k)%P) )                               
             ->  PERM SWAP_RECV(k, m, n )                                               [type = PERMUT]
             ->  (((descA.mt-m-1) <  P) && (i%2 == 0) ) ? PERM SWAP_SND(k, 1, i/2, n )  [type = PERMUT]
 
-; (descA.mt-n-1) * (descA.nt-k-1)
+;inline_c %{ return get_priority(k, n); %}
 
 BODY
 {
@@ -1059,7 +1063,7 @@ END
  *                    SWAP_SND
  *      Reduction tree of the collected rows
  **************************************************/
-SWAP_SND(k, l, i, n) [immediate=on]
+SWAP_SND(k, l, i, n) 
 
 // Execution space
 k = 0 .. minmnt
@@ -1096,7 +1100,7 @@ READ     PERM    <- (l == 1) ? PERM SWAP_COLLECT( k, mT, n )                    
                  -> (( l < depth) && (0 == (i % 2))) ? PERM SWAP_SND( k, l+1, i/2, n )  [type = PERMUT]
 
 
-; (descA.mt-n-1) * (descA.nt-k-1)
+;inline_c %{ return get_priority(k, n); %}
 
 BODY
 {
@@ -1157,7 +1161,7 @@ RW      C <- A SWAP_COPY(k, n)
 
 READ    B <- Rtop SWAP_SND(k, depth, 0, n)
 
-; (descA.mt-n-1) * (descA.nt-k-1)
+;inline_c %{ return get_priority(k, n); %}
 
 BODY
 {
@@ -1210,7 +1214,7 @@ RW    C <- T SWAP_RECV(k, m, n)
         -> ((n >  k+1) && (m == k+1)) ? A SWAP_COPY(k+1,n)  /* Swap */
         -> ((n >  k+1) && (m >  k  )) ? T SWAP_COLLECT(k+1,m,n)  /* Everything else */
 
-; (descA.mt-n-1) * (descA.nt-k-1)
+;inline_c %{ return get_priority(k, n); %}
 
 BODY
 {
