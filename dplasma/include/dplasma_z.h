@@ -44,6 +44,7 @@ int    dplasma_zposv ( dague_context_t *dague, const PLASMA_enum uplo, tiled_mat
 int    dplasma_zgerfs( dague_context_t *dague, tiled_matrix_desc_t* ddescA, tiled_matrix_desc_t* ddescLU, tiled_matrix_desc_t* ddescB, tiled_matrix_desc_t* ddescX);
 int    dplasma_zhetrs( dague_context_t *dague, int uplo, const tiled_matrix_desc_t *A, tiled_matrix_desc_t *B, PLASMA_Complex64_t *U_but_vec, int level);
 int    dplasma_zgetrf( dague_context_t *dague, tiled_matrix_desc_t* A, tiled_matrix_desc_t *IPIV );
+int    dplasma_zgetrf_fusion( dague_context_t *dague, tiled_matrix_desc_t *A, tiled_matrix_desc_t *IPIV);
 int    dplasma_zgetrf_sp( dague_context_t *dague, const double criteria, tiled_matrix_desc_t* ddescA);
 int    dplasma_zgetrf_incpiv( dague_context_t *dague, tiled_matrix_desc_t* A, tiled_matrix_desc_t *L, tiled_matrix_desc_t *IPIV );
 int    dplasma_zgetrf_std( dague_context_t *dague, tiled_matrix_desc_t *A, tiled_matrix_desc_t *IPIV);
