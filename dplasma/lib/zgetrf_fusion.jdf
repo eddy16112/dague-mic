@@ -502,7 +502,7 @@ END
  * Look for the local node max of the step h
  *
  **************************************************/
-GETRF_RDC(k, h, r, m) 
+GETRF_RDC(k, h, r, m) [immediate = off]
 
 k = 0 .. minmnt
 
@@ -586,7 +586,7 @@ END
  * Saving the local node max in the V workspace
  *
  **************************************************/
-GETRF_SVM(k, h, r) 
+GETRF_SVM(k, h, r) [immediate = off]
 
 k = 0 .. minmnt
 
@@ -633,7 +633,7 @@ END
  * Look and share the global max of the step h
  * by using the Bruck algorithm
  **************************************************/
-GETRF_SND(k, h, d, r) 
+GETRF_SND(k, h, d, r) [immediate = off]
 
 k = 0 .. minmnt
 
@@ -869,7 +869,7 @@ END
  *                    SWAP_COPY
  * Copying the A(k,n) and send it to itself
  **************************************************/
-SWAP_COPY(k,n) [immediate = on]
+SWAP_COPY(k,n) [immediate = off]
 
 // Execution space
 k = 0   .. minmnt
@@ -999,7 +999,7 @@ END
  * Swapping all the lines for the current process
  * in the temporary buffer
  **************************************************/
-SWAP_COLLECT(k, m, n) 
+SWAP_COLLECT(k, m, n) [immediate = off]
 
 // Execution space
 k = 0   .. minmnt
@@ -1063,7 +1063,7 @@ END
  *                    SWAP_SND
  *      Reduction tree of the collected rows
  **************************************************/
-SWAP_SND(k, l, i, n) 
+SWAP_SND(k, l, i, n) [immediate = off]
 
 // Execution space
 k = 0 .. minmnt
