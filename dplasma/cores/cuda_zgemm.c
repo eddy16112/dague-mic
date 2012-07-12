@@ -26,6 +26,20 @@
 
 #define KERNEL_NAME zgemm
 
+typedef void (*cuda_zgemm_t) ( char TRANSA, char TRANSB, int m, int n, int k,
+                               Dague_Complex64_t alpha, Dague_Complex64_t *d_A, int lda,
+                                                        Dague_Complex64_t *d_B, int ldb,
+                               Dague_Complex64_t beta,  Dague_Complex64_t *d_C, int ldc,
+                               CUstream stream );
+
+#define FORCE_UNDEFINED_SYMBOL(x) void* __ ## x ## _fp =(void*)&x;
+extern cuda_zgemm_t magmablas_zgemm_SM11;
+FORCE_UNDEFINED_SYMBOL(magmablas_zgemm_SM11)
+extern cuda_zgemm_t magmablas_zgemm_SM13;
+FORCE_UNDEFINED_SYMBOL(magmablas_zgemm_SM13)
+extern cuda_zgemm_t magmablas_zgemm_SM20;
+FORCE_UNDEFINED_SYMBOL(magmablas_zgemm_SM20)
+
 static inline
 int gpu_kernel_push_zgemm( gpu_device_t* gpu_device,
                            dague_gpu_context_t* this_task,
@@ -106,29 +120,17 @@ int gpu_kernel_init_zgemm( dague_context_t* dague_context )
     for( i = dindex = 0; i < nbgpus; i++ ) {
         gpu_device_t* gpu_device;
         CUresult status;
+        void* dlh;
         char library_name[FILENAME_MAX];
         char function_name[FILENAME_MAX];
 
         gpu_device = gpu_enabled_devices[i];
         gpu_device->function = NULL;
 
-        snprintf(library_name,  FILENAME_MAX, "libdplasma_sm%d%d.so",  gpu_device->major, gpu_device->minor);
-        snprintf(function_name, FILENAME_MAX, "magmablas_zgemm_SM%d%d", gpu_device->major, gpu_device->minor);
-
         status = cuCtxPushCurrent( gpu_device->ctx );
         DAGUE_CUDA_CHECK_ERROR( "(INIT) cuCtxPushCurrent ", status, {continue;} );
 
-        /* If not disallowed by env, load from static linked kernels */
-        env = getenv("DAGUE_CUBIN_NOSTATIC");
-        if( !env || (('1' != env[0]) && ('y' != env[0])) ) {
-            void* dlh;
-            dlh = dlopen(NULL, RTLD_NOW);
-            if(NULL == dlh) ERROR(("Error parsing static libs: %s\n", dlerror()));
-            gpu_device->function = dlsym(dlh, function_name);
-            dlclose(dlh);
-        }
-
-        /* If not found statically, try shared lib */
+/* If not found statically, try shared lib */
 /*         if(NULL == gpu_device->hcuFunction) { */
 /*             env = getenv("DAGUE_CUBIN_PATH"); */
 /*             snprintf(module_path, FILENAME_MAX, "%s/zgemm_sm%1d%1d.cubin", */
@@ -149,19 +151,47 @@ int gpu_kernel_init_zgemm( dague_context_t* dague_context )
 /*                                     } ); */
 /*         } */
 
-        if(NULL == gpu_device->function) {
-            void* dlh;
-            dlh = dlopen(library_name, RTLD_NOW | RTLD_NODELETE );
-            if(NULL == dlh) {
-                WARNING(("Could not find %s library (%s)\n", library_name, dlerror()));
-                status = cuCtxPopCurrent(NULL);
-                continue;
-            }
+        snprintf(function_name, FILENAME_MAX, "magmablas_zgemm_SM%d%d", gpu_device->major, gpu_device->minor);
+        env = getenv("DAGUE_CUBIN_LIBNAME");
+        if(NULL == env) {
+            snprintf(library_name,  FILENAME_MAX, "libdplasma_cucores_sm%d%d.so",  gpu_device->major, gpu_device->minor);
+        }
+        else {
+            snprintf(library_name,  FILENAME_MAX, "%s_sm%d%d.so", env, gpu_device->major, gpu_device->minor);
+        }
+            
+        dlh = dlopen(library_name, RTLD_NOW | RTLD_NODELETE );
+        if(NULL == dlh) {
+            if(env) ERROR(("Could not find %s library: %s\n"
+                           "  It is derived from environment DAGUE_CUBIN_LIBNAME=%s\n"
+                           "  To resolve this issue, set this variable to the correct path\n"
+                           "    ex: if /path/libdplasma_cucores_sm20.so exists, \n"
+                           "    set it to /path/libdplasma_cucores\n"
+                           "  Or unset it to use the default GPU kernels\n"
+                           , library_name, dlerror(), env));
+            DEBUG3(("Could not find %s library (%s)\n", library_name, dlerror()));
+        }
+        else {
             gpu_device->function = dlsym(dlh, function_name);
             dlclose(dlh);
         }
 
-        if(NULL == gpu_device->function) return -1;
+        /* Couldn't load from dynamic libs, try static */
+        if(NULL == gpu_device->function) {
+            DEBUG3(("No dynamic function %s found, loading from statically linked\n", function_name));
+            dlh = dlopen(NULL, RTLD_NOW | RTLD_NODELETE);
+            if(NULL == dlh) ERROR(("Error parsing static libs: %s\n", dlerror()));
+            gpu_device->function = dlsym(dlh, function_name);
+            if(env && gpu_device->function) WARNING(("Internal static function %s used (because library %s didn't loaded correctly)\n", function_name, library_name));
+            dlclose(dlh);
+        }
+
+        /* Still not found?? skip this GPU */
+        if(NULL == gpu_device->function) {
+            STATUS(("No function %s found for GPU %d\n", function_name, i));
+            status = cuCtxPopCurrent(NULL);
+            continue;
+        }
 
         status = cuCtxPopCurrent(NULL);
         DAGUE_CUDA_CHECK_ERROR( "(INIT) cuCtxPopCurrent ", status,
@@ -268,6 +298,7 @@ gpu_kernel_push_zgemm( gpu_device_t        *gpu_device,
     return ret;
 }
 
+
 static inline int
 gpu_kernel_submit_zgemm( gpu_device_t        *gpu_device,
                          dague_gpu_context_t *gpu_task,
@@ -282,11 +313,7 @@ gpu_kernel_submit_zgemm( gpu_device_t        *gpu_device,
     char tmp[MAX_TASK_STRLEN];
 #endif
 
-    void (*cuda_zgemm) ( char TRANSA, char TRANSB, int m, int n, int k,
-                         Dague_Complex64_t alpha, Dague_Complex64_t *d_A, int lda,
-                                                  Dague_Complex64_t *d_B, int ldb,
-                         Dague_Complex64_t beta,  Dague_Complex64_t *d_C, int ldc,
-                         CUstream stream ) = gpu_device->function;
+    cuda_zgemm_t cuda_zgemm = (cuda_zgemm_t) gpu_device->function;
     
     gpu_elem_A = (gpu_elem_t *)this_task->data[0].mem2dev_data->device_elem[gpu_device->index];
     gpu_elem_B = (gpu_elem_t *)this_task->data[1].mem2dev_data->device_elem[gpu_device->index];
@@ -295,7 +322,7 @@ gpu_kernel_submit_zgemm( gpu_device_t        *gpu_device,
     d_B = gpu_elem_B->gpu_mem;
     d_C = gpu_elem_C->gpu_mem;
 
-    DEBUG2(( "GPU[%1d]:\Enqueue on device %s priority %d\n", gpu_device->device_index,
+    DEBUG2(( "GPU[%1d]:\tEnqueue on device %s priority %d\n", gpu_device->device_index,
              dague_snprintf_execution_context(tmp, MAX_TASK_STRLEN, this_task),
              this_task->priority ));
 
@@ -348,7 +375,7 @@ gpu_kernel_pop_zgemm( gpu_device_t        *gpu_device,
             gpu_elem->generic.readers--; assert(gpu_elem->generic.readers >= 0);
             if( (0 == gpu_elem->generic.readers) &&
                 !(this_task->function->in[i]->access_type & ACCESS_WRITE) ) {
-                dague_ulist_remove( gpu_device->gpu_mem_lru, (dague_list_item_t*)gpu_elem);
+                dague_list_item_ring_chop((dague_list_item_t*)gpu_elem);
                 DAGUE_LIST_ITEM_CONSTRUCT(gpu_elem);
                 dague_ulist_fifo_push(gpu_device->gpu_mem_lru, (dague_list_item_t*)gpu_elem);
             }
@@ -446,9 +473,9 @@ int gpu_zgemm( dague_execution_unit_t* eu_context,
                int pushout,
                PLASMA_enum transA, PLASMA_enum transB,
                int M, int N, int K, 
-               Dague_Complex64_t alpha, int Am, int An, tiled_matrix_desc_t *descA, int lda,
-                                        int Bm, int Bn, tiled_matrix_desc_t *descB, int ldb,
-               Dague_Complex64_t beta,  int Cm, int Cn, tiled_matrix_desc_t *descC, int ldc )
+               Dague_Complex64_t alpha, int Am, int An, const tiled_matrix_desc_t *descA, int lda,
+                                        int Bm, int Bn, const tiled_matrix_desc_t *descB, int ldb,
+               Dague_Complex64_t beta,  int Cm, int Cn, const tiled_matrix_desc_t *descC, int ldc )
 {
     int which_gpu;
     dague_zgemm_args_t *gpu_task = (dague_zgemm_args_t*)malloc(sizeof(dague_zgemm_args_t));

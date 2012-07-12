@@ -201,9 +201,12 @@ int dague_remote_dep_activate(dague_execution_unit_t* eu_context,
 {
     const dague_function_t* function = exec_context->function;
     int i, me, him, current_mask;
+    int tofree, receiver;
     unsigned int array_index, count, bit_index;
+    (void)receiver;
 
     assert(eu_context->virtual_process->dague_context->nb_nodes > 1);
+    assert(remote_deps_count);
 
 #if defined(DAGUE_DEBUG)
     /* make valgrind happy */
@@ -225,6 +228,10 @@ int dague_remote_dep_activate(dague_execution_unit_t* eu_context,
 
     if(remote_deps->root == eu_context->virtual_process->dague_context->my_rank) me = 0;
     else me = -1;
+
+    tofree = 1;
+    receiver = (me == -1);
+
     for( i = 0; remote_deps_count; i++) {
         if( 0 == remote_deps->output[i].count ) continue;
 
@@ -269,6 +276,7 @@ int dague_remote_dep_activate(dague_execution_unit_t* eu_context,
                         remote_dep_inc_flying_messages(exec_context->dague_object, eu_context->virtual_process->dague_context);
                         remote_dep_mark_forwarded(eu_context, remote_deps, rank);
                         remote_dep_send(rank, remote_deps);
+                        tofree = 0;
                     } else {
                         DEBUG2((" TOPO\t%s\troot=%d\t%d (d%d) ][ %d (d%d)\n",
                                dague_snprintf_execution_context(tmp, MAX_TASK_STRLEN, exec_context), remote_deps->root,
@@ -278,6 +286,19 @@ int dague_remote_dep_activate(dague_execution_unit_t* eu_context,
             }
         }
     }
+
+    /* Only the thread doing reception can enter the following lines
+     * Any other threads would create a race condition
+     * This has to be done only if the receiver is a leaf in a broadcast, or if
+     * it is a point-to-point communication. The remote_deps has then been
+     * allocated in dague_release_dep_fct when we don't know yet if we will
+     * have to forward the information or not.
+     */
+    if (tofree) {
+        assert(receiver);
+        remote_dep_complete_one_and_cleanup( remote_deps );
+    }
+
     return 0;
 }
 
