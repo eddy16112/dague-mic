@@ -1122,7 +1122,13 @@ static int release_deps_of_zgemm_NN_bcast_GEMM(dague_execution_unit_t *eu, dague
     free(arg.ready_lists);
   }
 #if defined(DISTRIBUTED)
-  if( (action_mask & DAGUE_ACTION_SEND_REMOTE_DEPS) && arg.remote_deps_count ) {
+  if( 0 == arg.remote_deps_count ) {
+    if( NULL != arg.remote_deps ) {
+      remote_deps_free(arg.remote_deps);
+      arg.remote_deps = NULL;
+    }
+  }
+  else if( (action_mask & DAGUE_ACTION_SEND_REMOTE_DEPS) ) {
     arg.nb_released += dague_remote_dep_activate(eu, context, arg.remote_deps, arg.remote_deps_count);
   }
 #endif
@@ -1302,7 +1308,7 @@ static int hook_of_zgemm_NN_bcast_GEMM(dague_execution_unit_t *context, dague_ex
                                k, n, ldbk,
                  creal(lbeta), m, n, ldcm );
 
-#line 1306 "zgemm_NN_bcast.c"
+#line 1312 "zgemm_NN_bcast.c"
 /*--------------------------------------------------------------------------------*
  *                                END OF GEMM BODY                                *
  *--------------------------------------------------------------------------------*/
@@ -1741,7 +1747,13 @@ static int release_deps_of_zgemm_NN_bcast_READ_B(dague_execution_unit_t *eu, dag
     free(arg.ready_lists);
   }
 #if defined(DISTRIBUTED)
-  if( (action_mask & DAGUE_ACTION_SEND_REMOTE_DEPS) && arg.remote_deps_count ) {
+  if( 0 == arg.remote_deps_count ) {
+    if( NULL != arg.remote_deps ) {
+      remote_deps_free(arg.remote_deps);
+      arg.remote_deps = NULL;
+    }
+  }
+  else if( (action_mask & DAGUE_ACTION_SEND_REMOTE_DEPS) ) {
     arg.nb_released += dague_remote_dep_activate(eu, context, arg.remote_deps, arg.remote_deps_count);
   }
 #endif
@@ -1812,7 +1824,7 @@ static int hook_of_zgemm_NN_bcast_READ_B(dague_execution_unit_t *context, dague_
 #line 69 "zgemm_NN_bcast.jdf"
      printlog("rank %u <- B(%d,%d)\n", __dague_object->super.B->myrank, k, n);
 
-#line 1816 "zgemm_NN_bcast.c"
+#line 1828 "zgemm_NN_bcast.c"
 /*--------------------------------------------------------------------------------*
  *                              END OF READ_B BODY                              *
  *--------------------------------------------------------------------------------*/
@@ -1952,7 +1964,7 @@ static int zgemm_NN_bcast_READ_B_startup_tasks(dague_context_t *context, const _
                dague_snprintf_execution_context(tmp, 128, new_dynamic_context)));
       }
 #endif
-      dague_list_add_single_elem_by_priority( &pready_list[vpid], new_dynamic_context );
+      pready_list[vpid] = (dague_execution_context_t*)dague_list_item_ring_push_sorted( (dague_list_item_t*)(pready_list[vpid]), (dague_list_item_t*)new_dynamic_context, dague_execution_context_priority_comparator );
     }
   }
   return 0;
@@ -2267,7 +2279,13 @@ static int release_deps_of_zgemm_NN_bcast_READ_A(dague_execution_unit_t *eu, dag
     free(arg.ready_lists);
   }
 #if defined(DISTRIBUTED)
-  if( (action_mask & DAGUE_ACTION_SEND_REMOTE_DEPS) && arg.remote_deps_count ) {
+  if( 0 == arg.remote_deps_count ) {
+    if( NULL != arg.remote_deps ) {
+      remote_deps_free(arg.remote_deps);
+      arg.remote_deps = NULL;
+    }
+  }
+  else if( (action_mask & DAGUE_ACTION_SEND_REMOTE_DEPS) ) {
     arg.nb_released += dague_remote_dep_activate(eu, context, arg.remote_deps, arg.remote_deps_count);
   }
 #endif
@@ -2338,7 +2356,7 @@ static int hook_of_zgemm_NN_bcast_READ_A(dague_execution_unit_t *context, dague_
 #line 53 "zgemm_NN_bcast.jdf"
     printlog("rank %u <- A(%d,%d)\n", __dague_object->super.A->myrank, m, k);
 
-#line 2342 "zgemm_NN_bcast.c"
+#line 2360 "zgemm_NN_bcast.c"
 /*--------------------------------------------------------------------------------*
  *                              END OF READ_A BODY                              *
  *--------------------------------------------------------------------------------*/
@@ -2478,7 +2496,7 @@ static int zgemm_NN_bcast_READ_A_startup_tasks(dague_context_t *context, const _
                dague_snprintf_execution_context(tmp, 128, new_dynamic_context)));
       }
 #endif
-      dague_list_add_single_elem_by_priority( &pready_list[vpid], new_dynamic_context );
+      pready_list[vpid] = (dague_execution_context_t*)dague_list_item_ring_push_sorted( (dague_list_item_t*)(pready_list[vpid]), (dague_list_item_t*)new_dynamic_context, dague_execution_context_priority_comparator );
     }
   }
   return 0;
@@ -2532,6 +2550,7 @@ static void zgemm_NN_bcast_destructor( dague_zgemm_NN_bcast_object_t *o )
     if( o->arenas[i] != NULL ) {
       dague_arena_destruct(o->arenas[i]);
       free(o->arenas[i]);
+      o->arenas[i] = NULL;
     }
   }
   free( o->arenas );
@@ -2541,9 +2560,13 @@ static void zgemm_NN_bcast_destructor( dague_zgemm_NN_bcast_object_t *o )
    data_repo_destroy_nothreadsafe(__dague_object->GEMM_repository);
    data_repo_destroy_nothreadsafe(__dague_object->READ_B_repository);
    data_repo_destroy_nothreadsafe(__dague_object->READ_A_repository);
-  for(i = 0; i < DAGUE_zgemm_NN_bcast_NB_FUNCTIONS; i++)
+  for(i = 0; i < DAGUE_zgemm_NN_bcast_NB_FUNCTIONS; i++) {
     dague_destruct_dependencies( d->dependencies_array[i] );
+    d->dependencies_array[i] = NULL;
+  }
   free( d->dependencies_array );
+  d->dependencies_array = NULL;
+  dague_object_unregister( d );
   free(o);
 }
 
@@ -2630,4 +2653,4 @@ dague_zgemm_NN_bcast_object_t *dague_zgemm_NN_bcast_new(int transA, int transB, 
 #line 125 "zgemm_NN_bcast.jdf"
 
 
-#line 2634 "zgemm_NN_bcast.c"
+#line 2657 "zgemm_NN_bcast.c"

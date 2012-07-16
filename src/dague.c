@@ -501,8 +501,7 @@ int dague_fini( dague_context_t** pcontext )
 #endif
 
     dague_object_empty_repository();
-    debug_mark_purge_all_history();
-    
+
     free(context);
     *pcontext = NULL;
     return 0;
