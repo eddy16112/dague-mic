@@ -501,7 +501,8 @@ int dague_fini( dague_context_t** pcontext )
 #endif
 
     dague_object_empty_repository();
-
+    debug_mark_purge_all_history();
+    
     free(context);
     *pcontext = NULL;
     return 0;
@@ -960,6 +961,7 @@ void dague_object_unregister( dague_object_t* object )
     dague_atomic_lock( &object_array_lock );
     assert( object->object_id < object_array_size );
     assert( object_array[object->object_id] == object );
+    assert( object->nb_local_tasks == 0 );
     object_array[object->object_id] = NOOBJECT;
     dague_atomic_unlock( &object_array_lock );
 }

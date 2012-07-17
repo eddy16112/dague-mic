@@ -25,9 +25,6 @@ int main(int argc, char ** argv)
     iparam_default_ibnbmb(iparam, 40, 200, 200);
     iparam[IPARAM_LDA] = -'m';
     iparam[IPARAM_LDB] = -'m';
-#if defined(HAVE_CUDA) && defined(PRECISION_s) && 0
-    iparam[IPARAM_NGPUS] = 0;
-#endif
     /* Initialize DAGuE */
     dague = setup_dague(argc, argv, iparam);
     PASTE_CODE_IPARAM_LOCALS(iparam);
@@ -60,7 +57,7 @@ int main(int argc, char ** argv)
     }
 
     /* Computing the norm */
-    for(i=0; i<1; i++) {
+    for(i=0; i<4; i++) {
         if ( rank == 0 ) {
             printf("***************************************************\n");
         }
@@ -107,5 +104,5 @@ int main(int argc, char ** argv)
 
     cleanup_dague(dague, iparam);
 
-    return EXIT_SUCCESS;
+    return ret;
 }
