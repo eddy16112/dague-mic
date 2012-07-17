@@ -28,7 +28,7 @@ dague_object_t* dplasma_zgetrf_fusion_New( tiled_matrix_desc_t *A,
                                            int *info )
 {
     dague_object_t *dague_zgetrf_fusion = NULL;
-    two_dim_block_cyclic_t *UMAT, *LMAX, *V, *BUFFER;
+    two_dim_block_cyclic_t *UMAT, *V, *BUFFER;
     int mb = A->mb, nb = A->nb;
 
     /* The code has to be fixed for N >> M */
@@ -46,17 +46,6 @@ dague_object_t* dplasma_zgetrf_fusion_New( tiled_matrix_desc_t *A,
          IB*P, nb*Q,      /* Dimensions of the submatrix          */
          1, 1, P));
 
-
-    LMAX = (two_dim_block_cyclic_t*)malloc(sizeof(two_dim_block_cyclic_t));
-    PASTE_CODE_INIT_AND_ALLOCATE_MATRIX(
-        (*LMAX), two_dim_block_cyclic,
-        (LMAX, matrix_ComplexDouble, matrix_Tile,
-         A->super.nodes, A->super.cores, A->super.myrank,
-         1,  nb +1,        /* Dimnesions of the tile               */
-         A->mt, (nb+1)*Q,  /* Dimensions of the matrix             */
-         0,    0,          /* Starting points (not important here) */
-         A->mt, (nb+1)*Q,  /* Dimensions of the submatrix          */
-         1, 1, P));
 
     V = (two_dim_block_cyclic_t*)malloc(sizeof(two_dim_block_cyclic_t));
     PASTE_CODE_INIT_AND_ALLOCATE_MATRIX(
@@ -84,7 +73,6 @@ dague_object_t* dplasma_zgetrf_fusion_New( tiled_matrix_desc_t *A,
     dague_zgetrf_fusion = (dague_object_t*)dague_zgetrf_fusion_new((dague_ddesc_t*)A,
                                                                    (dague_ddesc_t*)IPIV,
                                                                    (dague_ddesc_t*)UMAT,
-                                                                   (dague_ddesc_t*)LMAX,
                                                                    (dague_ddesc_t*)V,
                                                                    (dague_ddesc_t*)BUFFER,
                                                                    IB,
@@ -141,11 +129,6 @@ dplasma_zgetrf_fusion_Destruct( dague_object_t *o )
     dague_data_free( desc->mat );
     dague_ddesc_destroy( dague_zgetrf_fusion->UMAT );
     free( dague_zgetrf_fusion->UMAT );
-
-    desc = (two_dim_block_cyclic_t*)(dague_zgetrf_fusion->LMAX);
-    dague_data_free( desc->mat );
-    dague_ddesc_destroy( dague_zgetrf_fusion->LMAX );
-    free( dague_zgetrf_fusion->LMAX );
 
     desc = (two_dim_block_cyclic_t*)(dague_zgetrf_fusion->V);
     dague_data_free( desc->mat );

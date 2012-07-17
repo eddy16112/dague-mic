@@ -140,7 +140,6 @@ static inline int get_priority(int k, int n) {
 A            [type = "dague_ddesc_t *"]
 IPIV         [type = "dague_ddesc_t *"]
 UMAT         [type = "dague_ddesc_t *"]
-LMAX         [type = "dague_ddesc_t *"]
 V            [type = "dague_ddesc_t *"]
 BUFFER       [type = "dague_ddesc_t *"]
 IB           [type = "int"]
@@ -247,26 +246,6 @@ BODY
 END
 
 /**************************************************
- *                    LMAX_in (pseudo task)
- **************************************************/
-LMAX_in(k,m) [profile = off]
-
-// Execution space
-k = 0 .. minmnt
-m = k .. descA.mt-1
-
-// Parallel partitioning
-:LMAX(m, k%Q)
-
-// Parameters
-READ  M <- LMAX(m,k%Q)                 [type = MAXL]
-        -> M GETRF_MAX(k, m, 0)        [type = MAXL]
-
-BODY
-    /* Nothing to do */
-END
-
-/**************************************************
  *                    GETRF_MAX
  * Apply the scale and the update of the step h-1
  * Look for the local tile max of the step h
@@ -344,15 +323,8 @@ RW  U <- (h == 0)? U U_in(k, lr)                                                
 
 
  /* Store the selected i and the associated row for comparison with other tiles */
-RW  M <- (h == 0) ? M LMAX_in(k, m)                                                      [type = MAXL]
-
-      /* Keep the line here for simplicity reason, so M goes from Max(k-1) to Max(k)
-       * (dependency is guaranty by other dependencies) */
-      <- (h != 0)    ? M GETRF_MAX(k, m, h-1)                                            [type = MAXL]
-      -> (h != hmax) ? M GETRF_MAX(k, m, h+1)                                            [type = MAXL]
-
-      /* Send to the reduction tree ( left, middle, right ) */
-      -> (size == 1) ? M GETRF_SVM(k, h, lr)                                             [type = MAXL]
+ /* Send to the reduction tree ( left, middle, right ) */
+RW  M -> (size == 1) ? M GETRF_SVM(k, h, lr)                                             [type = MAXL]
       -> (size != 1) && (lm <= lmmax)                ? Mm GETRF_RDC(k, h, lr, lm       ) [type = MAXL]
       -> (size != 1) && (lm >  lmmax) && (lm%2 == 1) ? Mg GETRF_RDC(k, h, lr, (lm-1)/2 ) [type = MAXL]
       -> (size != 1) && (lm >  lmmax) && (lm%2 == 0) ? Md GETRF_RDC(k, h, lr, (lm-1)/2 ) [type = MAXL]
@@ -499,7 +471,7 @@ mg = inline_c %{ return 2 * m + 1; %}
 md = inline_c %{ return 2 * m + 2; %}
 
 // Parallel partitioning
-:LMAX(k+r, k%Q)
+:A(k+r, k)
 
 RW    Mm <- M GETRF_MAX(k, k+r+P*m, h)                                   [type = MAXL]
          -> (m == 0) ? M GETRF_SVM(k, h, r)                              [type = MAXL]
@@ -508,11 +480,9 @@ RW    Mm <- M GETRF_MAX(k, k+r+P*m, h)                                   [type =
 
 READ  Mg <- (mg <= mmax) ? Mm GETRF_RDC(k, h, r, mg )                    [type = MAXL]
          <- (mg >  mmax) && (mg <  size) ? M GETRF_MAX(k, k+r+P*mg, h )  [type = MAXL]
-         <- (mg >  mmax) && (mg >= size) ? LMAX(k+r, k%Q)                /* Unused */
 
 READ  Md <- (md <= mmax) ? Mm GETRF_RDC(k, h, r, md )                    [type = MAXL]
          <- (md >  mmax) && (md <  size) ? M GETRF_MAX(k, k+r+P*md, h )  [type = MAXL]
-         <- (md >  mmax) && (md >= size) ? LMAX(k+r, k%Q)                /* Unused */
 
 // Priority
 ;inline_c %{ return get_priority(k, k); %}
