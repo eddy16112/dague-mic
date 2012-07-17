@@ -143,7 +143,6 @@ UMAT         [type = "dague_ddesc_t *"]
 LMAX         [type = "dague_ddesc_t *"]
 V            [type = "dague_ddesc_t *"]
 BUFFER       [type = "dague_ddesc_t *"]
-Wperm        [type = "dague_ddesc_t *"]
 IB           [type = "int"]
 P            [type = "int"]
 Q            [type = "int"]
@@ -191,29 +190,6 @@ r = inline_c %{ return (k+m) % P; %}
 // Parameters
 READ  IP <- IP GETRF_FNL(k, k+m)                          [type = PIVOT]
          -> IPIV(r, k)                                    [type = PIVOT]
-
-;inline_c %{ return get_priority(k, k); %}
-
-BODY
-        /* Nothing to do */
-END
-
-/**************************************************
- *                    PERM_in (pseudo task)
- **************************************************/
-PERM_in(k, m) [profile = off]
-
-// Execution space
-k = 0 .. minmnt
-m = 0 .. inline_c %{ return dague_imin( descA.mt-k-1, P-1 ); %}
-r = inline_c %{ return (k+m) % P; %}
-
-// Parallel partitioning
-:Wperm( r, k )
-
-// Parameters
-READ PERM <- Wperm( r, k )                               [type = PERMUT]
-          -> PERM GETRF_FNL(k, (k+m) .. descA.mt-1 .. P) [type = PERMUT]
 
 ;inline_c %{ return get_priority(k, k); %}
 
@@ -789,8 +765,7 @@ READ  V <- V GETRF_MDL(k,(m-k)%P,imax)                                          
 RW   IP <- IP GETRF_MAX( k, m, minmn-1 )                                                       [type = PIVOT]
         -> ((m-k) < P) ? IP IP_out(k,(m-k))                                                    [type = PIVOT]
 
-RW PERM <- PERM PERM_in(k, (m-k)%P )                                                           [type = PERMUT]
-        -> ((m-k) < P) ? PERM SWAP_COLLECT(k, m .. (descA.mt-1) .. P, (k+1) .. (descA.nt-1))   [type = PERMUT]
+WRITE PERM -> ((m-k) < P) ? PERM SWAP_COLLECT(k, m .. (descA.mt-1) .. P, (k+1) .. (descA.nt-1))   [type = PERMUT]
 
 // Priority
 ;inline_c %{ return get_priority(k, k); %}
