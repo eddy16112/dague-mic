@@ -143,7 +143,6 @@ UMAT         [type = "dague_ddesc_t *"]
 LMAX         [type = "dague_ddesc_t *"]
 V            [type = "dague_ddesc_t *"]
 BUFFER       [type = "dague_ddesc_t *"]
-ACOPY        [type = "dague_ddesc_t *"]
 Wperm        [type = "dague_ddesc_t *"]
 IB           [type = "int"]
 P            [type = "int"]
@@ -843,29 +842,6 @@ BODY
 END
 
 /**************************************************
- *                    ACOPY_in (pseudo task)
- **************************************************/
-ACOPY_in(n) [profile = off]
-
-// Execution space
-n = 1 .. descA.nt-1
-
-// Parallel partitioning
-:ACOPY(0,n)
-
-// Parameters
-READ  A  <- ACOPY(0, n)
-         -> ACOPY SWAP_COPY(0,n)
-
-;inline_c %{ return get_priority(0, n); %}
-
-BODY
-{
-        /* Nothing to do */
-}
-END
-
-/**************************************************
  *                    SWAP_COPY
  * Copying the A(k,n) and send it to itself
  **************************************************/
@@ -885,8 +861,7 @@ row  = inline_c %{ return descA.mt-((descA.mt-k-1)%P)-1; %}
 READ      A <-  (k == 0) ? A(k, n) : C GEMM(k-1, k, n)
             ->  C TRSM_U(k, n)
 
-RW    ACOPY <-  (k == 0) ? A ACOPY_in(n) : U SWAP_RECV(k-1, row, n)
-            ->  U SWAP_RECV(k, k+1..mmax, n)
+WRITE    ACOPY ->  U SWAP_RECV(k, k+1..mmax, n)
 
 ;inline_c %{ return get_priority(k, n); %}
 
@@ -927,7 +902,6 @@ READ      U <-((m-k-1) <  P) ? ACOPY SWAP_COPY(k, n)
             <-((m-k-1) >= P) ? U     SWAP_RECV(k, m-P, n)
 
             ->  ((m+P) <  descA.mt) ? U SWAP_RECV(k,m+P,n)
-            -> (((m+P) >= descA.mt) && (n>(k+1)) && ((k+1)%P == (m%P))) ? ACOPY SWAP_COPY(k+1, n)
 
 READ   PERM <-  PERM SWAP_COLLECT(k, m, n)                  [type = PERMUT]
 
