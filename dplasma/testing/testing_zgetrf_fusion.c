@@ -46,7 +46,6 @@ int main(int argc, char ** argv)
     PASTE_CODE_IPARAM_LOCALS(iparam);
     PASTE_CODE_FLOPS(FLOPS_ZGETRF, ((DagDouble_t)M, (DagDouble_t)N));
 
-#define MYDEBUG 1
 #ifndef MYDEBUG
     if ( M != N && check ) {
         fprintf(stderr, "Check cannot be perfomed with M != N\n");
@@ -148,8 +147,6 @@ int main(int argc, char ** argv)
             if(loud > 3) printf("Done\n");
         }
 #endif
-
-    dplasma_zprint(dague, PlasmaUpperLower, (tiled_matrix_desc_t*)&ddescA);
 
     /* Create DAGuE */
     if(loud > 2) printf("+++ Computing getrf ... ");
