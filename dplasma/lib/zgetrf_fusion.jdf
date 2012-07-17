@@ -480,9 +480,11 @@ RW    Mm <- M GETRF_MAX(k, k+r+P*m, h)                                   [type =
 
 READ  Mg <- (mg <= mmax) ? Mm GETRF_RDC(k, h, r, mg )                    [type = MAXL]
          <- (mg >  mmax) && (mg <  size) ? M GETRF_MAX(k, k+r+P*mg, h )  [type = MAXL]
+         <- (mg >  mmax) && (mg >= size) ? A(k+r, k)                     /* Unused */
 
 READ  Md <- (md <= mmax) ? Mm GETRF_RDC(k, h, r, md )                    [type = MAXL]
          <- (md >  mmax) && (md <  size) ? M GETRF_MAX(k, k+r+P*md, h )  [type = MAXL]
+         <- (md >  mmax) && (md >= size) ? A(k+r, k)                     /* Unused */
 
 // Priority
 ;inline_c %{ return get_priority(k, k); %}
