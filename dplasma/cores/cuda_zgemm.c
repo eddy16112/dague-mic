@@ -510,7 +510,7 @@ int gpu_zgemm( dague_execution_unit_t* eu_context,
     which_gpu = dague_gpu_data_elt_write_owner( &dague_gpu_map, GEMM_KEY( descC, Cm, Cn) );
     if( which_gpu < 0 ) {  /* this is the first time we see this tile.
                             * Let's decide which GPU will work on it. */
-        int best_index = -1;  /* cores */
+        int best_index = 0;  /* cores */
         /* There are 3 types of GEMMs kernels: the ones waiting on the
          * execution contextes queues to be investigated, the current one
          * which is investigated for execution on the context of the current
@@ -518,8 +518,8 @@ int gpu_zgemm( dague_execution_unit_t* eu_context,
          * decision regarding the status of the current GEMM should be therefore
          * based only on the number of pending tasks on the GPUs.
          */
-        float weight, best_weight = device_load[0] + device_weight[0];
-        for( which_gpu = 0; which_gpu < ndevices; which_gpu++ ) {
+        float weight, best_weight = device_load[1] + device_weight[1];
+        for( which_gpu = 1; which_gpu < ndevices; which_gpu++ ) {
             weight = device_load[which_gpu+1] + device_weight[which_gpu+1];
             if( best_weight > weight ) {
                 best_index = which_gpu;

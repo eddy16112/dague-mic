@@ -45,7 +45,7 @@ extern dague_gpu_data_map_t dague_gpu_map;
 #define KERNEL_HERK     3
 #define KERNEL_GEMM     4
 
-#define SMALL_TILE_RATE 5
+#define SMALL_TILE_RATE     5
 #define SMALL_TILE_THRESHOLD    192
 #define GPU_TILE_THRESHOLD      192
 
