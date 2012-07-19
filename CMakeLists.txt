@@ -121,6 +121,8 @@ option(DAGUE_PROF_STATS
   "Enable the generation of short statistics information during execution (microbenchmarking)" OFF)
 option(DAGUE_PROF_GRAPHER
   "Enable the generation of the dot graph representation during execution" OFF)
+option(DAGUE_PROF_PTR_FILE
+  "Enable the generation of the file to check anti dependencies" OFF)
 option(DAGUE_PROF_DRY_RUN
   "Disable calls to the actual bodies and do not move the data between nodes; unfold the dependencies only" OFF)
 option(DAGUE_PROF_DRY_BODY
@@ -431,7 +433,11 @@ IF( BUILD_DAGUE )
       set(saved_libs "${CMAKE_REQUIRED_LIBRARIES}")
       set(CMAKE_REQUIRED_INCLUDES  "${CMAKE_REQUIRED_INCLUDES};${CUDA_INCLUDE_DIRS}")
       set(CMAKE_REQUIRED_LIBRARIES "${CMAKE_REQUIRED_LIBRARIES};${CUDA_LIBRARIES}")
-      check_function_exists(cuDeviceCanAccessPeer DAGUE_HAVE_PEER_DEVICE_MEMORY_ACCESS)
+      if(CUDA_VERSION VERSION_LESS "4.0")
+          set(DAGUE_HAVE_PEER_DEVICE_MEMORY_ACCESS 0)
+      else()
+          check_function_exists(cuDeviceCanAccessPeer DAGUE_HAVE_PEER_DEVICE_MEMORY_ACCESS)
+      endif()
       set(CMAKE_REQUIRED_INCLUDES  "${saved_include}")
       set(CMAKE_REQUIRED_LIBRARIES "${saved_libs}")
     else (CUDA_FOUND)

@@ -476,6 +476,46 @@ static char *dump_dataflow(void **elem, void *arg)
 }
 
 /**
+ * dump_dataflow_var_type:
+ *  Takes the pointer to a jdf_flow,
+ *  and print the type of the flow: R, W, M or P, for read, write, read/write and unknow.
+ *  NULL if it is a CTL
+ */
+static char *dump_dataflow_var_type(void **elem, void *arg)
+{
+    jdf_dataflow_t *fl = (jdf_dataflow_t*)elem;
+    (void)arg;
+
+    if ( fl->access_type == JDF_VAR_TYPE_CTL )
+        return NULL;
+
+    if ( fl->access_type == (JDF_VAR_TYPE_READ | JDF_VAR_TYPE_WRITE) )
+        return "M%p";
+    else if ( fl->access_type & JDF_VAR_TYPE_READ )
+        return "R%p";
+    else if ( fl->access_type & JDF_VAR_TYPE_WRITE )
+        return "W%p";
+    else
+        return "X%p";
+}
+
+/**
+ * dump_dataflow_var_ptr:
+ *  Takes the pointer to a jdf_flow,
+ *  and return NULL if it is a CTL, the flow name otherwise
+ */
+static char *dump_dataflow_var_ptr(void **elem, void *arg)
+{
+    jdf_dataflow_t *fl = (jdf_dataflow_t*)elem;
+    (void)arg;
+
+    if ( fl->access_type == JDF_VAR_TYPE_CTL )
+        return NULL;
+    else
+        return fl->varname;
+}
+
+/**
  * dump_data_declaration:
  *  Takes the pointer to a flow *f, let say that f->varname == "A",
  *  this produces a string like void *A = NULL;\n
@@ -972,7 +1012,10 @@ static void jdf_generate_structure(const jdf_t *jdf)
             "#define TAKE_TIME(context, key, id, refdesc, refid)\n"
             "#endif\n"
             "#include \"dague_prof_grapher.h\"\n"
-            "#include <mempool.h>\n",
+            "#include <mempool.h>\n"
+            "#if defined(DAGUE_PROF_PTR_FILE)\n"
+            "static FILE *pointers_file;\n"
+            "#endif /*defined(DAGUE_PROF_PTR_FILE) */\n",
             jdf_basename,
             jdf_basename, nbfunctions,
             jdf_basename, nbdata,
@@ -2312,6 +2355,11 @@ static void jdf_generate_destructor( const jdf_t *jdf )
         }
     }
 
+    coutput("  /* Open the file to store the pointers used during execution */\n"
+            "#if defined(DAGUE_PROF_PTR_FILE)\n"
+            "  fclose(pointers_file);\n"
+            "#endif /*defined(DAGUE_PROF_PTR_FILE)*/\n" );
+
     coutput("  for(i = 0; i < DAGUE_%s_NB_FUNCTIONS; i++) {\n"
             "    dague_destruct_dependencies( d->dependencies_array[i] );\n"
             "    d->dependencies_array[i] = NULL;\n"
@@ -2428,10 +2476,27 @@ static void jdf_generate_constructor( const jdf_t* jdf )
 
     coutput("  __dague_object->super.super.startup_hook      = %s_startup;\n"
             "  __dague_object->super.super.object_destructor = (dague_destruct_object_fn_t)%s_destructor;\n"
-            "  (void)dague_object_register((dague_object_t*)__dague_object);\n"
-            "  return (dague_%s_object_t*)__dague_object;\n"
+            "  (void)dague_object_register((dague_object_t*)__dague_object);\n",
+            jdf_basename, jdf_basename);
+
+    coutput("  /* Open the file to store the pointers used during execution */\n"
+            "#if defined(DAGUE_PROF_PTR_FILE)\n"
+            "{\n    int myrank = 0;\n"
+            "    char *filename;\n"
+            "#if defined(DISTRIBUTED) && defined(HAVE_MPI)\n"
+            "    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);\n"
+            "#endif /*defined(DISTRIBUTED) && defined(HAVE_MPI)*/\n"
+            "    asprintf(&filename, \"%%d-%s-%%d.txt\", __dague_object->super.super.object_id, myrank);\n"
+            "    pointers_file = fopen( filename, \"w\");\n"
+            "    free( filename );\n"
+            "}\n"
+            "#endif /*defined(DAGUE_PROF_PTR_FILE)*/\n",
+            jdf_basename );
+
+    coutput("  return (dague_%s_object_t*)__dague_object;\n"
             "}\n\n",
-            jdf_basename, jdf_basename, jdf_basename);
+            jdf_basename);
+
 
     string_arena_free(sa1);
     string_arena_free(sa2);
@@ -3016,6 +3081,24 @@ static void jdf_generate_code_hook(const jdf_t *jdf, const jdf_function_entry_t 
                 fl->varname,
                 fl->varname);
     }
+
+    coutput("  /** Store pointer used in the function for antidependencies detection */\n"
+            "#if defined(DAGUE_PROF_PTR_FILE)\n"
+            "  if( NULL != pointers_file ) {\n"
+            "    char nmp[MAX_TASK_STRLEN];\n"
+            "    dague_prof_grapher_taskid(this_task, nmp, MAX_TASK_STRLEN);\n"
+            "    fprintf( pointers_file, \"%%s %s\\n\",\n"
+            "             nmp%s );\n"
+                "  }\n"
+            "#endif /*defined(DAGUE_PROF_PTR_FILE) */\n",
+            UTIL_DUMP_LIST( sa, f->dataflow, next,
+                            dump_dataflow_var_type, NULL,
+                            "", "", ",", "" ),
+            UTIL_DUMP_LIST( sa2, f->dataflow, next,
+                            dump_dataflow_var_ptr, NULL,
+                            "", ", ", "", "" )
+            );
+
     coutput("#if defined(DAGUE_SIM)\n"
             "  if( this_task->function->sim_cost_fct != NULL ) {\n"
             "    this_task->sim_exec_date = __dague_simulation_date + this_task->function->sim_cost_fct(this_task);\n"
@@ -3220,10 +3303,24 @@ static void jdf_generate_code_release_deps(const jdf_t *jdf, const jdf_function_
     coutput("#if defined(DISTRIBUTED)\n"
             "  arg.remote_deps_count = 0;\n"
             "  arg.remote_deps = NULL;\n"
-            "#endif\n"
-            "  iterate_successors_of_%s_%s(eu, context, action_mask, dague_release_dep_fct, &arg);\n"
+            "#endif\n");
+    
+    coutput("  iterate_successors_of_%s_%s(eu, context, action_mask, dague_release_dep_fct, &arg);\n"
             "\n",
             jdf_basename, f->fname);
+    
+    coutput("#if defined(DISTRIBUTED)\n"
+            "  if( 0 == arg.remote_deps_count ) {\n"
+            "    if( NULL != arg.remote_deps ) {\n"
+            "      remote_deps_free(arg.remote_deps);\n"
+            "      arg.remote_deps = NULL;\n"
+            "    }\n"
+            "  }\n"
+            "  else if( (action_mask & DAGUE_ACTION_SEND_REMOTE_DEPS) ) {\n"
+            "    arg.nb_released += dague_remote_dep_activate(eu, context, arg.remote_deps, arg.remote_deps_count);\n"
+            "  }\n"
+            "#endif\n"
+            "\n");
 
     coutput("  if(action_mask & DAGUE_ACTION_RELEASE_LOCAL_DEPS) {\n"
             "    struct dague_vp** vps = eu->virtual_process->dague_context->virtual_processes;\n");
@@ -3237,18 +3334,7 @@ static void jdf_generate_code_release_deps(const jdf_t *jdf, const jdf_function_
             "      arg.ready_lists[__vp_id] = NULL;\n"
             "    }\n"
             "    free(arg.ready_lists);\n"
-            "  }\n"
-            "#if defined(DISTRIBUTED)\n"
-            "  if( 0 == arg.remote_deps_count ) {\n"
-            "    if( NULL != arg.remote_deps ) {\n"
-            "      remote_deps_free(arg.remote_deps);\n"
-            "      arg.remote_deps = NULL;\n"
-            "    }\n"
-            "  }\n"
-            "  else if( (action_mask & DAGUE_ACTION_SEND_REMOTE_DEPS) ) {\n"
-            "    arg.nb_released += dague_remote_dep_activate(eu, context, arg.remote_deps, arg.remote_deps_count);\n"
-            "  }\n"
-            "#endif\n");
+            "  }\n");
 
     jdf_generate_code_free_hash_table_entry(jdf, f);
 
