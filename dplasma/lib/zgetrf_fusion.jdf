@@ -324,10 +324,10 @@ RW  U <- (h == 0)? U U_in(k, lr)                                                
 
  /* Store the selected i and the associated row for comparison with other tiles */
  /* Send to the reduction tree ( left, middle, right ) */
-RW  M -> (size == 1) ? M GETRF_SVM(k, h, lr)                                             [type = MAXL]
-      -> (size != 1) && (lm <= lmmax)                ? Mm GETRF_RDC(k, h, lr, lm       ) [type = MAXL]
-      -> (size != 1) && (lm >  lmmax) && (lm%2 == 1) ? Mg GETRF_RDC(k, h, lr, (lm-1)/2 ) [type = MAXL]
-      -> (size != 1) && (lm >  lmmax) && (lm%2 == 0) ? Md GETRF_RDC(k, h, lr, (lm-1)/2 ) [type = MAXL]
+WRITE  M -> (size == 1) ? M GETRF_SVM(k, h, lr)                                             [type = MAXL]
+         -> (size != 1) && (lm <= lmmax)                ? Mm GETRF_RDC(k, h, lr, lm       ) [type = MAXL]
+         -> (size != 1) && (lm >  lmmax) && (lm%2 == 1) ? Mg GETRF_RDC(k, h, lr, (lm-1)/2 ) [type = MAXL]
+         -> (size != 1) && (lm >  lmmax) && (lm%2 == 0) ? Md GETRF_RDC(k, h, lr, (lm-1)/2 ) [type = MAXL]
 
 // Priority
 ;inline_c %{ return get_priority(k, k); %}
