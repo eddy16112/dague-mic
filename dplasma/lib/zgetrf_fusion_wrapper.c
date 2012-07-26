@@ -82,25 +82,25 @@ dague_object_t* dplasma_zgetrf_fusion_New( tiled_matrix_desc_t *A,
 
     /* A */
     dplasma_add2arena_tile( ((dague_zgetrf_fusion_object_t*)dague_zgetrf_fusion)->arenas[DAGUE_zgetrf_fusion_DEFAULT_ARENA],
-                            A->mb*A->nb*sizeof(Dague_Complex64_t),
+                            A->mb*A->nb*sizeof(dague_complex64_t),
                             DAGUE_ARENA_ALIGNMENT_SSE,
                             MPI_DOUBLE_COMPLEX, A->mb );
 
     /* SWAP */
     dplasma_add2arena_contiguous( ((dague_zgetrf_fusion_object_t*)dague_zgetrf_fusion)->arenas[DAGUE_zgetrf_fusion_SWAP_ARENA],
-                                  (2*nb+1)*sizeof(Dague_Complex64_t),
+                                  (2*nb+1)*sizeof(dague_complex64_t),
                                   DAGUE_ARENA_ALIGNMENT_SSE,
                                   MPI_DOUBLE_COMPLEX, 2*nb+1, -1 );
 
     /* MAXL */
     dplasma_add2arena_rectangle( ((dague_zgetrf_fusion_object_t*)dague_zgetrf_fusion)->arenas[DAGUE_zgetrf_fusion_MAXL_ARENA],
-                                 (nb+1)*sizeof(Dague_Complex64_t),
+                                 (nb+1)*sizeof(dague_complex64_t),
                                  DAGUE_ARENA_ALIGNMENT_SSE,
                                  MPI_DOUBLE_COMPLEX, 1, nb+1, -1 );
 
     /* UMES */
     dplasma_add2arena_rectangle( ((dague_zgetrf_fusion_object_t*)dague_zgetrf_fusion)->arenas[DAGUE_zgetrf_fusion_UMES_ARENA],
-                                 IB*nb*sizeof(Dague_Complex64_t),
+                                 IB*nb*sizeof(dague_complex64_t),
                                  DAGUE_ARENA_ALIGNMENT_SSE,
                                  MPI_DOUBLE_COMPLEX, IB, nb, -1 );
 

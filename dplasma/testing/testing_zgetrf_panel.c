@@ -77,7 +77,7 @@ int main(int argc, char ** argv)
 /* 	      int tempkm = ((k)==(MT-1)) ? (M-(k*MB)) : (MB); */
 /* 	      int tempkn = ((k)==(NT-1)) ? (N-(k*NB)) : (NB); */
 	      if(((dague_ddesc_t*) &ddescAl)->rank_of(((dague_ddesc_t*) &ddescAl), 0, 0)  == ((dague_ddesc_t*) &ddescAl)->myrank) {
-		Dague_Complex64_t *mat = ((dague_ddesc_t*) &ddescAl)->data_of(((dague_ddesc_t*) &ddescAl), 0, 0);
+		dague_complex64_t *mat = ((dague_ddesc_t*) &ddescAl)->data_of(((dague_ddesc_t*) &ddescAl), 0, 0);
 		for(i=0; i<M; i++) {
 		  printf("%d:\t",i);
 		  for(j=0; j<N; j++)
@@ -93,7 +93,7 @@ int main(int argc, char ** argv)
 	      int tempkm = ((k)==(MT-1)) ? (M-(k*MB)) : (MB);
 	      int tempkn = ((k)==(NT-1)) ? (N-(k*NB)) : (NB);
 	      if(((dague_ddesc_t*) &ddescA)->rank_of(((dague_ddesc_t*) &ddescA), k, 0)  == ((dague_ddesc_t*) &ddescA)->myrank) {
-		Dague_Complex64_t *mat = ((dague_ddesc_t*) &ddescA)->data_of(((dague_ddesc_t*) &ddescA), k, 0);
+		dague_complex64_t *mat = ((dague_ddesc_t*) &ddescA)->data_of(((dague_ddesc_t*) &ddescA), k, 0);
 		for(i=0; i<tempkm; i++) {
 		  printf("%d:\t",i+k*MB);
 		  for(j=0; j<tempkn; j++)
@@ -129,7 +129,7 @@ int main(int argc, char ** argv)
       
       if( (((dague_ddesc_t*) &ddescA)->myrank) == 0)
 	LAPACKE_zgetrf_work(LAPACK_COL_MAJOR, M, N, 
-			    (Dague_Complex64_t*)(ddescAl.mat), MB*MT, 
+			    (dague_complex64_t*)(ddescAl.mat), MB*MT, 
 			    (int *)(ddescIPIVl.mat));
       /* Check ipiv */
       int success = 1;
@@ -158,7 +158,7 @@ int main(int argc, char ** argv)
 /* 	  int tempkm = ((k)==(MT-1)) ? (M-(k*MB)) : (MB); */
 /* 	  int tempkn = ((k)==(NT-1)) ? (N-(k*NB)) : (NB); */
 /* 	  if(((dague_ddesc_t*) &ddescAl)->rank_of(((dague_ddesc_t*) &ddescAl), k, 0)  == ((dague_ddesc_t*) &ddescAl)->myrank) { */
-/* 	    Dague_Complex64_t *mat = ((dague_ddesc_t*) &ddescAl)->data_of(((dague_ddesc_t*) &ddescAl), k, 0); */
+/* 	    dague_complex64_t *mat = ((dague_ddesc_t*) &ddescAl)->data_of(((dague_ddesc_t*) &ddescAl), k, 0); */
 /* 	    for(i=0; i<tempkm; i++) { */
 /* 	      printf("%d:\t",i+k*MB); */
 /* 	      for(j=0; j<tempkn; j++) */
@@ -174,7 +174,7 @@ int main(int argc, char ** argv)
 /* 	  int tempkm = ((k)==(MT-1)) ? (M-(k*MB)) : (MB); */
 /* 	  int tempkn = ((k)==(NT-1)) ? (N-(k*NB)) : (NB); */
 /* 	  if(((dague_ddesc_t*) &ddescA)->rank_of(((dague_ddesc_t*) &ddescA), k, 0)  == ((dague_ddesc_t*) &ddescA)->myrank) { */
-/* 	    Dague_Complex64_t *mat = ((dague_ddesc_t*) &ddescA)->data_of(((dague_ddesc_t*) &ddescA), k, 0); */
+/* 	    dague_complex64_t *mat = ((dague_ddesc_t*) &ddescA)->data_of(((dague_ddesc_t*) &ddescA), k, 0); */
 /* 	    for(i=0; i<tempkm; i++) { */
 /* 	      printf("%d:\t",i+k*MB); */
 /* 	      for(j=0; j<tempkn; j++) */
@@ -189,7 +189,7 @@ int main(int argc, char ** argv)
 	dplasma_zlacpy( dague, PlasmaUpperLower,
 			(tiled_matrix_desc_t *)&ddescA,
 			(tiled_matrix_desc_t *)&ddescLUl );
-	Dague_Complex64_t alpha = -1.;
+	dague_complex64_t alpha = -1.;
 	dplasma_zgeadd(dague, PlasmaUpperLower, alpha, (tiled_matrix_desc_t *)&ddescLUl, (tiled_matrix_desc_t *)&ddescAl);
 	double norm = dplasma_zlange(dague, PlasmaMaxNorm, (tiled_matrix_desc_t *)&ddescAl);
 	if( (((dague_ddesc_t*) &ddescAl)->myrank) == 0)

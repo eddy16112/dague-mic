@@ -40,7 +40,7 @@ dplasma_zgerfs_New(tiled_matrix_desc_t *A,
                                                              *Z,  (dague_ddesc_t*)Z,10);
 
         dplasma_add2arena_tile(((dague_zgerfs_exp_object_t*)dague_zgerfs)->arenas[DAGUE_zgerfs_exp_DEFAULT_ARENA],
-                               A->mb*A->nb*sizeof(Dague_Complex64_t),
+                               A->mb*A->nb*sizeof(dague_complex64_t),
                                DAGUE_ARENA_ALIGNMENT_SSE,
                                MPI_DOUBLE_COMPLEX, A->mb);
     }else{
@@ -52,7 +52,7 @@ dplasma_zgerfs_New(tiled_matrix_desc_t *A,
                                                          *Z,  (dague_ddesc_t*)Z);
 
         dplasma_add2arena_tile(((dague_zgerfs_object_t*)dague_zgerfs)->arenas[DAGUE_zgerfs_DEFAULT_ARENA],
-                               A->mb*A->nb*sizeof(Dague_Complex64_t),
+                               A->mb*A->nb*sizeof(dague_complex64_t),
                                DAGUE_ARENA_ALIGNMENT_SSE,
                                MPI_DOUBLE_COMPLEX, A->mb);
 

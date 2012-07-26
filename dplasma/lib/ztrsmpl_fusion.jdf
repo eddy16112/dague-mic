@@ -267,8 +267,8 @@ BODY
         int index;
         int i;
 
-        Dague_Complex64_t *lU = (Dague_Complex64_t*)U;
-        Dague_Complex64_t *lT = (Dague_Complex64_t*)T;
+        dague_complex64_t *lU = (dague_complex64_t*)U;
+        dague_complex64_t *lT = (dague_complex64_t*)T;
 
         for(i = 0; i < minmn; i++) {
             owner_index = *invperm / descB.mb;
@@ -355,8 +355,8 @@ BODY
         int index;
         int i;
 
-        Dague_Complex64_t *lT = (Dague_Complex64_t*)T;
-        Dague_Complex64_t *lM = (Dague_Complex64_t*)BUF;
+        dague_complex64_t *lT = (dague_complex64_t*)T;
+        dague_complex64_t *lM = (dague_complex64_t*)BUF;
 
         for(i = 0; i < minmn; i++) {
             owner_index = *perm / descB.mb;
@@ -431,8 +431,8 @@ BODY
             int owner_index;
             int j;
 
-            Dague_Complex64_t *lT = (Dague_Complex64_t*)Rtop;
-            Dague_Complex64_t *lB = (Dague_Complex64_t*)Rbottom;
+            dague_complex64_t *lT = (dague_complex64_t*)Rtop;
+            dague_complex64_t *lB = (dague_complex64_t*)Rbottom;
 
             for(j=0; j<minmn; j++) {
                 owner_index = (*perm) / descB.mb;
@@ -543,9 +543,9 @@ BODY
         CORE_zgemm(
             PlasmaNoTrans, PlasmaNoTrans,
             tempmm, tempnn, tempkn,
-            (Dague_Complex64_t)-1.0, A /*A(m, k)*/, ldam,
+            (dague_complex64_t)-1.0, A /*A(m, k)*/, ldam,
                                      B /*B(k, n)*/, ldbk,
-            (Dague_Complex64_t) 1.0, C /*B(m, n)*/, ldbm )
+            (dague_complex64_t) 1.0, C /*B(m, n)*/, ldbm )
            );
 
 }

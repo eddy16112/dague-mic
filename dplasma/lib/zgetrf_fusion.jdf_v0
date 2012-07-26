@@ -171,8 +171,8 @@ BODY
        int index = p;
        double max;
 
-       Dague_Complex64_t *lV = (Dague_Complex64_t*)V;
-       Dague_Complex64_t *lT = (Dague_Complex64_t*)T;
+       dague_complex64_t *lV = (dague_complex64_t*)V;
+       dague_complex64_t *lT = (dague_complex64_t*)T;
 
 
        if(h != 0)		
@@ -195,9 +195,9 @@ BODY
 	 }
 
 	 /* Appliying the update */
-	 Dague_Complex64_t alpha = ((Dague_Complex64_t)1.) / (lV[MAXI + h-1]);
+	 dague_complex64_t alpha = ((dague_complex64_t)1.) / (lV[MAXI + h-1]);
 	 cblas_zscal(tempmm-p, CBLAS_SADDR( alpha ), lT + ((h-1)*ldam+p), 1 );
-	 Dague_Complex64_t mzone = -1.;
+	 dague_complex64_t mzone = -1.;
 	 cblas_zgeru(CblasColMajor, tempmm-p, tempkn-h,
 		     CBLAS_SADDR(mzone),
 		     lT+ ldam * (h-1) + p,    1,
@@ -232,7 +232,7 @@ BODY
 	 cblas_zcopy(tempkn,
 		     lT + index, ldam,
 		     lV + SRCH,  1);
-	 lV[PIVO + h] = (Dague_Complex64_t)(index+m*descA.mb);
+	 lV[PIVO + h] = (dague_complex64_t)(index+m*descA.mb);
        }
           );
     printlog();
@@ -291,8 +291,8 @@ BODY
     DRYRUN(
        int tempkn = ((k)==(descA.nt-1)) ? (descA.n-(k*descA.nb)) : (descA.nb);
 
-       Dague_Complex64_t *lV = (Dague_Complex64_t*)V;
-       Dague_Complex64_t *lW = (Dague_Complex64_t*)W;
+       dague_complex64_t *lV = (dague_complex64_t*)V;
+       dague_complex64_t *lW = (dague_complex64_t*)W;
 
 
        if(m  < pui && m < pui/2)
@@ -360,8 +360,8 @@ BODY
    int i;
 
 
-   Dague_Complex64_t *lV = (Dague_Complex64_t*)V;
-   Dague_Complex64_t *lT = (Dague_Complex64_t*)T;
+   dague_complex64_t *lV = (dague_complex64_t*)V;
+   dague_complex64_t *lT = (dague_complex64_t*)T;
 
 
    /* Applying the previous swap */
@@ -369,15 +369,15 @@ BODY
      cblas_zcopy(tempkn, lV + MAXI, 1,
 		         lT + hmax, ldam);
 	 
-   int owner_last_index = ((int) (((Dague_Complex64_t *) V)[PIVO + hmax]))/descA.mb;
-   int last_index = ((int) (((Dague_Complex64_t *) V)[PIVO + hmax]))%descA.mb;
+   int owner_last_index = ((int) (((dague_complex64_t *) V)[PIVO + hmax]))/descA.mb;
+   int last_index = ((int) (((dague_complex64_t *) V)[PIVO + hmax]))%descA.mb;
    if(owner_last_index == m) {
      cblas_zcopy(tempkn, lV + INIT      , 1,
 		         lT + last_index, ldam);
    }
 
    /* Appliying the update */
-   Dague_Complex64_t alpha = ((Dague_Complex64_t) 1.) / (lV[MAXI + hmax]);
+   dague_complex64_t alpha = ((dague_complex64_t) 1.) / (lV[MAXI + hmax]);
    cblas_zscal(tempmm-p, CBLAS_SADDR( alpha ), lT + hmax*ldam + p, 1 );
 
 
@@ -672,7 +672,7 @@ BODY
                 PlasmaLeft, PlasmaLower, PlasmaNoTrans, PlasmaUnit,
                 tempkm,
                 tempnn,
-                (Dague_Complex64_t)1.0, T /*A(k, k)*/, ldak,
+                (dague_complex64_t)1.0, T /*A(k, k)*/, ldak,
                                         C /*A(k, n)*/, ldak )
             );
         printlog("CORE_trsm_U(k=%d,n=%d,ldk=%d,A(%d,%d))\n", tempkm, tempnn,ldak,k,n);
@@ -712,9 +712,9 @@ BODY
            CORE_zgemm(
                       PlasmaNoTrans, PlasmaNoTrans,
                       tempmm, tempnn, descA.mb,
-                      (Dague_Complex64_t)-1.0, A /*A(m, k)*/, ldam,
+                      (dague_complex64_t)-1.0, A /*A(m, k)*/, ldam,
                                                B /*A(k, n)*/, ldak,
-                      (Dague_Complex64_t) 1.0, C /*A(m, n)*/, ldam )
+                      (dague_complex64_t) 1.0, C /*A(m, n)*/, ldam )
           );
      printlog("CORE_gemm(k=%d,m=%d,n=%d,A(%d,%d),ldk=%d,ldm=%d)\n",k,tempmm,tempnn,m,n,ldak,ldam);
 END

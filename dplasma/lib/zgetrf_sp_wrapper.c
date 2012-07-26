@@ -25,7 +25,7 @@ dplasma_zgetrf_sp_New(double criteria, tiled_matrix_desc_t *A, int *info)
     dague_zgetrf_sp = (dague_object_t*)dague_zgetrf_sp_new(*A, (dague_ddesc_t*)A, criteria, info);
 
     dplasma_add2arena_tile(((dague_zgetrf_sp_object_t*)dague_zgetrf_sp)->arenas[DAGUE_zgetrf_sp_DEFAULT_ARENA],
-                           A->mb*A->nb*sizeof(Dague_Complex64_t),
+                           A->mb*A->nb*sizeof(dague_complex64_t),
                            DAGUE_ARENA_ALIGNMENT_SSE,
                            MPI_DOUBLE_COMPLEX, A->mb);
 

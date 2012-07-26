@@ -92,7 +92,7 @@ BODY
                 PlasmaRight, PlasmaUpper, PlasmaNoTrans, PlasmaNonUnit,
                 tempmm,
                 tempkm,
-                (Dague_Complex64_t)1.0, T /*A(k, k)*/, ldak,
+                (dague_complex64_t)1.0, T /*A(k, k)*/, ldak,
                                         C /*A(m, k)*/, ldam )
             );
         printlog("CORE_trsm_L(k=%d,m=%d,ldk=%d,ldm=%d,A(%d,%d))\n", tempkm, tempmm,ldak,ldam,m,k);
@@ -127,7 +127,7 @@ BODY
                 PlasmaLeft, PlasmaLower, PlasmaNoTrans, PlasmaUnit,
                 tempkm,
                 tempnn,
-                (Dague_Complex64_t)1.0, T /*A(k, k)*/, ldak,
+                (dague_complex64_t)1.0, T /*A(k, k)*/, ldak,
                                         C /*A(k, n)*/, ldak )
             );
         printlog("CORE_trsm_U(k=%d,n=%d,ldk=%d,A(%d,%d))\n", tempkm, tempnn,ldak,k,n);
@@ -166,9 +166,9 @@ BODY
            CORE_zgemm(
                       PlasmaNoTrans, PlasmaNoTrans,
                       tempmm, tempnn, descA.mb,
-                      (Dague_Complex64_t)-1.0, A /*A(m, k)*/, ldam,
+                      (dague_complex64_t)-1.0, A /*A(m, k)*/, ldam,
                                                B /*A(k, n)*/, ldak,
-                      (Dague_Complex64_t) 1.0, C /*A(m, n)*/, ldam )
+                      (dague_complex64_t) 1.0, C /*A(m, n)*/, ldam )
           );
      printlog("CORE_gemm(k=%d,m=%d,n=%d,A(%d,%d),ldk=%d,ldm=%d)\n",k,tempmm,tempnn,m,n,ldak,ldam);
 END

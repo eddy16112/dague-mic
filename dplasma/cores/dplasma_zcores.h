@@ -17,12 +17,12 @@ int blgchase_ztrdv2(int NT, int N, int NB,
                    int sweep, int id, int blktile);
 
 void CORE_zgetrf_sp(int m, int  n,
-                    Dague_Complex64_t *A,
+                    dague_complex64_t *A,
                     int  stride,
                     double  criteria,
                     int *nbpivot);
 void CORE_zgetrf_sp_rec(int m, int  n,
-                        Dague_Complex64_t *A,
+                        dague_complex64_t *A,
                         int  stride,
                         double  criteria,
                         int *nbpivot);

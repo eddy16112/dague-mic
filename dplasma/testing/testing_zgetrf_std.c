@@ -82,9 +82,9 @@ int main(int argc, char ** argv)
         for(t = 0; t < minmnt; t++ ) {
 	  if(((dague_ddesc_t*) &ddescA)->rank_of(((dague_ddesc_t*) &ddescA), t, t)  == ((dague_ddesc_t*) &ddescA)->myrank)
 	    {
-	      Dague_Complex64_t *tab = ((dague_ddesc_t*) &ddescA)->data_of(((dague_ddesc_t*) &ddescA), t, t);
+	      dague_complex64_t *tab = ((dague_ddesc_t*) &ddescA)->data_of(((dague_ddesc_t*) &ddescA), t, t);
 	      for(e = 0; e < descA->mb; e++)
-                tab[e * descA->mb + e] += (Dague_Complex64_t)minmn;
+                tab[e * descA->mb + e] += (dague_complex64_t)minmn;
 	    }
         }
     }

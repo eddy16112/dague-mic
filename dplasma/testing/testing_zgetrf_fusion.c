@@ -107,9 +107,9 @@ int main(int argc, char ** argv)
         for(t = 0; t < minmnt; t++ ) {
           if(((dague_ddesc_t*) &ddescA)->rank_of(((dague_ddesc_t*) &ddescA), t, t)  == ((dague_ddesc_t*) &ddescA)->myrank)
             {
-              Dague_Complex64_t *tab = ((dague_ddesc_t*) &ddescA)->data_of(((dague_ddesc_t*) &ddescA), t, t);
+              dague_complex64_t *tab = ((dague_ddesc_t*) &ddescA)->data_of(((dague_ddesc_t*) &ddescA), t, t);
               for(e = 0; e < descA->mb; e++)
-                tab[e * descA->mb + e] += (Dague_Complex64_t)minmn;
+                tab[e * descA->mb + e] += (dague_complex64_t)minmn;
             }
         }
     }
@@ -143,7 +143,7 @@ int main(int argc, char ** argv)
                 }
             dague_gpu_data_register(dague,
                                     (dague_ddesc_t*)&ddescA,
-                                    MT*NT, MB*NB*sizeof(Dague_Complex64_t) );
+                                    MT*NT, MB*NB*sizeof(dague_complex64_t) );
             if(loud > 3) printf("Done\n");
         }
 #endif
@@ -170,7 +170,7 @@ int main(int argc, char ** argv)
         if( rank  == 0 ) {
             int i;
             LAPACKE_zgetrf_work(LAPACK_COL_MAJOR, M, N,
-                                (Dague_Complex64_t*)(ddescAl.mat), LDA,
+                                (dague_complex64_t*)(ddescAl.mat), LDA,
                                 (int *)(ddescIPIVl.mat));
 
             printf("The Lapack swap are :\n");

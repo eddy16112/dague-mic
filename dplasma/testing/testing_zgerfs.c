@@ -74,9 +74,9 @@ int main(int argc, char ** argv)
     double Anorm = dplasma_zlange(dague, PlasmaInfNorm, (tiled_matrix_desc_t *)&ddescA);
     criteria = eps * Anorm;
 
-    /* ((Dague_Complex64_t *) ddescA.mat)[0] = criteria*0.1; */
-    /* ((Dague_Complex64_t *) ddescA.mat)[1] = eps; */
-    /* ((Dague_Complex64_t *) ddescA.mat)[((tiled_matrix_desc_t *)&ddescA)->mb+1] = eps; */
+    /* ((dague_complex64_t *) ddescA.mat)[0] = criteria*0.1; */
+    /* ((dague_complex64_t *) ddescA.mat)[1] = eps; */
+    /* ((dague_complex64_t *) ddescA.mat)[((tiled_matrix_desc_t *)&ddescA)->mb+1] = eps; */
 
     dplasma_zlacpy( dague, PlasmaUpperLower,
                     (tiled_matrix_desc_t *)&ddescA,
@@ -108,16 +108,16 @@ int main(int argc, char ** argv)
     else /* Initialize X to null matrix */
     {
         tiled_matrix_desc_t *descX = (tiled_matrix_desc_t *)&ddescX;
-        Dague_Complex64_t   *tab   = (Dague_Complex64_t *) ddescX.mat;
+        dague_complex64_t   *tab   = (dague_complex64_t *) ddescX.mat;
         int i,j;
         for(i = 0; i < (descX->lmt*descX->mb); i++ )
             for(j = 0; j < (descX->lnt*descX->nb); j++)
-                tab[j*(descX->lmt*descX->mb)+i] = (Dague_Complex64_t) 0.;
+                tab[j*(descX->lmt*descX->mb)+i] = (dague_complex64_t) 0.;
     }
 
     if(check)
     {
-        Dague_Complex64_t *A, *LU, *B, *X;
+        dague_complex64_t *A, *LU, *B, *X;
         lapack_int ipiv[N];
         int i;
         for(i = 0; i < N; i++)
@@ -125,10 +125,10 @@ int main(int argc, char ** argv)
         double ferr[NRHS];
         double berr[NRHS];
 
-        A = (Dague_Complex64_t *)malloc((ddescA.super.lm)*(ddescA.super.n)*sizeof(Dague_Complex64_t));
-        LU = (Dague_Complex64_t *)malloc((ddescLU.super.lm)*(ddescLU.super.n)*sizeof(Dague_Complex64_t));
-        B = (Dague_Complex64_t *)malloc((ddescB.super.lm)*(ddescB.super.n)*sizeof(Dague_Complex64_t));
-        X = (Dague_Complex64_t *)malloc((ddescX.super.lm)*(ddescX.super.n)*sizeof(Dague_Complex64_t));
+        A = (dague_complex64_t *)malloc((ddescA.super.lm)*(ddescA.super.n)*sizeof(dague_complex64_t));
+        LU = (dague_complex64_t *)malloc((ddescLU.super.lm)*(ddescLU.super.n)*sizeof(dague_complex64_t));
+        B = (dague_complex64_t *)malloc((ddescB.super.lm)*(ddescB.super.n)*sizeof(dague_complex64_t));
+        X = (dague_complex64_t *)malloc((ddescX.super.lm)*(ddescX.super.n)*sizeof(dague_complex64_t));
 
         twoDBC_ztolapack( &ddescA, A, LDA );
         twoDBC_ztolapack( &ddescLU, LU, LDA );
@@ -139,8 +139,8 @@ int main(int argc, char ** argv)
 
         int ret = LAPACKE_zgerfs( LAPACK_COL_MAJOR, 'N', N, NRHS, A, LDA, LU, LDA, ipiv, B, LDB, X, LDB, ferr, berr );
 
-        Dague_Complex64_t alpha =  -1.;
-        Dague_Complex64_t beta  = 1.;
+        dague_complex64_t alpha =  -1.;
+        dague_complex64_t beta  = 1.;
 
         cblas_zgemm(CblasColMajor,
                     (CBLAS_TRANSPOSE)CblasNoTrans, (CBLAS_TRANSPOSE)CblasNoTrans,
