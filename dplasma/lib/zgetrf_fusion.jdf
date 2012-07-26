@@ -140,7 +140,6 @@ static inline int get_priority(int k, int n) {
 A            [type = "dague_ddesc_t *"]
 IPIV         [type = "dague_ddesc_t *"]
 UMAT         [type = "dague_ddesc_t *"]
-BUFFER       [type = "dague_ddesc_t *"]
 IB           [type = "int"]
 P            [type = "int"]
 Q            [type = "int"]
@@ -854,30 +853,6 @@ BODY
 }
 END
 
-
-/**************************************************
- *                    BUFFER_in (pseudo task)
- **************************************************/
-BUFFER_in(k,m,n) [profile = off]
-
-// Execution space
-k = 0   .. minmnt
-m = 0   .. ((P<descA.mt-k)?P-1:descA.mt-k-1)
-n = k+1 .. descA.nt-1
-
-// Parallel partitioning
-:BUFFER((k+m)%P,n)
-
-// Parameters
-READ  B  <- BUFFER((k+m)%P,n)
-         -> BUF SWAP_COLLECT(k, k+m, n)
-
-;inline_c %{ return get_priority(k, n); %}
-
-BODY
-        /* Nothing to do */
-END
-
 /**************************************************
  *                    SWAP_COLLECT
  * Swapping all the lines for the current process
@@ -895,12 +870,13 @@ i = inline_c %{ return ((m-k)%P); %}
 :A(m, n)
 
 // Parameters
-RW    BUF   <-  ((m-k) <  P ) ? B   BUFFER_in(k, m-k, n)
-            <-  ((m-k) >= P ) ? BUF SWAP_COLLECT(k, m-P, n)
+RW    BUF   <-  ((m-k) <  P ) ? A(m, n)                            /* Unused */
+            <-  ((m-k) >= P ) && ((m-k) < (P*2) ) ? BUFIN SWAP_COLLECT(k, m-P, n)
+            <-  ((m-k) >= (P*2) )                 ? BUF   SWAP_COLLECT(k, m-P, n)
 
-            ->   ((descA.mt-m-1) >= P) ? BUF SWAP_COLLECT(k, m+P, n)
-            ->  (((descA.mt-m-1) <  P) && (i%2 == 0) ) ? Rtop    SWAP_SND(k, 1, i/2, n )
-            ->  (((descA.mt-m-1) <  P) && (i%2 == 1) ) ? Rbottom SWAP_SND(k, 1, i/2, n )
+            ->  ((m-k) >= P) && ((descA.mt-m-1) >= P) ? BUF SWAP_COLLECT(k, m+P, n)
+            ->  ((m-k) >= P) && ((descA.mt-m-1) <  P) && (i%2 == 0) ? Rtop    SWAP_SND(k, 1, i/2, n )
+            ->  ((m-k) >= P) && ((descA.mt-m-1) <  P) && (i%2 == 1) ? Rbottom SWAP_SND(k, 1, i/2, n )
 
 READ  T     <-  (k == 0)? A(m,n) : C GEMM(k-1, m, n)
             ->  T SWAP_RECV(k,m,n)
@@ -908,6 +884,11 @@ READ  T     <-  (k == 0)? A(m,n) : C GEMM(k-1, m, n)
 READ  PERM  <-  PERM GETRF_FNL(k, k + ((m-k)%P) )                                      [type = PERMUT]
             ->  PERM SWAP_RECV(k, m, n )                                               [type = PERMUT]
             ->  (((descA.mt-m-1) <  P) && (i%2 == 0) ) ? PERM SWAP_SND(k, 1, i/2, n )  [type = PERMUT]
+
+WRITE BUFIN ->  ((m-k) < P) && ((descA.mt-m-1) >= P) ? BUF SWAP_COLLECT(k, m+P, n)
+            ->  ((m-k) < P) && ((descA.mt-m-1) <  P) && (i%2 == 0) ? Rtop    SWAP_SND(k, 1, i/2, n )
+            ->  ((m-k) < P) && ((descA.mt-m-1) <  P) && (i%2 == 1) ? Rbottom SWAP_SND(k, 1, i/2, n )
+
 
 ;inline_c %{ return get_priority(k, n); %}
 
@@ -927,7 +908,13 @@ BODY
         int i;
 
         dague_complex64_t *lT = (dague_complex64_t*)T;
-        dague_complex64_t *lM = (dague_complex64_t*)BUF;
+        dague_complex64_t *lM;
+
+        if ( (m-k) < P ) {
+            lM = (dague_complex64_t*)BUFIN;
+        } else {
+            lM = (dague_complex64_t*)BUF;
+        }
 
         for(i = 0; i < minmn; i++) {
             owner_index = *perm / descA.mb;
@@ -967,14 +954,16 @@ mB = inline_c %{ return descA.mt - ( descA.mt - 1 - k - iB)%P - 1; %}
 :A(k+iT, n)
 
 // Parameters
-RW       Rtop    <- (l == 1) ? BUF  SWAP_COLLECT( k, mT, n )
+RW       Rtop    <- (l == 1) && ((mT-k) <  P) ? BUFIN  SWAP_COLLECT( k, mT, n )
+                 <- (l == 1) && ((mT-k) >= P) ? BUF    SWAP_COLLECT( k, mT, n )
                  <- (l != 1) ? Rtop SWAP_SND( k, l-1, 2*i, n )
 
                  -> (( l <  depth) && (0 == (i % 2))) ? Rtop    SWAP_SND( k, l+1, i/2, n )
                  -> (( l <  depth) && (1 == (i % 2))) ? Rbottom SWAP_SND( k, l+1, i/2, n )
                  ->  ( l == depth) ? B TRSM_U(k, n)
 
-READ     Rbottom <- (l == 1) && (iB <  height) ? BUF SWAP_COLLECT( k, mB, n )
+READ     Rbottom <- (l == 1) && (iB <  height) && ((mT-k) <  P) ? BUFIN SWAP_COLLECT( k, mB, n )
+                 <- (l == 1) && (iB <  height) && ((mT-k) >= P) ? BUF   SWAP_COLLECT( k, mB, n )
                  <- (l == 1) && (iB >= height) ? A(k+iT, n)
                  <- (l != 1) && (iB >= height) ? A(k+iT, n)
                  <- (l != 1) && (iB <  height) ? Rtop SWAP_SND( k, l-1, 2*i+1, n )

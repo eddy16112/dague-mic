@@ -28,8 +28,8 @@ dague_object_t* dplasma_zgetrf_fusion_New( tiled_matrix_desc_t *A,
                                            int *info )
 {
     dague_object_t *dague_zgetrf_fusion = NULL;
-    two_dim_block_cyclic_t *UMAT, *BUFFER;
-    int mb = A->mb, nb = A->nb;
+    two_dim_block_cyclic_t *UMAT;
+    int nb = A->nb;
 
     /* The code has to be fixed for N >> M */
     assert( A->m >= A->n );
@@ -46,22 +46,10 @@ dague_object_t* dplasma_zgetrf_fusion_New( tiled_matrix_desc_t *A,
          IB*P, nb*Q,      /* Dimensions of the submatrix          */
          1, 1, P));
 
-    BUFFER = (two_dim_block_cyclic_t*)malloc(sizeof(two_dim_block_cyclic_t));
-    PASTE_CODE_INIT_AND_ALLOCATE_MATRIX(
-        (*BUFFER), two_dim_block_cyclic,
-        (BUFFER, matrix_ComplexDouble, matrix_Tile,
-         A->super.nodes, A->super.cores, A->super.myrank,
-         mb,   nb,      /* Dimesions of the tile                */
-         mb*P, nb*A->nt,/* Dimensions of the matrix             */
-         0,    0,       /* Starting points (not important here) */
-         mb*P, nb*A->nt,/* Dimensions of the submatrix          */
-         1, 1, P));
-
     *info = 0;
     dague_zgetrf_fusion = (dague_object_t*)dague_zgetrf_fusion_new((dague_ddesc_t*)A,
                                                                    (dague_ddesc_t*)IPIV,
                                                                    (dague_ddesc_t*)UMAT,
-                                                                   (dague_ddesc_t*)BUFFER,
                                                                    IB,
                                                                    P,
                                                                    Q,
@@ -116,11 +104,6 @@ dplasma_zgetrf_fusion_Destruct( dague_object_t *o )
     dague_data_free( desc->mat );
     dague_ddesc_destroy( dague_zgetrf_fusion->UMAT );
     free( dague_zgetrf_fusion->UMAT );
-
-    desc = (two_dim_block_cyclic_t*)(dague_zgetrf_fusion->BUFFER);
-    dague_data_free( desc->mat );
-    dague_ddesc_destroy( dague_zgetrf_fusion->BUFFER );
-    free( dague_zgetrf_fusion->BUFFER );
 
     dplasma_datatype_undefine_type( &(dague_zgetrf_fusion->arenas[DAGUE_zgetrf_fusion_DEFAULT_ARENA]->opaque_dtt) );
     dplasma_datatype_undefine_type( &(dague_zgetrf_fusion->arenas[DAGUE_zgetrf_fusion_SWAP_ARENA]->opaque_dtt) );
