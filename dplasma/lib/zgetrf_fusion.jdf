@@ -140,7 +140,6 @@ static inline int get_priority(int k, int n) {
 A            [type = "dague_ddesc_t *"]
 IPIV         [type = "dague_ddesc_t *"]
 UMAT         [type = "dague_ddesc_t *"]
-V            [type = "dague_ddesc_t *"]
 BUFFER       [type = "dague_ddesc_t *"]
 IB           [type = "int"]
 P            [type = "int"]
@@ -195,32 +194,6 @@ READ  IP <- IP GETRF_FNL(k, k+m)                          [type = PIVOT]
 BODY
         /* Nothing to do */
 END
-
-/**************************************************
- *                    V_in (pseudo task)
- **************************************************/
-V_in(k, m, i) [profile = off]
-
-// Execution space
-k = 0 .. minmnt
-m = 0 .. inline_c %{ return dague_imin( descA.mt-k-1, P-1 ); %}
-r = inline_c %{ return (k+m) % P; %}
-i = 0 .. 1
-
-// Parallel partitioning
-:V( r + i*P, k%Q )
-
-// Parameters
-READ  V <- V( r + i*P, k%Q)                                           [type = SWAP]
-        -> (i == 0) ? V1 GETRF_MAX(k, (k+m) .. (descA.mt-1) .. P, 0)  [type = SWAP]
-        -> (i == 1) ? V2 GETRF_MAX(k, (k+m) .. (descA.mt-1) .. P, 0)  [type = SWAP]
-
-;inline_c %{ return get_priority(k, k); %}
-
-BODY
-    /* Nothing to do */
-END
-
 
 /**************************************************
  *                    U_in (pseudo task)
@@ -287,23 +260,11 @@ RW  T <- ((h == 0) && (k == 0)) ? A(m, k)
       ->  (h != hmax) ? T GETRF_MAX(k, m, h+1 )
       ->  (h == hmax) ? T GETRF_FNL(k, m )
 
- /* Buffer keeping the diagonal row and the maximum of step h */
- /*
-  *  h =  0            1            2            3
-  *       V1 -> SND -> V2 --------> V1 -> SND -> V2
-  *       V2 --------> V1 -> SND -> V2 --------> V1
-  */
-RW  V1 <- (h == 0) ? V V_in(k, lr, 0)                                                    [type = SWAP]
-       <- (h != 0) ? V2 GETRF_MAX(k, m, h-1 )                                            [type = SWAP]
-
-       /* Sent to SVN to store the local maximum of step h */
-       -> ((m-k) < P) ? V GETRF_SVM(k, h, m-k)                                           [type = SWAP]
+      -> ( (m-k) < P ) ? A GETRF_SVM(k, h, m-k )
 
  /* Buffer keeping the diagonal row and the maximum of step h-1 */
-RW  V2 <- (h == 0) ? V V_in(k, lr, 1)                                                    [type = SWAP]
-       <- (h != 0) ? T GETRF_SND(k, h-1, dmax, lr )                                      [type = SWAP]
-
-       -> ( h < hmax ) ? V1 GETRF_MAX(k, m, h+1)                                         [type = SWAP]
+READ  V <- (h != 0) ? T GETRF_SND(k, h-1, dmax, lr )                                    [type = SWAP]
+        <- (h == 0) ? A(m, k)                                                           /* Unused */
 
 /****************************************************************/
 
@@ -320,7 +281,6 @@ RW  U <- (h == 0)? U U_in(k, lr)                                                
 
       -> ((((h%IB) == IB-1) || (h == hmax)) && (m-k<P))? U GETRF_MDL(k,lr,h/IB)          [type = UMES]
       -> ((h != hmax) && (h%IB != IB-1))? U GETRF_MAX(k,m,h+1)                           [type = UMES]
-
 
  /* Store the selected i and the associated row for comparison with other tiles */
  /* Send to the reduction tree ( left, middle, right ) */
@@ -356,9 +316,9 @@ BODY
        A = lT + ldam * h + p;
 
        if(h != 0) {
-           dague_complex64_t *lmaxi = get_rmax( V2 );
+           dague_complex64_t *lmaxi = get_rmax( V );
            dague_complex64_t alpha;
-           int pivot = get_pivot( V2 );
+           int pivot = get_pivot( V );
            int owner_last_index = pivot / descA.mb;
            int last_index       = pivot % descA.mb;
 
@@ -381,7 +341,7 @@ BODY
 
            /* Copy the diagonal in place */
            if( (owner_last_index == m) && (pivot != h-1) ) {
-               cblas_zcopy(tempkn, get_diag( V2 ),  1,
+               cblas_zcopy(tempkn, get_diag( V ),  1,
                                    lT + last_index, ldam);
            }
 
@@ -417,12 +377,6 @@ BODY
                                                U, IB,
                            CBLAS_SADDR(zone),  A, ldam);
            }
-       }
-
-       /* Saving the default swap line */
-       if(m == k) {
-           cblas_zcopy(tempkn, lT + h,         ldam,
-                               get_diag( V1 ), 1);
        }
 
        /* Looking for the local max */
@@ -551,12 +505,13 @@ size = inline_c %{ int ret = (descA.mt-k) / P;
 // Parallel partitioning
 :A(k+r, k)
 
-RW    V  <- V1 GETRF_MAX(k, k+r, h)                    [type = SWAP]
-         -> T  GETRF_SND(k, h, 0, r          )         [type = SWAP] /* Local  */
-         -> B  GETRF_SND(k, h, 0, (r+1)%rmax )         [type = SWAP] /* Remote */
+READ  A <- T GETRF_MAX(k, k+r, h)
 
 READ  M <- (size == 1) ? M  GETRF_MAX(k, k+r, h)       [type = MAXL]
         <- (size != 1) ? Mm GETRF_RDC(k, h, r, 0)      [type = MAXL]
+
+WRITE V -> T  GETRF_SND(k, h, 0, r          )          [type = SWAP] /* Local  */
+        -> B  GETRF_SND(k, h, 0, (r+1)%rmax )          [type = SWAP] /* Remote */
 
 // Priority
 ;inline_c %{ return get_priority(k, k); %}
@@ -567,6 +522,14 @@ BODY
 
     DRYRUN(
         dague_complex64_t *lM = (dague_complex64_t*)M;
+
+        if ( r == 0 ) {
+            dague_complex64_t *lA = (dague_complex64_t*)A;
+            int ldam = BLKLDD( descA, m );
+
+            cblas_zcopy(tempkn, lA + h,        ldam,
+                                get_diag( V ), 1);
+        }
 
         get_pivot( V ) = *((int*)M);
         cblas_zcopy(tempkn, lM + 1,    1,
@@ -610,7 +573,7 @@ RW    T <- (d > 0   ) ? T GETRF_SND(k, h, d-1, r) : V GETRF_SVM(k, h, r)        
         /* Local forward of T */
         -> (d <  dmax) ? T GETRF_SND(k, h, d+1, r)                                     [type = SWAP]
         -> (d == dmax) && ((h == hmax) || ((h+1)%IB == 0)) ? V GETRF_MDL(k, r, h/IB)   [type = SWAP]
-        -> (d == dmax) &&  (h != hmax) ? V2 GETRF_MAX(k, (k+r)..(descA.mt-1)..P, h+1)  [type = SWAP]
+        -> (d == dmax) &&  (h != hmax) ? V GETRF_MAX(k, (k+r)..(descA.mt-1)..P, h+1)   [type = SWAP]
 
         /* Send T to the bottom */
         -> (d <  dmax) ? B GETRF_SND(k, h, d+1, (r+2*pui)%rmax)                        [type = SWAP]
