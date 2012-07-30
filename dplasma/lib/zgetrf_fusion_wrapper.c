@@ -106,11 +106,11 @@ dplasma_zgetrf_fusion_Destruct( dague_object_t *o )
     free( dague_zgetrf_fusion->UMAT );
 
     dplasma_datatype_undefine_type( &(dague_zgetrf_fusion->arenas[DAGUE_zgetrf_fusion_DEFAULT_ARENA]->opaque_dtt) );
-    dplasma_datatype_undefine_type( &(dague_zgetrf_fusion->arenas[DAGUE_zgetrf_fusion_SWAP_ARENA]->opaque_dtt) );
-    dplasma_datatype_undefine_type( &(dague_zgetrf_fusion->arenas[DAGUE_zgetrf_fusion_MAXL_ARENA]->opaque_dtt) );
-    dplasma_datatype_undefine_type( &(dague_zgetrf_fusion->arenas[DAGUE_zgetrf_fusion_UMES_ARENA]->opaque_dtt) );
-    dplasma_datatype_undefine_type( &(dague_zgetrf_fusion->arenas[DAGUE_zgetrf_fusion_PIVOT_ARENA]->opaque_dtt) );
-    dplasma_datatype_undefine_type( &(dague_zgetrf_fusion->arenas[DAGUE_zgetrf_fusion_PERMUT_ARENA]->opaque_dtt) );
+    dplasma_datatype_undefine_type( &(dague_zgetrf_fusion->arenas[DAGUE_zgetrf_fusion_SWAP_ARENA   ]->opaque_dtt) );
+    dplasma_datatype_undefine_type( &(dague_zgetrf_fusion->arenas[DAGUE_zgetrf_fusion_MAXL_ARENA   ]->opaque_dtt) );
+    dplasma_datatype_undefine_type( &(dague_zgetrf_fusion->arenas[DAGUE_zgetrf_fusion_UMES_ARENA   ]->opaque_dtt) );
+    dplasma_datatype_undefine_type( &(dague_zgetrf_fusion->arenas[DAGUE_zgetrf_fusion_PIVOT_ARENA  ]->opaque_dtt) );
+    dplasma_datatype_undefine_type( &(dague_zgetrf_fusion->arenas[DAGUE_zgetrf_fusion_PERMUT_ARENA ]->opaque_dtt) );
 
     DAGUE_INTERNAL_OBJECT_DESTRUCT(o);
 }

@@ -262,24 +262,24 @@ RW  T <- ((h == 0) && (k == 0)) ? A(m, k)
       -> ( (m-k) < P ) ? A GETRF_SVM(k, h, m-k )
 
  /* Buffer keeping the diagonal row and the maximum of step h-1 */
-READ  V <- (h != 0) ? T GETRF_SND(k, h-1, dmax, lr )                                    [type = SWAP]
-        <- (h == 0) ? A(m, k)                                                           /* Unused */
+READ  V <- (h != 0) ? T GETRF_SND(k, h-1, dmax, lr )                                        [type = SWAP]
+        <- (h == 0) ? A(m, k)                                                               /* Unused */
 
 /****************************************************************/
 
  /* Buffer keeping the diagonal row and the maximum of step h-1 */
-RW  IP <- ( h == 0 ) ? IP IP_in( k, lr )                                                 [type = PIVOT]
-       <- ( h != 0 ) ? IP GETRF_MAX( k, m, h-1 )                                         [type = PIVOT]
-       -> ( h <  hmax ) ? IP GETRF_MAX(k, m, h+1)                                        [type = PIVOT]
-       -> ( h == hmax ) ? IP GETRF_FNL(k, m)                                             [type = PIVOT]
+RW  IP <- ( h == 0 ) ? IP IP_in( k, lr )                                                    [type = PIVOT]
+       <- ( h != 0 ) ? IP GETRF_MAX( k, m, h-1 )                                            [type = PIVOT]
+       -> ( h <  hmax ) ? IP GETRF_MAX(k, m, h+1)                                           [type = PIVOT]
+       -> ( h == hmax ) ? IP GETRF_FNL(k, m)                                                [type = PIVOT]
 
  /* Stores the U */
-RW  U <- (h == 0)? U U_in(k, lr)                                                         [type = UMES]
-      <- ((h != 0) && (h%IB == 0))? U GETRF_MDL(k,lr,(h/IB)-1)                           [type = UMES]
-      <- ((h != 0) && (h%IB != 0))? U GETRF_MAX(k,m,h-1)                                 [type = UMES]
+RW  U <- (h == 0)? U U_in(k, lr)                                                            [type = UMES]
+      <- ((h != 0) && (h%IB == 0))? U GETRF_MDL(k,lr,(h/IB)-1)                              [type = UMES]
+      <- ((h != 0) && (h%IB != 0))? U GETRF_MAX(k,m,h-1)                                    [type = UMES]
 
-      -> ((((h%IB) == IB-1) || (h == hmax)) && (m-k<P))? U GETRF_MDL(k,lr,h/IB)          [type = UMES]
-      -> ((h != hmax) && (h%IB != IB-1))? U GETRF_MAX(k,m,h+1)                           [type = UMES]
+      -> ((((h%IB) == IB-1) || (h == hmax)) && (m-k<P))? U GETRF_MDL(k,lr,h/IB)             [type = UMES]
+      -> ((h != hmax) && (h%IB != IB-1))? U GETRF_MAX(k,m,h+1)                              [type = UMES]
 
  /* Store the selected i and the associated row for comparison with other tiles */
  /* Send to the reduction tree ( left, middle, right ) */
@@ -522,6 +522,7 @@ BODY
     DRYRUN(
         dague_complex64_t *lM = (dague_complex64_t*)M;
 
+        /* Saving the default swap line */
         if ( r == 0 ) {
             dague_complex64_t *lA = (dague_complex64_t*)A;
             int ldam = BLKLDD( descA, m );
@@ -754,13 +755,12 @@ END
  *                    SWAP_COPY
  * Copying the A(k,n) and send it to itself
  **************************************************/
-SWAP_COPY(k,n) [immediate = off]
+SWAP_COPY(k, n) [immediate = off]
 
 // Execution space
 k = 0   .. minmnt
 n = k+1 .. descA.nt-1
 
-mmax = inline_c %{ return dague_imin( minmnt, k+P ); %}
 row  = inline_c %{ return descA.mt-((descA.mt-k-1)%P)-1; %}
 
 // Parallel partitioning
@@ -770,7 +770,7 @@ row  = inline_c %{ return descA.mt-((descA.mt-k-1)%P)-1; %}
 READ      A <-  (k == 0) ? A(k, n) : C GEMM(k-1, k, n)
             ->  C TRSM_U(k, n)
 
-WRITE    ACOPY ->  U SWAP_RECV(k, k+1..mmax, n)
+WRITE    ACOPY ->  U SWAP_RECV(k, k+1 .. descA.mt-1, n)
 
 ;inline_c %{ return get_priority(k, n); %}
 
@@ -807,14 +807,11 @@ n = k+1 .. descA.nt-1
 :A(m, n)
 
 // Parameters
-READ      U <-((m-k-1) <  P) ? ACOPY SWAP_COPY(k, n)
-            <-((m-k-1) >= P) ? U     SWAP_RECV(k, m-P, n)
+READ      U <- ACOPY SWAP_COPY(k, n)
 
-            ->  ((m+P) <  descA.mt) ? U SWAP_RECV(k,m+P,n)
+READ   PERM <-  PERM SWAP_COLLECT(k, m, n)      [type = PERMUT]
 
-READ   PERM <-  PERM SWAP_COLLECT(k, m, n)                  [type = PERMUT]
-
-RW        T <-  T  SWAP_COLLECT(k, m, n)
+RW        T <-  T    SWAP_COLLECT(k, m, n)
             ->  (m > k) ? C GEMM(k, m, n)
 
 ;inline_c %{ return get_priority(k, n); %}
