@@ -79,6 +79,10 @@ static inline void pivot_to_permutation(int *IP, int hmax, int *perm, int *invpe
     }
 }
 
+static inline int get_priority(int k, int n) {
+    return - (k * (k+1) + 1 + n - ( ((n-k)%2) * k ));
+}
+
 %}
 
 /* Globals
@@ -86,9 +90,6 @@ static inline void pivot_to_permutation(int *IP, int hmax, int *perm, int *invpe
 A            [type = "dague_ddesc_t *"]
 IPIV         [type = "dague_ddesc_t *"]
 B            [type = "dague_ddesc_t *"]
-BUFFER       [type = "dague_ddesc_t *"]
-BCOPY        [type = "dague_ddesc_t *"]
-Wperm        [type = "dague_ddesc_t *" aligned=IPIV]
 P            [type = "int"]
 
 descA        [type = "tiled_matrix_desc_t" hidden=on default="*((tiled_matrix_desc_t*)A)" ]
@@ -110,12 +111,11 @@ r = inline_c %{ return (k+m) % P; %}
 :IPIV( r, k )
 
 // Parameters
-READ IP   <- IPIV( r, k )
+READ  IP   <- IPIV( r, k )
 
-READ PERM <- Wperm( r, k )                                                           [type = PERMUT]
-          -> PERM B_SWAP_COLLECT(k, (k+m) .. (descB.mt-1) .. P, 0 .. (descB.nt-1) )  [type = PERMUT]
+WRITE PERM -> PERM B_SWAP_COLLECT(k, (k+m) .. (descB.mt-1) .. P, 0 .. (descB.nt-1) )  [type = PERMUT]
 
-;descB.mt-k-1
+;inline_c %{ return get_priority(k, minmnt+k); %}
 
 BODY
 {
@@ -131,30 +131,6 @@ BODY
            );
 }
 END
-
-/**************************************************
- *                    BCOPY_in (pseudo task)
- **************************************************/
-BCOPY_in_TR(n) [profile = off]
-
-// Execution space
-n = 0 .. descB.nt-1
-
-// Parallel partitioning
-:BCOPY(0,n)
-
-// Parameters
-READ  A  <- BCOPY(0, n)
-         -> BCOPY B_SWAP_COPY(0,n)
-
-; (descB.mt-n-1) * (descB.nt-1)
-
-BODY
-{
-        /* Nothing to do */
-}
-END
-
 
 /**************************************************
  *                    A_in (pseudo task)
@@ -173,7 +149,7 @@ READ  A  <- A(m, k)
          -> (k == m) ? T B_TRSM_U(k, 0..descB.nt-1)
          -> (k != m) ? A B_GEMM(k, m, 0..descB.nt-1)
 
-; (descB.mt-k-1) * (descB.nt-1)
+;inline_c %{ return get_priority(k, minmnt + k); %}
 
 BODY
 {
@@ -191,9 +167,6 @@ B_SWAP_COPY(k,n) [immediate = on]
 k = 0 .. minmnt
 n = 0 .. descB.nt-1
 
-mmax = inline_c %{ return dague_imin( minmnt, k+P ); %}
-row  = inline_c %{ return descA.mt-((descA.mt-k-1)%P)-1; %}
-
 // Parallel partitioning
 :B(k, n)
 
@@ -201,10 +174,9 @@ row  = inline_c %{ return descA.mt-((descA.mt-k-1)%P)-1; %}
 READ      A <-  (k == 0) ? B(k, n) : C B_GEMM(k-1, k, n)
             ->  C B_TRSM_U(k, n)
 
-RW    BCOPY <-  (k == 0) ? A BCOPY_in_TR(n) : U B_SWAP_RECV(k-1, row, n)
-            ->  U B_SWAP_RECV(k, k+1..mmax, n)
+WRITE BCOPY ->  U B_SWAP_RECV(k, k+1 .. descA.mt-1, n)
 
-; (descB.mt-k-1) * (descB.nt-n-1)
+;inline_c %{ return get_priority(k, minmnt+n); %}
 
 BODY
 {
@@ -239,18 +211,14 @@ n = 0   .. descB.nt-1
 :B(m, n)
 
 // Parameters
-READ      U <-((m-k-1) <  P) ? BCOPY B_SWAP_COPY(k, n)
-            <-((m-k-1) >= P) ? U     B_SWAP_RECV(k, m-P, n)
+READ      U <- BCOPY B_SWAP_COPY(k, n)
 
-            ->  ((m+P) <  descB.mt) ? U B_SWAP_RECV(k,m+P,n)
-            -> (((m+P) >= descB.mt)  && ((k+1)%P == (m%P))) ? BCOPY B_SWAP_COPY(k+1, n)
+READ   PERM <- PERM B_SWAP_COLLECT(k, m, n)                  [type = PERMUT]
 
-READ   PERM <-  PERM B_SWAP_COLLECT(k, m, n)                  [type = PERMUT]
+RW        T <- T    B_SWAP_COLLECT(k, m, n)
+            -> (m > k) ? C B_GEMM(k, m, n)
 
-RW        T <-  T  B_SWAP_COLLECT(k, m, n)
-            ->  (m > k) ? C B_GEMM(k, m, n)
-
-; (descB.mt-n-1) * (descB.nt-k-1)
+;inline_c %{ return get_priority(k, minmnt+n); %}
 
 BODY
 {
@@ -285,29 +253,6 @@ END
 
 
 /**************************************************
- *                    BUFFER_in (pseudo task)
- **************************************************/
-BUFFER_in_TR(k,m,n) [profile = off]
-
-// Execution space
-k = 0 .. minmnt
-m = 0 .. ((P<descB.mt-k)?P-1:descB.mt-k-1)
-n = 0 .. descB.nt-1
-
-// Parallel partitioning
-:BUFFER((k+m)%P,n)
-
-// Parameters
-READ  B  <- BUFFER((k+m)%P,n)
-         -> BUF B_SWAP_COLLECT(k, k+m, n)
-
-; (descB.mt-n-1) * (descB.nt-k-1)
-
-BODY
-        /* Nothing to do */
-END
-
-/**************************************************
  *                    B_SWAP_COLLECT
  * Swapping all the lines for the current process
  * in the temporary buffer
@@ -324,21 +269,26 @@ i = inline_c %{ return ((m-k)%P); %}
 :B(m, n)
 
 // Parameters
-RW    BUF   <-  ((m-k) <  P ) ? B   BUFFER_in_TR(k, m-k, n)
-            <-  ((m-k) >= P ) ? BUF B_SWAP_COLLECT(k, m-P, n)
+RW    BUF   <-  ((m-k) <  P ) ? B(m, n)                            /* Unused */
+            <-  ((m-k) >= P ) && ((m-k) < (P*2) ) ? BUFIN B_SWAP_COLLECT(k, m-P, n)
+            <-  ((m-k) >= (P*2) )                 ? BUF   B_SWAP_COLLECT(k, m-P, n)
 
-            ->   ((descB.mt-m-1) >= P) ? BUF B_SWAP_COLLECT(k, m+P, n)
-            ->  (((descB.mt-m-1) <  P) && (i%2 == 0) ) ? Rtop    B_SWAP_SND(k, 1, i/2, n )
-            ->  (((descB.mt-m-1) <  P) && (i%2 == 1) ) ? Rbottom B_SWAP_SND(k, 1, i/2, n )
+            ->  ((m-k) >= P) && ((descB.mt-m-1) >= P) ? BUF B_SWAP_COLLECT(k, m+P, n)
+            ->  ((m-k) >= P) && ((descB.mt-m-1) <  P) && (i%2 == 0) ? Rtop    B_SWAP_SND(k, 1, i/2, n )
+            ->  ((m-k) >= P) && ((descB.mt-m-1) <  P) && (i%2 == 1) ? Rbottom B_SWAP_SND(k, 1, i/2, n )
 
 READ  T     <-  (k == 0) ? B(m,n) : C B_GEMM(k-1, m, n)
             ->  T B_SWAP_RECV(k,m,n)
 
-READ  PERM  <-  PERM PERM_in_TR(k, ((m-k)%P) )                                            [type = PERMUT]
+READ  PERM  <-  PERM PERM_in_TR(k, i )                                                   [type = PERMUT]
             ->  PERM B_SWAP_RECV(k, m, n )                                               [type = PERMUT]
             ->  (((descB.mt-m-1) <  P) && (i%2 == 0) ) ? PERM B_SWAP_SND(k, 1, i/2, n )  [type = PERMUT]
 
-; (descB.mt-k-1) * (descB.nt-n-1)
+WRITE BUFIN ->  ((m-k) < P) && ((descA.mt-m-1) >= P) ? BUF B_SWAP_COLLECT(k, m+P, n)
+            ->  ((m-k) < P) && ((descA.mt-m-1) <  P) && (i%2 == 0) ? Rtop    B_SWAP_SND(k, 1, i/2, n )
+            ->  ((m-k) < P) && ((descA.mt-m-1) <  P) && (i%2 == 1) ? Rbottom B_SWAP_SND(k, 1, i/2, n )
+
+;inline_c %{ return get_priority(k, minmnt+n); %}
 
 BODY
 {
@@ -356,7 +306,13 @@ BODY
         int i;
 
         dague_complex64_t *lT = (dague_complex64_t*)T;
-        dague_complex64_t *lM = (dague_complex64_t*)BUF;
+        dague_complex64_t *lM;
+
+        if ( (m-k) < P ) {
+            lM = (dague_complex64_t*)BUFIN;
+        } else {
+            lM = (dague_complex64_t*)BUF;
+        }
 
         for(i = 0; i < minmn; i++) {
             owner_index = *perm / descB.mb;
@@ -396,14 +352,16 @@ mB = inline_c %{ return descB.mt - ( descB.mt - 1 - k - iB)%P - 1; %}
 :B(mT, n)
 
 // Parameters
-RW       Rtop    <- (l == 1) ? BUF  B_SWAP_COLLECT( k, mT, n )
+RW       Rtop    <- (l == 1) && ((mT-k) <  P) ? BUFIN  B_SWAP_COLLECT( k, mT, n )
+                 <- (l == 1) && ((mT-k) >= P) ? BUF    B_SWAP_COLLECT( k, mT, n )
                  <- (l != 1) ? Rtop B_SWAP_SND( k, l-1, 2*i, n )
 
                  -> (( l <  depth) && (0 == (i % 2))) ? Rtop    B_SWAP_SND( k, l+1, i/2, n )
                  -> (( l <  depth) && (1 == (i % 2))) ? Rbottom B_SWAP_SND( k, l+1, i/2, n )
                  ->  ( l == depth) ? B B_TRSM_U(k, n)
 
-READ     Rbottom <- (l == 1) && (iB <  height) ? BUF B_SWAP_COLLECT( k, mB, n )
+READ     Rbottom <- (l == 1) && (iB <  height) && ((mT-k) <  P) ? BUFIN B_SWAP_COLLECT( k, mB, n )
+                 <- (l == 1) && (iB <  height) && ((mT-k) >= P) ? BUF   B_SWAP_COLLECT( k, mB, n )
                  <- (l == 1) && (iB >= height) ? B(mT, n)
                  <- (l != 1) && (iB >= height) ? B(mT, n)
                  <- (l != 1) && (iB <  height) ? Rtop B_SWAP_SND( k, l-1, 2*i+1, n )
@@ -413,7 +371,7 @@ READ     PERM    <- (l == 1) ? PERM B_SWAP_COLLECT( k, mT, n )                  
                  -> (( l < depth) && (0 == (i % 2))) ? PERM B_SWAP_SND( k, l+1, i/2, n )  [type = PERMUT]
 
 
-; (descB.mt-k-1) * (descB.nt-n-1)
+;inline_c %{ return get_priority(k, minmnt+n); %}
 
 BODY
 {
@@ -474,7 +432,7 @@ RW      C <- A B_SWAP_COPY(k, n)
 
 READ    B <- Rtop B_SWAP_SND(k, depth, 0, n)
 
-; (descB.mt-k-1) * (descB.nt-n-1)
+;inline_c %{ return get_priority(k, minmnt+n); %}
 
 BODY
 {
@@ -523,7 +481,7 @@ RW    C <- T B_SWAP_RECV(k, m, n)
         -> (m == k+1) ? A B_SWAP_COPY(k+1,n)       /* Swap */
         -> (m >  k  ) ? T B_SWAP_COLLECT(k+1,m,n)  /* Everything else */
 
-; (descB.nt-n-1) * (descB.mt-k-1)
+;inline_c %{ return get_priority(k, minmnt+n); %}
 
 BODY
 {

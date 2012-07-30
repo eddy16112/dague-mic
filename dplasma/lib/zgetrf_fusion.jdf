@@ -761,8 +761,6 @@ SWAP_COPY(k, n) [immediate = off]
 k = 0   .. minmnt
 n = k+1 .. descA.nt-1
 
-row  = inline_c %{ return descA.mt-((descA.mt-k-1)%P)-1; %}
-
 // Parallel partitioning
 :A(k, n)
 
@@ -886,7 +884,6 @@ WRITE BUFIN ->  ((m-k) < P) && ((descA.mt-m-1) >= P) ? BUF SWAP_COLLECT(k, m+P, 
             ->  ((m-k) < P) && ((descA.mt-m-1) <  P) && (i%2 == 0) ? Rtop    SWAP_SND(k, 1, i/2, n )
             ->  ((m-k) < P) && ((descA.mt-m-1) <  P) && (i%2 == 1) ? Rbottom SWAP_SND(k, 1, i/2, n )
 
-
 ;inline_c %{ return get_priority(k, n); %}
 
 BODY
@@ -948,7 +945,7 @@ mT = inline_c %{ return descA.mt - ( descA.mt - 1 - k - iT)%P - 1; %}
 mB = inline_c %{ return descA.mt - ( descA.mt - 1 - k - iB)%P - 1; %}
 
 // Parallel partitioning
-:A(k+iT, n)
+:A(mT, n)
 
 // Parameters
 RW       Rtop    <- (l == 1) && ((mT-k) <  P) ? BUFIN  SWAP_COLLECT( k, mT, n )
@@ -961,8 +958,8 @@ RW       Rtop    <- (l == 1) && ((mT-k) <  P) ? BUFIN  SWAP_COLLECT( k, mT, n )
 
 READ     Rbottom <- (l == 1) && (iB <  height) && ((mT-k) <  P) ? BUFIN SWAP_COLLECT( k, mB, n )
                  <- (l == 1) && (iB <  height) && ((mT-k) >= P) ? BUF   SWAP_COLLECT( k, mB, n )
-                 <- (l == 1) && (iB >= height) ? A(k+iT, n)
-                 <- (l != 1) && (iB >= height) ? A(k+iT, n)
+                 <- (l == 1) && (iB >= height) ? A(mT, n)
+                 <- (l != 1) && (iB >= height) ? A(mT, n)
                  <- (l != 1) && (iB <  height) ? Rtop SWAP_SND( k, l-1, 2*i+1, n )
 
 READ     PERM    <- (l == 1) ? PERM SWAP_COLLECT( k, mT, n )                            [type = PERMUT]
