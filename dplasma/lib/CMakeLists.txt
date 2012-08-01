@@ -30,8 +30,10 @@ set(JDF
   ztrmm_LLN.jdf ztrmm_LLT.jdf ztrmm_LUN.jdf ztrmm_LUT.jdf ztrmm_RLN.jdf ztrmm_RLT.jdf ztrmm_RUN.jdf ztrmm_RUT.jdf
   zlaswp.jdf
   zpotrf_Url.jdf zpotrf_Lrl.jdf
+  zgetrf_fusion.jdf
   zgetrf_sp.jdf
-  zgetrf_std.jdf  zgetrf_panel.jdf   zgetrf_fusion.jdf
+  #zgetrf_std.jdf
+  #zgetrf_panel.jdf
   zgerfs.jdf
   zgerfs_exp.jdf
   zgebmm.jdf

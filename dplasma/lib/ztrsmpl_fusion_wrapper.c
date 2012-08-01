@@ -16,8 +16,6 @@
 
 #include "ztrsmpl_fusion.h"
 
-static inline int dague_imin(int a, int b) { return (a <= b) ? a : b; };
-
 dague_object_t* dplasma_ztrsmpl_fusion_New( const tiled_matrix_desc_t *A,
                                             const tiled_matrix_desc_t *IPIV,
                                             tiled_matrix_desc_t *B )

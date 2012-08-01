@@ -347,7 +347,7 @@ BODY
            L = lT + ldam * (h-1) + p;
 
            /* Applying the update */
-           alpha = 1. / lmaxi[h-1];
+           alpha = (dague_complex64_t)1. / lmaxi[h-1];
            cblas_zscal(tempmm, CBLAS_SADDR( alpha ), L, 1 );
 
            if((h%IB) != 0){
@@ -901,7 +901,7 @@ BODY
         int *perm = (int*)PERM;
         int owner_index;
         int index;
-        int i;
+        int j;
 
         dague_complex64_t *lT = (dague_complex64_t*)T;
         dague_complex64_t *lM;
@@ -913,13 +913,13 @@ BODY
             lM = (dague_complex64_t*)BUF;
         }
 
-        for(i = 0; i < minmn; i++) {
+        for(j = 0; j < minmn; j++) {
             owner_index = *perm / descA.mb;
             index       = *perm % descA.mb;
 
             if(owner_index == m) {
                 cblas_zcopy(tempnn, lT + index, ldam,
-                                    lM + i    , descA.mb);
+                                    lM + j    , descA.mb);
             }
             perm++;
         }

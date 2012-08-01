@@ -304,7 +304,7 @@ BODY
         int *perm = (int*)PERM;
         int owner_index;
         int index;
-        int i;
+        int j;
 
         dague_complex64_t *lT = (dague_complex64_t*)T;
         dague_complex64_t *lM;
@@ -316,13 +316,13 @@ BODY
             lM = (dague_complex64_t*)BUF;
         }
 
-        for(i = 0; i < minmn; i++) {
+        for(j = 0; j < minmn; j++) {
             owner_index = *perm / descB.mb;
             index       = *perm % descB.mb;
 
             if(owner_index == m) {
                 cblas_zcopy(tempnn, lT + index, ldbm,
-                                    lM + i    , descB.mb);
+                                    lM + j    , descB.mb);
             }
             perm++;
         }
