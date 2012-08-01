@@ -186,6 +186,7 @@ BODY
 
     printlog("B_SWAP_COPY(k=%d,n=%d)\n", k, n);
 
+    //memset(BCOPY, 0, descB.mb*descB.nb*sizeof(dague_complex64_t));
     DRYRUN(
         LAPACKE_zlacpy_work(LAPACK_COL_MAJOR,
                             'a', tempkm, tempnn,
@@ -310,6 +311,7 @@ BODY
 
         if ( (m-k) < P ) {
             lM = (dague_complex64_t*)BUFIN;
+            //memset(BUFIN, 0, descA.mb*descA.nb*sizeof(dague_complex64_t));
         } else {
             lM = (dague_complex64_t*)BUF;
         }
@@ -360,10 +362,10 @@ RW       Rtop    <- (l == 1) && ((mT-k) <  P) ? BUFIN  B_SWAP_COLLECT( k, mT, n 
                  -> (( l <  depth) && (1 == (i % 2))) ? Rbottom B_SWAP_SND( k, l+1, i/2, n )
                  ->  ( l == depth) ? B B_TRSM_U(k, n)
 
-READ     Rbottom <- (l == 1) && (iB <  height) && ((mT-k) <  P) ? BUFIN B_SWAP_COLLECT( k, mB, n )
-                 <- (l == 1) && (iB <  height) && ((mT-k) >= P) ? BUF   B_SWAP_COLLECT( k, mB, n )
-                 <- (l == 1) && (iB >= height) ? B(mT, n)
-                 <- (l != 1) && (iB >= height) ? B(mT, n)
+READ     Rbottom <- (l == 1) && (iB <  height) && ((mB-k) <  P) ? BUFIN B_SWAP_COLLECT( k, mB, n )
+                 <- (l == 1) && (iB <  height) && ((mB-k) >= P) ? BUF   B_SWAP_COLLECT( k, mB, n )
+                 <- (l == 1) && (iB >= height) ? B(mT, n) /* Unused */
+                 <- (l != 1) && (iB >= height) ? B(mT, n) /* Unused */
                  <- (l != 1) && (iB <  height) ? Rtop B_SWAP_SND( k, l-1, 2*i+1, n )
 
 READ     PERM    <- (l == 1) ? PERM B_SWAP_COLLECT( k, mT, n )                            [type = PERMUT]

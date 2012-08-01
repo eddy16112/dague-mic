@@ -31,9 +31,9 @@ extern int *gpu_counter;
 extern dague_gpu_data_map_t dague_gpu_map;
 #endif  /* defined(HAVE_CUDA) */
 
-#define get_pivot( _buf_ ) (*( (int*)( ((dague_complex64_t*)(_buf_)) + 2*descA.nb ) ))
 #define get_diag( _buf_ )  (((dague_complex64_t*)(_buf_)))
 #define get_rmax( _buf_ )  (((dague_complex64_t*)(_buf_)) + descA.nb)
+#define get_pivot( _buf_ ) (*( (int*)( ((dague_complex64_t*)(_buf_)) + 2*descA.nb ) ))
 
 static dague_complex64_t zone  = 1.;
 static dague_complex64_t mzone = -1.;
@@ -522,6 +522,8 @@ BODY
     DRYRUN(
         dague_complex64_t *lM = (dague_complex64_t*)M;
 
+        //memset( V, 0, (2*descA.nb+1)*sizeof(dague_complex64_t));
+
         /* Saving the default swap line */
         if ( r == 0 ) {
             dague_complex64_t *lA = (dague_complex64_t*)A;
@@ -531,9 +533,9 @@ BODY
                                 get_diag( V ), 1);
         }
 
-        get_pivot( V ) = *((int*)M);
         cblas_zcopy(tempkn, lM + 1,    1,
                             get_rmax( V ), 1);
+        get_pivot( V ) = *((int*)M);
            );
 }
 END
@@ -906,6 +908,7 @@ BODY
 
         if ( (m-k) < P ) {
             lM = (dague_complex64_t*)BUFIN;
+            //memset(BUFIN, 0, descA.mb*descA.nb*sizeof(dague_complex64_t));
         } else {
             lM = (dague_complex64_t*)BUF;
         }
@@ -956,10 +959,10 @@ RW       Rtop    <- (l == 1) && ((mT-k) <  P) ? BUFIN  SWAP_COLLECT( k, mT, n )
                  -> (( l <  depth) && (1 == (i % 2))) ? Rbottom SWAP_SND( k, l+1, i/2, n )
                  ->  ( l == depth) ? B TRSM_U(k, n)
 
-READ     Rbottom <- (l == 1) && (iB <  height) && ((mT-k) <  P) ? BUFIN SWAP_COLLECT( k, mB, n )
-                 <- (l == 1) && (iB <  height) && ((mT-k) >= P) ? BUF   SWAP_COLLECT( k, mB, n )
-                 <- (l == 1) && (iB >= height) ? A(mT, n)
-                 <- (l != 1) && (iB >= height) ? A(mT, n)
+READ     Rbottom <- (l == 1) && (iB <  height) && ((mB-k) <  P) ? BUFIN SWAP_COLLECT( k, mB, n )
+                 <- (l == 1) && (iB <  height) && ((mB-k) >= P) ? BUF   SWAP_COLLECT( k, mB, n )
+                 <- (l == 1) && (iB >= height) ? A(mT, n) /* Unused */
+                 <- (l != 1) && (iB >= height) ? A(mT, n) /* Unused */
                  <- (l != 1) && (iB <  height) ? Rtop SWAP_SND( k, l-1, 2*i+1, n )
 
 READ     PERM    <- (l == 1) ? PERM SWAP_COLLECT( k, mT, n )                            [type = PERMUT]
