@@ -296,7 +296,7 @@ BODY
     dague_complex64_t *lM  = (dague_complex64_t*)M;
     dague_complex64_t *lT  = (dague_complex64_t*)T;
     dague_complex64_t *lU  = (dague_complex64_t*)U;
-    dague_complex64_t *A, *L, *U;
+    dague_complex64_t *A, *L, *Up;
 
     int p = (m == k)? h : 0;
     int tempmm = ( m == (descA.mt-1) ) ? descA.m - m * descA.mb : descA.mb;
@@ -358,23 +358,23 @@ BODY
                            A,         ldam);
            }
            else {
-               L = lT + ldam * (h-IB) + p;
-               U = lU + IB   *  h;
+               L  = lT + ldam * (h-IB) + p;
+               Up = lU + IB   *  h;
 
                if( (m == k) ) {
                    LAPACKE_zlacpy_work(
                        LAPACK_COL_MAJOR,
                        'a', IB, tempkn-h,
-                       U,      IB,
+                       Up,     IB,
                        A - IB, ldam);
                }
 
                cblas_zgemm(CblasColMajor,
                            (CBLAS_TRANSPOSE)CblasNoTrans, (CBLAS_TRANSPOSE)CblasNoTrans,
                            tempmm, tempkn - h, IB,
-                           CBLAS_SADDR(mzone), L, ldam,
-                                               U, IB,
-                           CBLAS_SADDR(zone),  A, ldam);
+                           CBLAS_SADDR(mzone), L,  ldam,
+                                               Up, IB,
+                           CBLAS_SADDR( zone), A,  ldam);
            }
        }
 
