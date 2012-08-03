@@ -522,8 +522,9 @@ BODY
     DRYRUN(
         dague_complex64_t *lM = (dague_complex64_t*)M;
 
-        //memset( V, 0, (2*descA.nb+1)*sizeof(dague_complex64_t));
-
+#if !defined(NDEBUG)
+        memset( V, 0, (2*descA.nb+1)*sizeof(dague_complex64_t));
+#endif
         /* Saving the default swap line */
         if ( r == 0 ) {
             dague_complex64_t *lA = (dague_complex64_t*)A;
@@ -908,7 +909,9 @@ BODY
 
         if ( (m-k) < P ) {
             lM = (dague_complex64_t*)BUFIN;
-            //memset(BUFIN, 0, descA.mb*descA.nb*sizeof(dague_complex64_t));
+#if !defined(NDEBUG)
+            memset(BUFIN, 0, descA.mb*descA.nb*sizeof(dague_complex64_t));
+#endif
         } else {
             lM = (dague_complex64_t*)BUF;
         }

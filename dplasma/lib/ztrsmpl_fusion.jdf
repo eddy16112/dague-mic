@@ -186,7 +186,9 @@ BODY
 
     printlog("B_SWAP_COPY(k=%d,n=%d)\n", k, n);
 
-    //memset(BCOPY, 0, descB.mb*descB.nb*sizeof(dague_complex64_t));
+#if !defined(NDEBUG)
+    memset(BCOPY, 0, descB.mb*descB.nb*sizeof(dague_complex64_t));
+#endif
     DRYRUN(
         LAPACKE_zlacpy_work(LAPACK_COL_MAJOR,
                             'a', tempkm, tempnn,
@@ -311,7 +313,9 @@ BODY
 
         if ( (m-k) < P ) {
             lM = (dague_complex64_t*)BUFIN;
-            //memset(BUFIN, 0, descA.mb*descA.nb*sizeof(dague_complex64_t));
+#if !defined(NDEBUG)
+            memset(BUFIN, 0, descA.mb*descA.nb*sizeof(dague_complex64_t));
+#endif
         } else {
             lM = (dague_complex64_t*)BUF;
         }
