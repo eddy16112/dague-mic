@@ -62,19 +62,17 @@ int main(int argc, char ** argv)
 
     /* load the GPU kernel */
 #if defined(HAVE_CUDA)
-    if(iparam[IPARAM_NGPUS] > 0)
-        {
-            if(loud > 3) printf("+++ Load GPU kernel ... ");
-            if(0 != gpu_kernel_init_zgemm(dague))
-                {
-                    printf("XXX Unable to load GPU kernel.\n");
-                    exit(3);
-                }
-            dague_gpu_data_register(dague,
-                                    (dague_ddesc_t*)&ddescA,
-                                    MT*NT, MB*NB*sizeof(dague_complex64_t) );
-            if(loud > 3) printf("Done\n");
+    if(iparam[IPARAM_NGPUS] > 0) {
+        if(loud > 3) printf("+++ Load GPU kernel ... ");
+        if(0 != gpu_kernel_init_zgemm(dague)) {
+            printf("XXX Unable to load GPU kernel.\n");
+            exit(3);
         }
+        dague_gpu_data_register(dague,
+                                (dague_ddesc_t*)&ddescA,
+                                MT*NT, MB*NB*sizeof(dague_complex64_t) );
+        if(loud > 3) printf("Done\n");
+    }
 #endif
 
     PASTE_CODE_ENQUEUE_KERNEL(dague, zpotrf,
@@ -89,11 +87,11 @@ int main(int argc, char ** argv)
     }
 #endif
 
-    if ( 0 == rank && info != 0 ) {
+    if( 0 == rank && info != 0 ) {
         printf("-- Factorization is suspicious (info = %d) ! \n", info);
         ret |= 1;
     }
-    else if ( check ) {
+    if( !info && check ) {
         /* Check the factorization */
         PASTE_CODE_ALLOCATE_MATRIX(ddescA0, check,
             sym_two_dim_block_cyclic, (&ddescA0, matrix_ComplexDouble,
@@ -124,22 +122,21 @@ int main(int argc, char ** argv)
                        (tiled_matrix_desc_t *)&ddescA,
                        (tiled_matrix_desc_t *)&ddescX );
 
-
         ret |= check_solution( dague, (rank == 0) ? loud : 0, uplo,
                                (tiled_matrix_desc_t *)&ddescA0,
                                (tiled_matrix_desc_t *)&ddescB,
                                (tiled_matrix_desc_t *)&ddescX);
 
         /* Cleanup */
-        dague_data_free(ddescA0.mat);
+        dague_data_free(ddescA0.mat); ddescA0.mat = NULL;
         dague_ddesc_destroy( (dague_ddesc_t*)&ddescA0 );
-        dague_data_free(ddescB.mat);
+        dague_data_free(ddescB.mat); ddescB.mat = NULL;
         dague_ddesc_destroy( (dague_ddesc_t*)&ddescB );
-        dague_data_free(ddescX.mat);
+        dague_data_free(ddescX.mat); ddescX.mat = NULL;
         dague_ddesc_destroy( (dague_ddesc_t*)&ddescX );
     }
 
-    dague_data_free(ddescA.mat);
+    dague_data_free(ddescA.mat); ddescA.mat = NULL;
     dague_ddesc_destroy( (dague_ddesc_t*)&ddescA);
 
     cleanup_dague(dague, iparam);
@@ -218,9 +215,9 @@ static int check_factorization( dague_context_t *dague, int loud, PLASMA_enum up
         info_factorization = 0;
     }
 
-    dague_data_free(L1.mat);
+    dague_data_free(L1.mat); L1.mat = NULL;
     dague_ddesc_destroy( (dague_ddesc_t*)&L1);
-    dague_data_free(L2.mat);
+    dague_data_free(L2.mat); L2.mat = NULL;
     dague_ddesc_destroy( (dague_ddesc_t*)&L2);
 
     return info_factorization;
@@ -274,3 +271,4 @@ static int check_solution( dague_context_t *dague, int loud, PLASMA_enum uplo,
 
     return info_solution;
 }
+
