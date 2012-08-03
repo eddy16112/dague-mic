@@ -45,9 +45,11 @@ float *device_load = NULL, *device_weight = NULL;
         __dague_list = NULL;                                            \
     }
 
-static void* dague_allocate_data_gpu(size_t matrix_size)
+static void* dague_gpu_data_allocate(size_t matrix_size)
 {
     void* mat = NULL;
+
+    if( 0 == matrix_size ) return NULL;
 
     if( __dague_active_gpu ) {
         CUresult status;
@@ -80,9 +82,11 @@ static void* dague_allocate_data_gpu(size_t matrix_size)
 /**
  * free a buffer allocated by dague_allocate_data
  */
-static void dague_free_data_gpu(void *dta)
+static void dague_gpu_data_free(void *dta)
 {
     unsigned int flags, call_free = 1;
+
+    if( NULL == dta ) return;
 
     if( dague_gpu_allocation_initialized ) {
         CUresult status;
@@ -93,12 +97,13 @@ static void dague_free_data_gpu(void *dta)
 
         status = cuMemHostGetFlags( &flags, dta );
         DAGUE_CUDA_CHECK_ERROR( "cuMemHostGetFlags ", status,
-                                {goto clib_free;} );
+                                {goto release_cuda_context;} );
 
         status = cuMemFreeHost( dta );
         DAGUE_CUDA_CHECK_ERROR( "cuMemFreeHost ", status,
-                                {goto clib_free;} );
+                                {goto release_cuda_context;} );
         call_free = 0;
+    release_cuda_context:
         status = cuCtxPopCurrent(NULL);
         DAGUE_CUDA_CHECK_ERROR( "cuCtxPopCurrent ", status,
                                 {} );
@@ -115,8 +120,8 @@ void dague_data_enable_gpu( int nbgpu )
 {
     __dague_active_gpu = nbgpu;
 
-    dague_data_allocate = dague_allocate_data_gpu;
-    dague_data_free     = dague_free_data_gpu;
+    dague_data_allocate = dague_gpu_data_allocate;
+    dague_data_free     = dague_gpu_data_free;
 }
 
 void dague_data_disable_gpu(void) {
@@ -576,7 +581,7 @@ int dague_gpu_data_register( dague_context_t *dague_context,
     return 0;
 }
 
-int dague_gpu_data_unregister( )
+int dague_gpu_data_unregister( void )
 {
     gpu_device_t* gpu_device;
     gpu_elem_t* gpu_elem;
@@ -624,8 +629,6 @@ int dague_gpu_data_unregister( )
     }
     dague_gpu_map.desc = NULL;
     
-    dague_data_disable_gpu();
-
     return 0;
 }
 
