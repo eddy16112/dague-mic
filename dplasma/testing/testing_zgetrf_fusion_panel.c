@@ -160,7 +160,7 @@ int main(int argc, char ** argv)
                     if ( loud > 2 ) {
                         printf( "IPIV[%d] = (%d / %d) (%e / %e)\n", 
                                 i, dplasma_piv[i], lapack_piv[i],
-                                dA[ i * (NB+1) ], lA[ i * (ddescA.super.lm+1) ] );
+                                cabs(dA[ i * (NB+1) ]), cabs(lA[ i * (ddescA.super.lm+1) ]) );
                     }
                 }
             }
