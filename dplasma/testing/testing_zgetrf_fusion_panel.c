@@ -100,24 +100,6 @@ int main(int argc, char ** argv)
                         (tiled_matrix_desc_t *)&ddescA,
                         (tiled_matrix_desc_t *)&ddescAl );
         K = 0;
-
-        if( rank  == 0 ) {
-            LAPACKE_zgetrf_work(LAPACK_COL_MAJOR, M, N,
-                                (dague_complex64_t*)(ddescAl.mat), LDA,
-                                (int *)(ddescIPIVl.mat));
-            IPIV_Lapack = (int *)(ddescIPIVl.mat);
-
-            dague_complex64_t *lA = (dague_complex64_t*)(ddescAl.mat);
-            FILE *f = fopen( "lapack.txt", "w" );
-            for(i=0; i < dague_imin(M, N); i++) {
-                fprintf(f, "%10d %e\n", IPIV_Lapack[i], lA[ i * (ddescA.super.lm+1) ] );
-            }
-            fclose(f);
-        }
-        else {
-            IPIV_Lapack = (int*)malloc(dague_imin(M, N) * sizeof(int));
-        }
-        MPI_Bcast( IPIV_Lapack, dague_imin(M, N), MPI_INT, 0, MPI_COMM_WORLD);
     }
     if(loud > 2) printf("Done\n");
 
@@ -151,49 +133,69 @@ int main(int argc, char ** argv)
         ret |= 1;
     }
     else if ( check ) {
+        int ipivok = 1;
+        double eps, Anorm, Rnorm, result;
 
-        double Anorm = dplasma_zlange( dague, PlasmaInfNorm, (tiled_matrix_desc_t*)&ddescA0 );
+        eps = LAPACKE_dlamch_work('e');
+
+        Anorm = dplasma_zlange( dague, PlasmaInfNorm, (tiled_matrix_desc_t*)&ddescA0 );
         if( rank  == 0 ) {
-            dague_complex64_t *dA = (dague_complex64_t*)( ((dague_ddesc_t*) &ddescA )->data_of(((dague_ddesc_t*) &ddescA),  0, 0) );
-            dague_complex64_t *lA = (dague_complex64_t*)( ((dague_ddesc_t*) &ddescAl)->data_of(((dague_ddesc_t*) &ddescAl), 0, 0) );
-
+            dague_complex64_t *dA, *lA;
             int *dplasma_piv;
             int *lapack_piv;
 
-            /* Check IPIV */
+            dA = (dague_complex64_t*)( ((dague_ddesc_t*) &ddescA )->data_of(((dague_ddesc_t*) &ddescA),  0, 0) );
+            lA = (dague_complex64_t*)( ((dague_ddesc_t*) &ddescAl)->data_of(((dague_ddesc_t*) &ddescAl), 0, 0) );
             dplasma_piv = (int*)( ((dague_ddesc_t*) &ddescIPIV )->data_of(((dague_ddesc_t*) &ddescIPIV),  0, 0) );
             lapack_piv  = (int*)( ((dague_ddesc_t*) &ddescIPIVl)->data_of(((dague_ddesc_t*) &ddescIPIVl), 0, 0) );
-            printf("--- Check IPIV ---\n");
+
+            LAPACKE_zgetrf_work(LAPACK_COL_MAJOR, M, N, lA, LDA, lapack_piv );
+
+            /* Check IPIV */
+            if (loud > 2 ) 
+                printf("--- Check IPIV ---\n");
             for(i=0; i < dague_imin(M, N); i++) {
-                
                 if ( dplasma_piv[i] != lapack_piv[i] ) {
-                    printf( "IPIV[%d] = (%d / %d) (%e / %e)\n", 
-                            i, dplasma_piv[i], lapack_piv[i],
-                            dA[ i * (NB+1) ], lA[ i * (ddescA.super.lm+1) ] );
+                    ipivok = 0;
+                    if ( loud > 2 ) {
+                        printf( "IPIV[%d] = (%d / %d) (%e / %e)\n", 
+                                i, dplasma_piv[i], lapack_piv[i],
+                                dA[ i * (NB+1) ], lA[ i * (ddescA.super.lm+1) ] );
+                    }
                 }
             }
-            printf("------------------\n");
+            if (loud > 2 ) 
+                printf("------------------\n");
         }
 
+#if defined(HAVE_MPI)
+        MPI_Bcast( &ipivok, 1, MPI_INT, 0, MPI_COMM_WORLD);
+#endif
 
-        /* dplasma_iprint(dague, PlasmaUpperLower, (tiled_matrix_desc_t*)&ddescIPIV);  */
-        /* dplasma_zprint(dague, PlasmaUpperLower, (tiled_matrix_desc_t*)&ddescA); */
-        /* dplasma_zprint(dague, PlasmaUpperLower, (tiled_matrix_desc_t*)&ddescAl); */
+        if ( ipivok ) {
+            dplasma_zgeadd( dague, PlasmaUpperLower, -1.0,
+                            (tiled_matrix_desc_t*)&ddescA,
+                            (tiled_matrix_desc_t*)&ddescAl );
 
-        dplasma_zgeadd( dague, PlasmaUpperLower, -1.0,
-                        (tiled_matrix_desc_t*)&ddescA,
-                        (tiled_matrix_desc_t*)&ddescAl );
-
-        /* dplasma_zprint(dague, PlasmaUpperLower, (tiled_matrix_desc_t*)&ddescAl); */
-
-        double eps = LAPACKE_dlamch_work('e');
-        double Rnorm = dplasma_zlange( dague, PlasmaMaxNorm, (tiled_matrix_desc_t*)&ddescAl );
-        double result = Rnorm / (Anorm * max(M,N) * eps);
+            Rnorm = dplasma_zlange( dague, PlasmaMaxNorm, (tiled_matrix_desc_t*)&ddescAl );
+            result = Rnorm / (Anorm * max(M,N) * eps);
         
-        if ( rank == 0 ) {
-            printf("  ||A||_inf = %e, ||lA - dA||_max = %e, ||lA-dA||/(||A|| * M * eps) = %e\n",
-                   Anorm, Rnorm, result );
+            if ( rank == 0 && loud > 2 ) {
+                printf("  ||A||_inf = %e, ||lA - dA||_max = %e, ||lA-dA||/(||A|| * M * eps) = %e\n",
+                       Anorm, Rnorm, result );
+            }
+        } else {
+            printf("-- Solution cannot be checked ! \n");
+            ret |= 1;
         }
+
+        if ( isnan(Rnorm) || isinf(Rnorm) || isnan(result) || isinf(result) || (result > 60.0) ) {
+            if( rank == 0 && loud ) printf("-- Solution is suspicious ! \n");
+            ret |= 1;
+        } else {
+            if( rank == 0 && loud ) printf("-- Solution is CORRECT ! \n");
+        }
+
         dague_data_free(ddescAl.mat);
         dague_ddesc_destroy( (dague_ddesc_t*)&ddescAl);
         dague_data_free(ddescIPIVl.mat);
