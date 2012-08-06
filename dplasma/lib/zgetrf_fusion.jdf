@@ -296,7 +296,7 @@ BODY
     dague_complex64_t *lM  = (dague_complex64_t*)M;
     dague_complex64_t *lT  = (dague_complex64_t*)T;
     dague_complex64_t *lU  = (dague_complex64_t*)U;
-    dague_complex64_t *A, *L, *Up;
+    dague_complex64_t *A, *L;
 
     int p = (m == k)? h : 0;
     int tempmm = ( m == (descA.mt-1) ) ? descA.m - m * descA.mb : descA.mb;
@@ -359,13 +359,13 @@ BODY
            }
            else {
                L  = lT + ldam * (h-IB) + p;
-               Up = lU + IB   *  h;
+               lU = lU + IB   *  h;
 
                if( (m == k) ) {
                    LAPACKE_zlacpy_work(
                        LAPACK_COL_MAJOR,
                        'a', IB, tempkn-h,
-                       Up,     IB,
+                       lU,     IB,
                        A - IB, ldam);
                }
 
@@ -373,7 +373,7 @@ BODY
                            (CBLAS_TRANSPOSE)CblasNoTrans, (CBLAS_TRANSPOSE)CblasNoTrans,
                            tempmm, tempkn - h, IB,
                            CBLAS_SADDR(mzone), L,  ldam,
-                                               Up, IB,
+                                               lU, IB,
                            CBLAS_SADDR( zone), A,  ldam);
            }
        }
@@ -390,7 +390,7 @@ BODY
                            lM,         1);
 
            );
-
+    
 #if defined(HAVE_CUDA)
     dague_gpu_update_data_version( &dague_gpu_map, GEMM_KEY( &descA, m, k) );
 #endif  /* defined(HAVE_CUDA) */
@@ -571,18 +571,18 @@ pui = inline_c %{ return 1 << d; %}
 // Parallel partitioning
 :A(k+r, k)
 
+        /* Local forward of T */ 
 RW    T <- (d > 0   ) ? T GETRF_SND(k, h, d-1, r) : V GETRF_SVM(k, h, r)               [type = SWAP]
 
-        /* Local forward of T */
         -> (d <  dmax) ? T GETRF_SND(k, h, d+1, r)                                     [type = SWAP]
         -> (d == dmax) && ((h == hmax) || ((h+1)%IB == 0)) ? V GETRF_MDL(k, r, h/IB)   [type = SWAP]
         -> (d == dmax) &&  (h != hmax) ? V GETRF_MAX(k, (k+r)..(descA.mt-1)..P, h+1)   [type = SWAP]
 
         /* Send T to the bottom */
-        -> (d <  dmax) ? B GETRF_SND(k, h, d+1, (r+2*pui)%rmax)                        [type = SWAP]
+RW    B <- (d == 0) ? V GETRF_SVM(k, h, (rmax+r-1)%rmax )                              [type = SWAP]
+        <- (d != 0)    ? B GETRF_SND(k, h, d-1, (rmax+r-pui)%rmax )                    [type = SWAP]
 
-READ  B <- (d == 0) ? V GETRF_SVM(k, h, (rmax+r-1)%rmax )                              [type = SWAP]
-        <- (d != 0) ? T GETRF_SND(k, h, d-1, (rmax+r-pui)%rmax )                       [type = SWAP]
+        -> (d <  dmax) ? B GETRF_SND(k, h, d+1, (r+2*pui)%rmax)                        [type = SWAP]
 
 // Priority
 ;inline_c %{ return get_priority(k, k); %}
@@ -596,6 +596,9 @@ BODY
         if( (pui <= r) && (r < 2*pui) ) {
             cblas_zcopy(tempkn, get_diag( B ), 1,
                                 get_diag( T ), 1);
+        } else {
+            cblas_zcopy(tempkn, get_diag( T ), 1,
+                                get_diag( B ), 1);
         }
 
         dague_complex64_t *mT = get_rmax( T );
@@ -603,10 +606,14 @@ BODY
 
         if( cabs( mB[h] ) > cabs( mT[h] ) )
         {
-            get_pivot( T ) = get_pivot( B );
             cblas_zcopy(tempkn, mB, 1,
                                 mT, 1);
-        }
+            get_pivot( T ) = get_pivot( B );
+        } else {
+            cblas_zcopy(tempkn, mT, 1,
+                                mB, 1);
+            get_pivot( B ) = get_pivot( T );
+        }            
            );
 }
 END
