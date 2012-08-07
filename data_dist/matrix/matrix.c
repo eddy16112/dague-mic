@@ -43,6 +43,7 @@ void tiled_matrix_desc_init( tiled_matrix_desc_t *tdesc,
     tdesc->super.nodes = nodes;    
     tdesc->super.cores = cores;
     tdesc->super.myrank = myrank;
+    tdesc->super.moesi_map = NULL;
 
     /* Matrix properties */
     tdesc->mtype   = mtyp;
