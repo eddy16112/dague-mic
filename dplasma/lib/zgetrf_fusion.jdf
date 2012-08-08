@@ -779,10 +779,11 @@ n = k+1 .. descA.nt-1
 :A(k, n)
 
 // Parameters
-READ      A <-  (k == 0) ? A(k, n) : C GEMM(k-1, k, n)
-            ->  C TRSM_U(k, n)
+READ     A <-  (k == 0) ? A(k, n) : C GEMM(k-1, k, n)
+           ->  C TRSM_U(k, n)
 
 WRITE    ACOPY ->  U SWAP_RECV(k, k+1 .. descA.mt-1, n)
+               ->  T SWAP_COLLECT(k, k, n)
 
 ;inline_c %{ return get_priority(k, n); %}
 
@@ -887,8 +888,10 @@ RW    BUF   <-  ((m-k) <  P ) ? A(m, n)                            /* Unused */
             ->  ((m-k) >= P) && ((descA.mt-m-1) <  P) && (i%2 == 0) ? Rtop    SWAP_SND(k, 1, i/2, n )
             ->  ((m-k) >= P) && ((descA.mt-m-1) <  P) && (i%2 == 1) ? Rbottom SWAP_SND(k, 1, i/2, n )
 
-READ  T     <-  (k == 0)? A(m,n) : C GEMM(k-1, m, n)
-            ->  T SWAP_RECV(k,m,n)
+READ  T     <-  (k == m) ? ACOPY SWAP_COPY(k, n)
+            <-  (k != m) && (k == 0) ? A(m, n)
+            <-  (k != m) && (k != 0) ? C GEMM(k-1, m, n)
+            ->  (m > k) ? T SWAP_RECV(k,m,n)
 
 READ  PERM  <-  PERM GETRF_FNL(k, k + ((m-k)%P) )                                      [type = PERMUT]
             ->  PERM SWAP_RECV(k, m, n )                                               [type = PERMUT]
@@ -1096,7 +1099,7 @@ READ  B <- C TRSM_U(k, n)
 RW    C <- T SWAP_RECV(k, m, n)
         ->  (n == k+1) ? T GETRF_MAX(k+1,m,0)  /* Panel */
         -> ((n >  k+1) && (m == k+1)) ? A SWAP_COPY(k+1,n)  /* Swap */
-        -> ((n >  k+1) && (m >  k  )) ? T SWAP_COLLECT(k+1,m,n)  /* Everything else */
+        -> ((n >  k+1) && (m >  k+1)) ? T SWAP_COLLECT(k+1,m,n)  /* Everything else */
 
 ;inline_c %{ return get_priority(k, n); %}
 

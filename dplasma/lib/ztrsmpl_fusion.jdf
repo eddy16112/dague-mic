@@ -175,7 +175,8 @@ READ      A <-  (k == 0) ? B(k, n) : C B_GEMM(k-1, k, n)
             ->  C B_TRSM_U(k, n)
 
 WRITE BCOPY ->  U B_SWAP_RECV(k, k+1 .. descA.mt-1, n)
-
+            ->  T B_SWAP_COLLECT(k, k, n)
+             
 ;inline_c %{ return get_priority(k, minmnt+n); %}
 
 BODY
@@ -280,8 +281,10 @@ RW    BUF   <-  ((m-k) <  P ) ? B(m, n)                            /* Unused */
             ->  ((m-k) >= P) && ((descB.mt-m-1) <  P) && (i%2 == 0) ? Rtop    B_SWAP_SND(k, 1, i/2, n )
             ->  ((m-k) >= P) && ((descB.mt-m-1) <  P) && (i%2 == 1) ? Rbottom B_SWAP_SND(k, 1, i/2, n )
 
-READ  T     <-  (k == 0) ? B(m,n) : C B_GEMM(k-1, m, n)
-            ->  T B_SWAP_RECV(k,m,n)
+READ  T     <-  (k == m) ? BCOPY B_SWAP_COPY(k, n)
+            <-  (k != m) && (k == 0) ? B(m, n)
+            <-  (k != m) && (k != 0) ? C B_GEMM(k-1, m, n)
+            ->  (m > k) ? T B_SWAP_RECV(k,m,n)
 
 READ  PERM  <-  PERM PERM_in_TR(k, i )                                                   [type = PERMUT]
             ->  PERM B_SWAP_RECV(k, m, n )                                               [type = PERMUT]
@@ -485,7 +488,7 @@ READ  A <- A A_in_TR(k, m)
 READ  B <- C B_TRSM_U(k, n)
 RW    C <- T B_SWAP_RECV(k, m, n)
         -> (m == k+1) ? A B_SWAP_COPY(k+1,n)       /* Swap */
-        -> (m >  k  ) ? T B_SWAP_COLLECT(k+1,m,n)  /* Everything else */
+        -> (m >  k+1) ? T B_SWAP_COLLECT(k+1,m,n)  /* Everything else */
 
 ;inline_c %{ return get_priority(k, minmnt+n); %}
 
