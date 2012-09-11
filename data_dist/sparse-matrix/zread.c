@@ -35,7 +35,7 @@ double Z_CscNorm1(const CscMatrix *cscmtx,
 
 void Z_CscRhsUpdown(const UpDownVector *updovct, 
                     const SymbolMatrix *symbmtx, 
-                    Dague_Complex64_t  *rhs, 
+                    dague_complex64_t  *rhs, 
                     const dague_int_t   ncol,
                     const dague_int_t  *invp,
                     const int           dof, 
@@ -44,7 +44,7 @@ void Z_CscRhsUpdown(const UpDownVector *updovct,
 
 int Z_buildUpdoVect(pastix_data_t     *pastix_data,
                     dague_int_t       *loc2glob,
-                    Dague_Complex64_t *b,
+                    dague_complex64_t *b,
                     MPI_Comm           pastix_comm);
 
 int Z_pastix_fillin_csc( pastix_data_t     *pastix_data,
@@ -52,8 +52,8 @@ int Z_pastix_fillin_csc( pastix_data_t     *pastix_data,
                          dague_int_t        n,
                          dague_int_t       *colptr,
                          dague_int_t       *row,
-                         Dague_Complex64_t *avals,
-                         Dague_Complex64_t *b,
+                         dague_complex64_t *avals,
+                         dague_complex64_t *b,
                          dague_int_t       *loc2glob);
   
 void z_pastix(pastix_data_t **pastix_data, 
@@ -61,10 +61,10 @@ void z_pastix(pastix_data_t **pastix_data,
               dague_int_t n, 
               dague_int_t *colptr, 
               dague_int_t *row, 
-              Dague_Complex64_t *avals, 
+              dague_complex64_t *avals, 
               dague_int_t *perm, 
               dague_int_t *invp, 
-              Dague_Complex64_t *b, 
+              dague_complex64_t *b, 
               dague_int_t rhs, 
               dague_int_t *iparm, 
               DagDouble_t *dparm);
@@ -76,7 +76,7 @@ int z_pastix_checkMatrix(MPI_Comm pastix_comm,
                          dague_int_t n, 
                          dague_int_t **colptr, 
                          dague_int_t **row, 
-                         Dague_Complex64_t **avals, 
+                         dague_complex64_t **avals, 
                          dague_int_t **loc2glob, 
                          dague_int_t dof);
 
@@ -102,24 +102,24 @@ typedef struct CscMatrix_ {
     INT                cscfnbr;
     CscFormat         *cscftab;
     INT               *rowtab;
-    Dague_Complex64_t *valtab;
+    dague_complex64_t *valtab;
 } CscMatrix;
 #endif
 
 void sparse_matrix_zcsc2pack(sparse_context_t  *dspctxt, 
                             const CscMatrix   *cscmtx, 
-                            Dague_Complex64_t *transcsc);
+                            dague_complex64_t *transcsc);
 
 void Z_CscOrdistrib(CscMatrix          *thecsc,
                     char               *Type,
-                    Dague_Complex64_t **transcsc,
+                    dague_complex64_t **transcsc,
                     const Order        *ord,
                     dague_int_t         Nrow,
                     dague_int_t         Ncol,
                     dague_int_t         Nnzero,
                     dague_int_t        *colptr,
                     dague_int_t        *rowind,
-                    Dague_Complex64_t  *val,
+                    dague_complex64_t  *val,
                     dague_int_t         forcetrans,
                     const SymbolMatrix *symbmtx,
                     dague_int_t         procnum,
@@ -141,8 +141,8 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
                   &(dspctxt->n), 
                   &(dspctxt->colptr), 
                   &(dspctxt->rows), 
-                  (Dague_Complex64_t**)&(dspctxt->values), 
-                  (Dague_Complex64_t**)&(dspctxt->rhs), 
+                  (dague_complex64_t**)&(dspctxt->values), 
+                  (dague_complex64_t**)&(dspctxt->rhs), 
                   &(dspctxt->type), 
                   &(dspctxt->rhstype), 
                   (driver_type_t)(dspctxt->format), 
@@ -163,7 +163,7 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
                          dspctxt->n, 
                          &(dspctxt->colptr), 
                          &(dspctxt->rows), 
-                         (Dague_Complex64_t**)&(dspctxt->values), 
+                         (dague_complex64_t**)&(dspctxt->values), 
                          NULL,                           /* Pointer for distributed case */
                          1);                             /* Number of degree of freedom  */
 
@@ -257,18 +257,18 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
     // cblksize is used for the graph generated for BigDAT/Stream proposal
     //dspctxt->desc->cblksize = (size_t*)malloc( (pastix_data->solvmatr.symbmtx.cblknbr+1) * sizeof(size_t));
 
-    pastix_data->solvmatr.coeftab = (Dague_Complex64_t **)malloc( pastix_data->solvmatr.symbmtx.cblknbr * sizeof(Dague_Complex64_t*));
-    memset( pastix_data->solvmatr.coeftab, 0, pastix_data->solvmatr.symbmtx.cblknbr * sizeof(Dague_Complex64_t*) );
+    pastix_data->solvmatr.coeftab = (dague_complex64_t **)malloc( pastix_data->solvmatr.symbmtx.cblknbr * sizeof(dague_complex64_t*));
+    memset( pastix_data->solvmatr.coeftab, 0, pastix_data->solvmatr.symbmtx.cblknbr * sizeof(dague_complex64_t*) );
 
     if ( pastix_data->sopar.transcsc != NULL ) {
-      pastix_data->solvmatr.ucoeftab = (Dague_Complex64_t **)malloc( pastix_data->solvmatr.symbmtx.cblknbr * sizeof(Dague_Complex64_t*));
-      memset( pastix_data->solvmatr.ucoeftab, 0, pastix_data->solvmatr.symbmtx.cblknbr * sizeof(Dague_Complex64_t*) );
+      pastix_data->solvmatr.ucoeftab = (dague_complex64_t **)malloc( pastix_data->solvmatr.symbmtx.cblknbr * sizeof(dague_complex64_t*));
+      memset( pastix_data->solvmatr.ucoeftab, 0, pastix_data->solvmatr.symbmtx.cblknbr * sizeof(dague_complex64_t*) );
     }
 
     {
       SymbolMatrix *symbptr = &(pastix_data->solvmatr.symbmtx);
       dague_int_t icblk;
-      /*      Dague_Complex64_t value = (Dague_Complex64_t)dspctxt->n * dspctxt->n;*/
+      /*      dague_complex64_t value = (dague_complex64_t)dspctxt->n * dspctxt->n;*/
 
       /* Allocate array of values in packed format  */
       //dspctxt->desc->cblksize[ 0 ] = 0;
@@ -281,16 +281,16 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
           dague_int_t size    = stride * width;
 
           /* Could be done in parallel */
-          pastix_data->solvmatr.coeftab[icblk] = (void *) malloc (size * sizeof(Dague_Complex64_t));
+          pastix_data->solvmatr.coeftab[icblk] = (void *) malloc (size * sizeof(dague_complex64_t));
           if ( pastix_data->sopar.transcsc != NULL ) {
-              pastix_data->solvmatr.ucoeftab[icblk] = (void *) malloc (size * sizeof(Dague_Complex64_t));
+              pastix_data->solvmatr.ucoeftab[icblk] = (void *) malloc (size * sizeof(dague_complex64_t));
           }
-/*           pastix_data->solvmatr.coeftab[icblk] = (void *) malloc (1 * sizeof(Dague_Complex64_t)); */
+/*           pastix_data->solvmatr.coeftab[icblk] = (void *) malloc (1 * sizeof(dague_complex64_t)); */
 /*           if ( pastix_data->sopar.transcsc != NULL ) { */
-/*               pastix_data->solvmatr.ucoeftab[icblk] = (void *) malloc (1 * sizeof(Dague_Complex64_t)); */
+/*               pastix_data->solvmatr.ucoeftab[icblk] = (void *) malloc (1 * sizeof(dague_complex64_t)); */
 /*           } */
 
-/*           dspctxt->desc->cblksize[ icblk+1 ] = dspctxt->desc->cblksize[ icblk ] + size * sizeof(Dague_Complex64_t); */
+/*           dspctxt->desc->cblksize[ icblk+1 ] = dspctxt->desc->cblksize[ icblk ] + size * sizeof(dague_complex64_t); */
       }
     }
 
@@ -332,14 +332,14 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
 }
 
 void sparse_matrix_zcsc2cblk(const SolverMatrix *solvmatr,
-                             Dague_Complex64_t  *transcsc, 
+                             dague_complex64_t  *transcsc, 
                              dague_int_t         itercblk)
 {
     const CscMatrix *cscmtx;
     SolverBlok *solvbloktab;
     SymbolBlok *symbbloktab;
-    Dague_Complex64_t *coeftab  = NULL;
-    Dague_Complex64_t *ucoeftab = NULL;
+    dague_complex64_t *coeftab  = NULL;
+    dague_complex64_t *ucoeftab = NULL;
     dague_int_t itercoltab;
     dague_int_t iterbloc;
     dague_int_t coefindx;
@@ -357,11 +357,11 @@ void sparse_matrix_zcsc2cblk(const SolverMatrix *solvmatr,
         fbloknum= solvmatr->symbmtx.cblktab[itercblk].bloknum;
         lbloknum= solvmatr->symbmtx.cblktab[itercblk+1].bloknum;
 
-        coeftab  = (Dague_Complex64_t*)(solvmatr->coeftab[itercblk]);
-        memset(coeftab, 0, stride * (lcolnum - fcolnum + 1) * sizeof(Dague_Complex64_t));
+        coeftab  = (dague_complex64_t*)(solvmatr->coeftab[itercblk]);
+        memset(coeftab, 0, stride * (lcolnum - fcolnum + 1) * sizeof(dague_complex64_t));
         if ( transcsc != NULL ){
-          ucoeftab = (Dague_Complex64_t*)(solvmatr->ucoeftab[itercblk]);
-          memset(ucoeftab, 0, stride * (lcolnum - fcolnum + 1) * sizeof(Dague_Complex64_t));
+          ucoeftab = (dague_complex64_t*)(solvmatr->ucoeftab[itercblk]);
+          memset(ucoeftab, 0, stride * (lcolnum - fcolnum + 1) * sizeof(dague_complex64_t));
         }
 
         for (itercoltab=0;
@@ -564,7 +564,7 @@ int sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
     SymbolMatrix       tmpsymbol;
     Order              tmporder;
     dague_int_t        forcetr  = 0;
-    Dague_Complex64_t *transcsc = NULL;
+    dague_complex64_t *transcsc = NULL;
     CscMatrix          cscmtx;
     dague_int_t cblknbr, bloknbr, cblknum, bloknum;
     FILE *stream;
@@ -577,8 +577,8 @@ int sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
                   &(dspctxt->n), 
                   &(dspctxt->colptr), 
                   &(dspctxt->rows), 
-                  (Dague_Complex64_t**)&(dspctxt->values), 
-                  (Dague_Complex64_t**)&(dspctxt->rhs), 
+                  (dague_complex64_t**)&(dspctxt->values), 
+                  (dague_complex64_t**)&(dspctxt->rhs), 
                   &(dspctxt->type), 
                   &(dspctxt->rhstype), 
                   (driver_type_t)(dspctxt->format), 
@@ -599,7 +599,7 @@ int sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
                          dspctxt->n, 
                          &(dspctxt->colptr), 
                          &(dspctxt->rows), 
-                         (Dague_Complex64_t**)&(dspctxt->values), 
+                         (dague_complex64_t**)&(dspctxt->values), 
                          NULL,                           /* Pointer for distributed case */
                          1);                             /* Number of degree of freedom  */
 
@@ -715,7 +715,7 @@ int sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
 
 void sparse_matrix_zcsc2pack(sparse_context_t *dspctxt, 
                             const CscMatrix   *cscmtx, 
-                            Dague_Complex64_t *transcsc)
+                            dague_complex64_t *transcsc)
 {   
     dague_symbol_matrix_t *symbptr = &(dspctxt->desc->symbmtx);
     dague_int_t icblk, coefnbr;
@@ -727,13 +727,13 @@ void sparse_matrix_zcsc2pack(sparse_context_t *dspctxt,
         coefnbr *= symbptr->cblktab[icblk].stride;
         
         /* Could be done in parallel */
-        symbptr->cblktab[icblk].cblkptr = (void *) malloc (coefnbr * sizeof(Dague_Complex64_t));
-        memset( symbptr->cblktab[icblk].cblkptr, 0, coefnbr * sizeof(Dague_Complex64_t));
+        symbptr->cblktab[icblk].cblkptr = (void *) malloc (coefnbr * sizeof(dague_complex64_t));
+        memset( symbptr->cblktab[icblk].cblkptr, 0, coefnbr * sizeof(dague_complex64_t));
 
         if (transcsc != NULL) 
         {
-            symbptr->cblktab[icblk].ucblkptr = (void *) malloc (coefnbr * sizeof(Dague_Complex64_t));
-            memset( symbptr->cblktab[icblk].ucblkptr, 0, coefnbr * sizeof(Dague_Complex64_t));
+            symbptr->cblktab[icblk].ucblkptr = (void *) malloc (coefnbr * sizeof(dague_complex64_t));
+            memset( symbptr->cblktab[icblk].ucblkptr, 0, coefnbr * sizeof(dague_complex64_t));
         }
 
         sparse_matrix_zcsc2cblk(dspctxt, cscmtx, transcsc, icblk);

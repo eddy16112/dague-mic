@@ -22,10 +22,10 @@ dsparse_zgetrf_sp_New(sparse_matrix_desc_t *A)
     dague_zgetrf_sp = dague_zgetrf_sp1dplus_new(A, (dague_ddesc_t *)A, NULL );
 
     dague_zgetrf_sp->p_work = (dague_memory_pool_t*)malloc(sizeof(dague_memory_pool_t));
-    dague_private_memory_init( dague_zgetrf_sp->p_work, (A->pastix_data->solvmatr).coefmax * sizeof(Dague_Complex64_t) );
+    dague_private_memory_init( dague_zgetrf_sp->p_work, (A->pastix_data->solvmatr).coefmax * sizeof(dague_complex64_t) );
 
     /* dsparse_add2arena_tile(((dague_zgetrf_Url_object_t*)dague_zgetrf)->arenas[DAGUE_zgetrf_Url_DEFAULT_ARENA],  */
-    /*                        A->mb*A->nb*sizeof(Dague_Complex64_t), */
+    /*                        A->mb*A->nb*sizeof(dague_complex64_t), */
     /*                        DAGUE_ARENA_ALIGNMENT_SSE, */
     /*                        MPI_DOUBLE_COMPLEX, A->mb); */
     

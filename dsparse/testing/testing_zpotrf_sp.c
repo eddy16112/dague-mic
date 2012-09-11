@@ -23,7 +23,7 @@ int main(int argc, char ** argv)
     int   iparam[IPARAM_SIZEOF];
     char *sparam[SPARAM_SIZEOF];
     DagDouble_t flops, gflops;
-    Dague_Complex64_t *rhssaved = NULL;
+    dague_complex64_t *rhssaved = NULL;
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
     iparam[IPARAM_NGPUS] = 0;
 #endif
@@ -66,8 +66,8 @@ int main(int argc, char ** argv)
     flops = sparse_matrix_zrdmtx( &dspctxt );
     
     if ( check ) {
-        rhssaved = malloc(dspctxt.n * sizeof(Dague_Complex64_t));
-        memcpy(rhssaved, dspctxt.rhs, dspctxt.n * sizeof(Dague_Complex64_t));
+        rhssaved = malloc(dspctxt.n * sizeof(dague_complex64_t));
+        memcpy(rhssaved, dspctxt.rhs, dspctxt.n * sizeof(dague_complex64_t));
     }
 
     /* load the GPU kernel */
@@ -86,7 +86,7 @@ int main(int argc, char ** argv)
             dague_gpu_data_register(dague,
                                     (dague_ddesc_t*)&ddescA,
                                     cblknbr, 
-                                    sizeof(Dague_Complex64_t) );
+                                    sizeof(dague_complex64_t) );
             if(loud) printf("Done\n");
         }
 #endif
@@ -158,12 +158,12 @@ int main(int argc, char ** argv)
         
         {
             int i, j, ncol = dspctxt.n;
-            Dague_Complex64_t *ax     = malloc(ncol*sizeof(Dague_Complex64_t));
-            Dague_Complex64_t *values = (Dague_Complex64_t*)dspctxt.values;
-            Dague_Complex64_t *rhs    = (Dague_Complex64_t*)dspctxt.rhs;
+            dague_complex64_t *ax     = malloc(ncol*sizeof(dague_complex64_t));
+            dague_complex64_t *values = (dague_complex64_t*)dspctxt.values;
+            dague_complex64_t *rhs    = (dague_complex64_t*)dspctxt.rhs;
             double norm1, norm2;
 
-            memset(ax, 0, ncol*sizeof(Dague_Complex64_t));
+            memset(ax, 0, ncol*sizeof(dague_complex64_t));
             for (i= 0; i < ncol; i++)
                 {
                     for (j = dspctxt.colptr[i]-1; j < dspctxt.colptr[i+1] - 1; j++)

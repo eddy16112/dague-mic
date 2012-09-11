@@ -21,7 +21,7 @@ dsparse_zcsc2cblk_New(sparse_matrix_desc_t *A)
     dague_zcsc2cblk = dague_zcsc2cblk_new(A, (dague_ddesc_t *)A );
 
     /* dsparse_add2arena_tile(((dague_zcsc2cblk_Url_object_t*)dague_zcsc2cblk)->arenas[DAGUE_zcsc2cblk_Url_DEFAULT_ARENA],  */
-    /*                        A->mb*A->nb*sizeof(Dague_Complex64_t), */
+    /*                        A->mb*A->nb*sizeof(dague_complex64_t), */
     /*                        DAGUE_ARENA_ALIGNMENT_SSE, */
     /*                        MPI_DOUBLE_COMPLEX, A->mb); */
     

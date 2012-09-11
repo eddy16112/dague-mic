@@ -50,7 +50,7 @@ static inline int sparse_matrix_size_of(enum spmtx_type type)
     case spmtx_ComplexFloat:
         return sizeof(Dague_Complex32_t);
     case spmtx_ComplexDouble:
-        return sizeof(Dague_Complex64_t);
+        return sizeof(dague_complex64_t);
     default:
         return sizeof(float);
     }

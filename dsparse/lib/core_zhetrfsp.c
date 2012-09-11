@@ -32,8 +32,8 @@
 */
 #define MAXSIZEOFBLOCKS 64 /*64 in LAPACK*/
 
-static Dague_Complex64_t zone  = 1.;
-static Dague_Complex64_t mzone = -1.;
+static dague_complex64_t zone  = 1.;
+static dague_complex64_t mzone = -1.;
 
 
 int CORE_zgemdm(int transA, int transB,
@@ -61,19 +61,19 @@ int CORE_zgemdm(int transA, int transB,
 
 */
 static void core_zhetf2sp(dague_int_t  n, 
-                          Dague_Complex64_t * A, 
+                          dague_complex64_t * A, 
                           dague_int_t  stride, 
                           dague_int_t *nbpivot, 
                           double criteria )
 {
     dague_int_t k;
-    Dague_Complex64_t *tmp, *tmp1, alpha;
+    dague_complex64_t *tmp, *tmp1, alpha;
 
     for (k=0; k<n; k++){
         tmp = A + k*(stride+1); // = A + k*stride + k = diagonal element
 
         if ( cabs(*tmp) < criteria ) {
-            (*tmp) = (Dague_Complex64_t)criteria;
+            (*tmp) = (dague_complex64_t)criteria;
             (*nbpivot)++;
         }
 
@@ -108,15 +108,15 @@ static void core_zhetf2sp(dague_int_t  n,
 
 */
 static void core_zhetrfsp(dague_int_t  n, 
-                          Dague_Complex64_t * A, 
+                          dague_complex64_t * A, 
                           dague_int_t  stride, 
                           dague_int_t *nbpivot, 
                           double       criteria,
-                          Dague_Complex64_t *work)
+                          dague_complex64_t *work)
 {
     dague_int_t k, blocknbr, blocksize, matrixsize, col;
-    Dague_Complex64_t *tmp,*tmp1,*tmp2;
-    Dague_Complex64_t alpha;
+    dague_complex64_t *tmp,*tmp1,*tmp2;
+    dague_complex64_t alpha;
 
 	/* diagonal supernode is divided into MAXSIZEOFBLOCK-by-MAXSIZEOFBLOCKS blocks */
     blocknbr = (dague_int_t) ceil( (double)n/(double)MAXSIZEOFBLOCKS );
@@ -174,13 +174,13 @@ static void core_zhetrfsp(dague_int_t  n,
  * Factorization of diagonal block 
  * entry point from DAGue: to factor c-th supernodal column
  */
-void core_zhetrfsp1d(Dague_Complex64_t *L,
-                     Dague_Complex64_t *work,
+void core_zhetrfsp1d(dague_complex64_t *L,
+                     dague_complex64_t *work,
                      SolverMatrix *datacode, 
                      dague_int_t c,
                      double criteria)
 {
-    Dague_Complex64_t *fL;
+    dague_complex64_t *fL;
     dague_int_t    dima, dimb, stride;
     dague_int_t    fblknum, lblknum;
     dague_int_t    nbpivot = 0; /* TODO: return to higher level */
@@ -217,7 +217,7 @@ void core_zhetrfsp1d(Dague_Complex64_t *L,
         
         for (dague_int_t k=0; k<dima; k++)
         {
-          Dague_Complex64_t alpha;
+          dague_complex64_t alpha;
           alpha = 1. / L[k+k*stride];
           cblas_zscal(dimb, CBLAS_SADDR(alpha), &(fL[k*stride]), 1);
         }
@@ -228,13 +228,13 @@ void core_zhetrfsp1d(Dague_Complex64_t *L,
 void core_zhetrfsp1d_gemm(dague_int_t cblknum,
                           dague_int_t bloknum,
                           dague_int_t fcblknum,
-                          Dague_Complex64_t *L,
-                          Dague_Complex64_t *C,
-                          Dague_Complex64_t *work1,
-                          Dague_Complex64_t *work2,
+                          dague_complex64_t *L,
+                          dague_complex64_t *C,
+                          dague_complex64_t *work1,
+                          dague_complex64_t *work2,
                           SolverMatrix *datacode)
 {
-    Dague_Complex64_t *Aik, *Aij;
+    dague_complex64_t *Aik, *Aij;
     dague_int_t fblknum, lblknum, frownum;
     dague_int_t stride, stridefc, indblok;
     dague_int_t b, j;

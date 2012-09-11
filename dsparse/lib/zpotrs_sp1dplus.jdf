@@ -35,7 +35,7 @@ cblknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.c
 bloknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.bloknbr - 2" hidden=on]
 /* Number of extra diagonal blocks */
 browsize [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.bloknbr - descA->pastix_data->solvmatr.symbmtx.cblknbr - 1" hidden=on] 
-p_work   [type = "dague_memory_pool_t *" size = "datacode->coefmax * sizeof(Dague_Complex64_t)"]
+p_work   [type = "dague_memory_pool_t *" size = "datacode->coefmax * sizeof(dague_complex64_t)"]
 
 /**************************************************
  *                TRSM_FORWARD                    *
@@ -109,9 +109,9 @@ BODY
 
           DRYRUN(
                  /* shifting to a off-diagonal block within this column */
-                 Dague_Complex64_t *Aik = ((Dague_Complex64_t*)A) + SOLV_COEFIND(k);
+                 dague_complex64_t *Aik = ((dague_complex64_t*)A) + SOLV_COEFIND(k);
                  /* shifting to a sub-block within the block */
-                 Dague_Complex64_t *Cik = ((Dague_Complex64_t*)C) + (SYMB_FROWNUM( k ) - SYMB_FCOLNUM(fcblk)); 
+                 dague_complex64_t *Cik = ((dague_complex64_t*)C) + (SYMB_FROWNUM( k ) - SYMB_FCOLNUM(fcblk)); 
 
                  int tempm = SYMB_LROWNUM(k)-SYMB_FROWNUM(k)+1;
                  int tempn = UPDOWN_SM2XNBR;
@@ -261,8 +261,8 @@ RW    C <- ( bloknum == lastblok-1 ) ?  B( cblk )               : C GEMM_BACKWAR
 BODY
          
     DRYRUN(
-           Dague_Complex64_t *Aik = ((Dague_Complex64_t*)A) + SOLV_COEFIND(bloknum);
-           Dague_Complex64_t *Bik = ((Dague_Complex64_t*)B) + (SYMB_FROWNUM( bloknum ) - SYMB_FCOLNUM(fcblk));
+           dague_complex64_t *Aik = ((dague_complex64_t*)A) + SOLV_COEFIND(bloknum);
+           dague_complex64_t *Bik = ((dague_complex64_t*)B) + (SYMB_FROWNUM( bloknum ) - SYMB_FCOLNUM(fcblk));
                                          
            int tempm = SYMB_LCOLNUM(cblk)-SYMB_FCOLNUM(cblk)+1;
            int tempn = UPDOWN_SM2XNBR;

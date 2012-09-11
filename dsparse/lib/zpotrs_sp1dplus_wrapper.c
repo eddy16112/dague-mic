@@ -23,10 +23,10 @@ dsparse_zpotrs_sp_New(sparse_matrix_desc_t *A, sparse_vector_desc_t *B)
                                                 B, (dague_ddesc_t *)B, NULL );
 
     dague_zpotrs_sp->p_work = (dague_memory_pool_t*)malloc(sizeof(dague_memory_pool_t));
-    dague_private_memory_init( dague_zpotrs_sp->p_work, (A->pastix_data->solvmatr).coefmax * sizeof(Dague_Complex64_t) );
+    dague_private_memory_init( dague_zpotrs_sp->p_work, (A->pastix_data->solvmatr).coefmax * sizeof(dague_complex64_t) );
 
     /* dsparse_add2arena_tile(((dague_zpotrs_Url_object_t*)dague_zpotrs)->arenas[DAGUE_zpotrs_Url_DEFAULT_ARENA],  */
-    /*                        A->mb*A->nb*sizeof(Dague_Complex64_t), */
+    /*                        A->mb*A->nb*sizeof(dague_complex64_t), */
     /*                        DAGUE_ARENA_ALIGNMENT_SSE, */
     /*                        MPI_DOUBLE_COMPLEX, A->mb); */
     

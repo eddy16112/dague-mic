@@ -8,8 +8,8 @@
 #ifndef _CORE_Z_H_
 #define _CORE_Z_H_
 
-void core_zgetrfsp1d(Dague_Complex64_t *L,
-                     Dague_Complex64_t *U,
+void core_zgetrfsp1d(dague_complex64_t *L,
+                     dague_complex64_t *U,
                      SolverMatrix *datacode,
                      dague_int_t c,
                      double criteria);
@@ -17,16 +17,16 @@ void core_zgetrfsp1d(Dague_Complex64_t *L,
 void core_zgetrfsp1d_gemm(dague_int_t cblknum,
                           dague_int_t bloknum,
                           dague_int_t fcblknum,
-                          Dague_Complex64_t *L,
-                          Dague_Complex64_t *U,
-                          Dague_Complex64_t *Cl,
-                          Dague_Complex64_t *Cu,
-                          Dague_Complex64_t *work,
+                          dague_complex64_t *L,
+                          dague_complex64_t *U,
+                          dague_complex64_t *Cl,
+                          dague_complex64_t *Cu,
+                          dague_complex64_t *work,
                           SolverMatrix *datacode);
 
 
-void core_zhetrfsp1d(Dague_Complex64_t *L,
-                     Dague_Complex64_t *work,
+void core_zhetrfsp1d(dague_complex64_t *L,
+                     dague_complex64_t *work,
                      SolverMatrix *datacode,
                      dague_int_t c,
                      double criteria);
@@ -34,13 +34,13 @@ void core_zhetrfsp1d(Dague_Complex64_t *L,
 void core_zhetrfsp1d_gemm(dague_int_t cblknum,
                           dague_int_t bloknum,
                           dague_int_t fcblknum,
-                          Dague_Complex64_t *L,
-                          Dague_Complex64_t *C,
-                          Dague_Complex64_t *work1,
-                          Dague_Complex64_t *work2,
+                          dague_complex64_t *L,
+                          dague_complex64_t *C,
+                          dague_complex64_t *work1,
+                          dague_complex64_t *work2,
                           SolverMatrix *datacode);
 
-void core_zpotrfsp1d(Dague_Complex64_t *L,
+void core_zpotrfsp1d(dague_complex64_t *L,
                      SolverMatrix *datacode,
                      dague_int_t c,
                      double criteria);
@@ -48,13 +48,13 @@ void core_zpotrfsp1d(Dague_Complex64_t *L,
 void core_zpotrfsp1d_gemm(dague_int_t cblknum,
                           dague_int_t bloknum,
                           dague_int_t fcblknum,
-                          Dague_Complex64_t *L,
-                          Dague_Complex64_t *C,
-                          Dague_Complex64_t *work,
+                          dague_complex64_t *L,
+                          dague_complex64_t *C,
+                          dague_complex64_t *work,
                           SolverMatrix *datacode);
 
-void core_zsytrfsp1d(Dague_Complex64_t *L,
-                     Dague_Complex64_t *work,
+void core_zsytrfsp1d(dague_complex64_t *L,
+                     dague_complex64_t *work,
                      SolverMatrix *datacode,
                      dague_int_t c,
                      double criteria);
@@ -62,10 +62,10 @@ void core_zsytrfsp1d(Dague_Complex64_t *L,
 void core_zsytrfsp1d_gemm(dague_int_t cblknum,
                           dague_int_t bloknum,
                           dague_int_t fcblknum,
-                          Dague_Complex64_t *L,
-                          Dague_Complex64_t *C,
-                          Dague_Complex64_t *work1,
-                          Dague_Complex64_t *work2,
+                          dague_complex64_t *L,
+                          dague_complex64_t *C,
+                          dague_complex64_t *work1,
+                          dague_complex64_t *work2,
                           SolverMatrix *datacode);
 
 #endif /* _CORE_Z_H_ */

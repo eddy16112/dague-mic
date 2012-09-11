@@ -28,8 +28,8 @@ A        [type = "dague_ddesc_t *"]
 datacode [type = "SolverMatrix*" default="&(descA->pastix_data->solvmatr)" hidden=on]
 cblknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.cblknbr - 1" hidden=on] /* index of last diagonal block */
 bloknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.bloknbr - 2" hidden=on] /* index of last block (gemm is called on diagonal, but nothing is done), -2 to avoid last diagonal block */
-p_work1  [type = "dague_memory_pool_t *" size = "datacode->coefmax * sizeof(Dague_Complex64_t)"]
-p_work2  [type = "dague_memory_pool_t *" size = "datacode->coefmax * sizeof(Dague_Complex64_t)"]
+p_work1  [type = "dague_memory_pool_t *" size = "datacode->coefmax * sizeof(dague_complex64_t)"]
+p_work2  [type = "dague_memory_pool_t *" size = "datacode->coefmax * sizeof(dague_complex64_t)"]
 
 /**************************************************
  *                HETRF_TRSM                      *
@@ -56,7 +56,7 @@ RW A <- ( browk == browk1 ) ? A(k) : C GEMM( lastbrow )
 ; inline_c %{ return - TASK_PRIONUM(k); %}
 
 BODY
-      Dague_Complex64_t *work = (Dague_Complex64_t *)dague_private_memory_pop( p_work1 );
+      dague_complex64_t *work = (dague_complex64_t *)dague_private_memory_pop( p_work1 );
 
 /*       if ( browk == browk1 ) { */
 /*           fprintf(stderr, "Access %lu %lu\n", descA->cblksize[k], descA->cblksize[k+1]-descA->cblksize[k] ); */
@@ -107,8 +107,8 @@ BODY
 /*               fprintf(stderr, "Access %lu %lu\n", descA->cblksize[fcblk], descA->cblksize[fcblk+1]-descA->cblksize[fcblk] ); */
 /*           } */
 
-          Dague_Complex64_t *work1 = (Dague_Complex64_t *)dague_private_memory_pop( p_work1 );
-          Dague_Complex64_t *work2 = (Dague_Complex64_t *)dague_private_memory_pop( p_work2 );
+          dague_complex64_t *work1 = (dague_complex64_t *)dague_private_memory_pop( p_work1 );
+          dague_complex64_t *work2 = (dague_complex64_t *)dague_private_memory_pop( p_work2 );
           
           DRYRUN(
                  core_zsytrfsp1d_gemm(cblk, k, fcblk, A, C, work1, work2, datacode);

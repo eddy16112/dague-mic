@@ -32,8 +32,8 @@
 */
 #define MAXSIZEOFBLOCKS 64 /*64 in LAPACK*/
 
-static Dague_Complex64_t zone  = 1.;
-static Dague_Complex64_t mzone = -1.;
+static dague_complex64_t zone  = 1.;
+static dague_complex64_t mzone = -1.;
 
 void CORE_zgetro(int m, int n, 
                  PLASMA_Complex64_t *A, int lda,
@@ -65,13 +65,13 @@ void CORE_zaxpyt(int m, int n, PLASMA_Complex64_t alpha,
 */
 static void core_zgetf2sp(dague_int_t  m, 
                           dague_int_t  n, 
-                          Dague_Complex64_t * A, 
+                          dague_complex64_t * A, 
                           dague_int_t  stride, 
                           dague_int_t *nbpivot, 
                           double criteria )
 {
     dague_int_t k, minMN;
-    Dague_Complex64_t *Akk, *Aik, alpha;
+    dague_complex64_t *Akk, *Aik, alpha;
 
     minMN = min( m, n );
 
@@ -80,7 +80,7 @@ static void core_zgetf2sp(dague_int_t  m,
         Aik = Akk + 1;
 
         if ( cabs(*Akk) < criteria ) {
-            (*Akk) = (Dague_Complex64_t)criteria;
+            (*Akk) = (dague_complex64_t)criteria;
             (*nbpivot)++;
 	}
 
@@ -116,13 +116,13 @@ static void core_zgetf2sp(dague_int_t  m,
      critere - Pivoting threshold.
 */
 static void core_zgetrfsp(dague_int_t  n, 
-                          Dague_Complex64_t *A, 
+                          dague_complex64_t *A, 
                           dague_int_t  stride, 
                           dague_int_t *nbpivot, 
                           double       criteria)
 {
     dague_int_t k, blocknbr, blocksize, matrixsize, tempm;
-    Dague_Complex64_t *Akk, *Lik, *Ukj, *Aij;
+    dague_complex64_t *Akk, *Lik, *Ukj, *Aij;
 
     blocknbr = (dague_int_t) ceil( (double)n/(double)MAXSIZEOFBLOCKS );
 
@@ -167,13 +167,13 @@ static void core_zgetrfsp(dague_int_t  n,
 /*
  * Factorization of diagonal block 
  */
-void core_zgetrfsp1d(Dague_Complex64_t *L,
-                     Dague_Complex64_t *U,
+void core_zgetrfsp1d(dague_complex64_t *L,
+                     dague_complex64_t *U,
                      SolverMatrix *datacode, 
                      dague_int_t c,
                      double criteria)
 {
-    Dague_Complex64_t *fL, *fU;
+    dague_complex64_t *fL, *fU;
     dague_int_t    dima, dimb, stride;
     dague_int_t    fblknum, lblknum;
     dague_int_t    nbpivot = 0; /* TODO: return to higher level */
@@ -224,15 +224,15 @@ void core_zgetrfsp1d(Dague_Complex64_t *L,
 void core_zgetrfsp1d_gemm(dague_int_t cblknum,
                           dague_int_t bloknum,
                           dague_int_t fcblknum,
-                          Dague_Complex64_t *L,
-                          Dague_Complex64_t *U,
-                          Dague_Complex64_t *Cl,
-                          Dague_Complex64_t *Cu,
-                          Dague_Complex64_t *work,
+                          dague_complex64_t *L,
+                          dague_complex64_t *U,
+                          dague_complex64_t *Cl,
+                          dague_complex64_t *Cu,
+                          dague_complex64_t *work,
                           SolverMatrix *datacode)
 {
-    Dague_Complex64_t *Aik, *Akj, *Aij, *C;
-    Dague_Complex64_t *wtmp;
+    dague_complex64_t *Aik, *Akj, *Aij, *C;
+    dague_complex64_t *wtmp;
     dague_int_t fblknum, lblknum, frownum;
     dague_int_t stride, stridefc, indblok;
     dague_int_t b, j;

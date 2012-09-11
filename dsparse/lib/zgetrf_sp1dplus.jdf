@@ -28,7 +28,7 @@ A        [type = "dague_ddesc_t *"]
 datacode [type = "SolverMatrix*" default="&(descA->pastix_data->solvmatr)" hidden=on]
 cblknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.cblknbr - 1" hidden=on] 
 bloknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.bloknbr - 2" hidden=on] /* -2 to avoid last diagonal block */
-p_work   [type = "dague_memory_pool_t *" size = "datacode->coefmax * sizeof(Dague_Complex64_t)"]
+p_work   [type = "dague_memory_pool_t *" size = "datacode->coefmax * sizeof(dague_complex64_t)"]
 
 /**************************************************
  *                GETRF_TRSM                      *
@@ -55,14 +55,14 @@ RW A <- ( browk == browk1 ) ? A(k) : C GEMM( lastbrow )
 ; inline_c %{ return - TASK_PRIONUM(k); %}
 
 BODY
-      Dague_Complex64_t *U;
+      dague_complex64_t *U;
 
 /*       if ( browk == browk1 ) { */
 /*           fprintf(stderr, "Access %lu %lu\n", descA->cblksize[k], descA->cblksize[k+1]-descA->cblksize[k] ); */
 /*       } */
 
       DRYRUN(
-             U  = (Dague_Complex64_t*)datacode->ucoeftab[k];
+             U  = (dague_complex64_t*)datacode->ucoeftab[k];
              core_zgetrfsp1d(A, U, datacode, k, descA->pastix_data->sopar.espilondiag );
 	     );
       printlog(
@@ -104,11 +104,11 @@ BODY
 /*               fprintf(stderr, "Access %lu %lu\n", descA->cblksize[fcblk], descA->cblksize[fcblk+1]-descA->cblksize[fcblk] ); */
 /*           } */
 
-          Dague_Complex64_t *work = (Dague_Complex64_t *)dague_private_memory_pop( p_work );
-          Dague_Complex64_t *U, *Cu;
+          dague_complex64_t *work = (dague_complex64_t *)dague_private_memory_pop( p_work );
+          dague_complex64_t *U, *Cu;
           
-          U  = (Dague_Complex64_t*)datacode->ucoeftab[cblk];
-          Cu = (Dague_Complex64_t*)datacode->ucoeftab[fcblk];
+          U  = (dague_complex64_t*)datacode->ucoeftab[cblk];
+          Cu = (dague_complex64_t*)datacode->ucoeftab[fcblk];
           
           DRYRUN(
                  core_zgetrfsp1d_gemm(cblk, k, fcblk, A, U, C, Cu, work, datacode);
