@@ -88,6 +88,7 @@ typedef struct sparse_matrix_desc_t {
     CUdeviceptr          *d_blocktab;
 #endif
     pastix_data_t        *pastix_data;
+    //    size_t *cblksize;
 } sparse_matrix_desc_t;
 
 typedef struct sparse_vector_desc_t {

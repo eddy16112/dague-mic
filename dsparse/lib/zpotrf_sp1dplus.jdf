@@ -60,10 +60,16 @@ RW A <- ( browk == browk1 ) ? A(k) : C GEMM( lastbrow )
      -> A GEMM(firstblok+1..lastblok-1)
      -> A(k)
 
+; inline_c %{ return - TASK_PRIONUM(k); %}
+
 BODY
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
       dague_gpu_update_data_version( &dague_gpu_map, KERNEL_KEY( k ) );
 #endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
+
+/*       if ( browk == browk1 ) { */
+/*           fprintf(stderr, "Access %lu %lu\n", descA->cblksize[k], descA->cblksize[k+1]-descA->cblksize[k] ); */
+/*       } */
 
       DRYRUN(
              core_zpotrfsp1d(A, datacode, k, descA->pastix_data->sopar.espilondiag );
@@ -100,8 +106,15 @@ RW    C <- ( prev == 0 ) ? A(fcblk) : C GEMM( prev )   // if off-diagonal, then 
         -> ((!phony) && (next == 0)) ? A POTRF_TRSM( fcblk ) // if diagonal in the next column, then do trsm
         -> ((!phony) && (next != 0)) ? C GEMM( next )        // if off-diagonal in the next column, then do gemm
 
+; inline_c %{ return - TASK_PRIONUM(fcblk); %}
+
 BODY
       if (!phony) {
+
+/*           if ( prev == 0 ) { */
+/*               fprintf(stderr, "Access %lu %lu\n", descA->cblksize[fcblk], descA->cblksize[fcblk+1]-descA->cblksize[fcblk] ); */
+/*           } */
+
 #if defined(HAVE_CUDA) && defined(PRECISION_s)
           printlog(
                    "thread %d compute_1dgemm START ( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
