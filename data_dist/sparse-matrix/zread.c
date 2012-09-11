@@ -70,15 +70,15 @@ void z_pastix(pastix_data_t **pastix_data,
               DagDouble_t *dparm);
 
 int z_pastix_checkMatrix(MPI_Comm pastix_comm, 
-                         int verb, 
-                         int flagsym, 
-                         int flagcor,
+                         dague_int_t verb, 
+                         dague_int_t flagsym, 
+                         dague_int_t flagcor,
                          dague_int_t n, 
                          dague_int_t **colptr, 
                          dague_int_t **row, 
                          Dague_Complex64_t **avals, 
                          dague_int_t **loc2glob, 
-                         int dof);
+                         dague_int_t dof);
 
 #if 0
 #define DAGUE_FOPEN(stream, filename, mode)					\
@@ -254,6 +254,9 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
         pastix_data->cscInternFilled = API_YES;
       }
 
+    // cblksize is used for the graph generated for BigDAT/Stream proposal
+    //dspctxt->desc->cblksize = (size_t*)malloc( (pastix_data->solvmatr.symbmtx.cblknbr+1) * sizeof(size_t));
+
     pastix_data->solvmatr.coeftab = (Dague_Complex64_t **)malloc( pastix_data->solvmatr.symbmtx.cblknbr * sizeof(Dague_Complex64_t*));
     memset( pastix_data->solvmatr.coeftab, 0, pastix_data->solvmatr.symbmtx.cblknbr * sizeof(Dague_Complex64_t*) );
 
@@ -268,6 +271,7 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
       /*      Dague_Complex64_t value = (Dague_Complex64_t)dspctxt->n * dspctxt->n;*/
 
       /* Allocate array of values in packed format  */
+      //dspctxt->desc->cblksize[ 0 ] = 0;
       for (icblk=0; icblk < symbptr->cblknbr; icblk++)
       {
           dague_int_t fcolnum = pastix_data->solvmatr.symbmtx.cblktab[icblk].fcolnum;
@@ -281,6 +285,12 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
           if ( pastix_data->sopar.transcsc != NULL ) {
               pastix_data->solvmatr.ucoeftab[icblk] = (void *) malloc (size * sizeof(Dague_Complex64_t));
           }
+/*           pastix_data->solvmatr.coeftab[icblk] = (void *) malloc (1 * sizeof(Dague_Complex64_t)); */
+/*           if ( pastix_data->sopar.transcsc != NULL ) { */
+/*               pastix_data->solvmatr.ucoeftab[icblk] = (void *) malloc (1 * sizeof(Dague_Complex64_t)); */
+/*           } */
+
+/*           dspctxt->desc->cblksize[ icblk+1 ] = dspctxt->desc->cblksize[ icblk ] + size * sizeof(Dague_Complex64_t); */
       }
     }
 
@@ -300,7 +310,7 @@ DagDouble_t sparse_matrix_zrdmtx( sparse_context_t *dspctxt )
           {
             if (pastix_data->sopar.fakefact == 1)
               {
-                printf("WARNING: Fake factorization means absolute criteria: %e\n", criteria );  
+                printf("WARNING: Fake factorization means absolute criteria: %e\n", criteria );
               }
             else
               {
