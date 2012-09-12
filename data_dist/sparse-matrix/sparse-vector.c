@@ -51,6 +51,12 @@ uint32_t sparse_vector_rank_of(struct dague_ddesc *mat, ... )
     return 0;
 }
 
+int32_t sparse_vector_vpid_of(struct dague_ddesc *mat, ... )
+{
+    (void)mat;
+    return 0;
+}
+
 void *sparse_vector_data_of(struct dague_ddesc *mat, ... )
 {
     va_list ap;
@@ -130,6 +136,7 @@ void sparse_vector_init( sparse_vector_desc_t *desc,
     desc->super.cores   = cores;
     desc->super.myrank  = myrank;
     desc->super.rank_of = sparse_vector_rank_of;
+    desc->super.vpid_of = sparse_vector_vpid_of;
     desc->super.data_of = sparse_vector_data_of;
 #ifdef DAGUE_PROF_TRACE
     desc->super.data_key      = sparse_vector_data_key;
