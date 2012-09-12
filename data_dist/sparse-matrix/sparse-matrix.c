@@ -189,12 +189,12 @@ void sparse_matrix_init( sparse_matrix_desc_t *desc,
     desc->typesze     = sparse_matrix_size_of( mtype );
     desc->pastix_data = NULL;
 
-    DEBUG(("sparse_matrix_init: desc = %p, mtype = %zu, \n"
-           "\tnodes = %u, cores = %u, myrank = %u\n",
-           desc, (size_t) desc->super.mtype, 
-           desc->super.super.nodes, 
-           desc->super.super.cores,
-           desc->super.super.myrank));
+/*     DEBUG(("sparse_matrix_init: desc = %p, mtype = %zu, \n" */
+/*            "\tnodes = %u, cores = %u, myrank = %u\n", */
+/*            desc, (size_t) desc->super.mtype,  */
+/*            desc->super.super.nodes,  */
+/*            desc->super.super.cores, */
+/*            desc->super.super.myrank)); */
 }
 
 void sparse_matrix_destroy( sparse_matrix_desc_t *desc )

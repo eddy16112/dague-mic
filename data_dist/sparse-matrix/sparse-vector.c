@@ -37,7 +37,7 @@ static int sparse_vector_size_of(enum spmtx_type type)
     case spmtx_RealDouble:
         return sizeof(double);
     case spmtx_ComplexFloat:
-        return sizeof(Dague_Complex32_t);
+        return sizeof(dague_complex32_t);
     case spmtx_ComplexDouble:
         return sizeof(dague_complex64_t);
     default:
@@ -142,12 +142,12 @@ void sparse_vector_init( sparse_vector_desc_t *desc,
     desc->typesze     = sparse_vector_size_of( mtype );
     desc->pastix_data = NULL;
 
-    DEBUG(("sparse_vector_init: desc = %p, mtype = %zu, \n"
-           "\tnodes = %u, cores = %u, myrank = %u\n",
-           desc, (size_t) desc->super.mtype, 
-           desc->super.super.nodes, 
-           desc->super.super.cores,
-           desc->super.super.myrank));
+/*     DEBUG(("sparse_vector_init: desc = %p, mtype = %zu, \n" */
+/*            "\tnodes = %u, cores = %u, myrank = %u\n", */
+/*            desc, (size_t) desc->super.mtype,  */
+/*            desc->super.super.nodes,  */
+/*            desc->super.super.cores, */
+/*            desc->super.super.myrank)); */
 }
 
 void sparse_vector_destroy( sparse_vector_desc_t *desc )
