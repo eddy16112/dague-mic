@@ -33,6 +33,7 @@
 
 #include "dague_prof_grapher.h"
 #include "schedulers.h"
+#include "vpmap.h"
 
 /*******************************
  * globals and argv set values *
@@ -66,9 +67,6 @@ void print_usage(void)
             "                       PBQ -- Priority Based Local Flat Queues\n"
             "                       LTQ -- Local Tree Queues\n"
             "\n"
-            " -k --prio-switch  : activate prioritized DAG k steps before the end (default: 0)\n"
-            "                   : with no argument, prioritized DAG from the start\n"
-            "\n"
             "Matrix format:\n"
             " -0 --rsa          :  RSA format (use Fortran)\n" 
             " -1 --chb          :  CHB format\n"
@@ -94,10 +92,37 @@ void print_usage(void)
             "\n"
             " -v --verbose      : extra verbose output\n"
             " -h --help         : this message\n"
-           );
+            "\n"
+            );
+    fprintf(stderr,
+            " -V --vpmap        : select the virtual process map (default: flat map)\n"
+            "                     Accepted values:\n"
+            "                       flat  -- Flat Map: all cores defined with -c are under the same virtual process\n"
+            "                       hwloc -- Hardware Locality based: threads up to -c are created and threads\n"
+            "                                bound on cores that are under the same socket are also under the same\n"
+            "                                virtual process\n"
+            "                       rr:n:p:c -- create n virtual processes per real process, each virtual process with p threads\n"
+            "                                   bound in a round-robin fashion on the number of cores c (overloads the -c flag)\n"
+            "                       file:filename -- uses filename to load the virtual process map. Each entry details a virtual\n"
+            "                                        process mapping using the semantic  [mpi_rank]:nb_thread:binding  with:\n"
+            "                                        - mpi_rank : the mpi process rank (empty if not relevant)\n"
+            "                                        - nb_thread : the number of threads under the virtual process\n"
+            "                                                      (overloads the -c flag)\n"
+            "                                        - binding : a set of cores for the thread binding. Accepted values are:\n"
+            "                                          -- a core list          (exp: 1,3,5-6)\n"
+            "                                          -- a hexadecimal mask   (exp: 0xff012)\n"
+            "                                          -- a binding range expression: [start];[end];[step] \n"
+            "                                             wich defines a round-robin one thread per core distribution from start\n"
+            "                                             (default 0) to end (default physical core number) by step (default 1)\n"
+            "\n"
+            "\n"
+            "ENVIRONMENT\n"
+            "  [SDCZ]<FUNCTION> : defines the priority limit of a given function for a given precision\n"
+            "\n");
+            dague_usage();
 }
 
-#define GETOPT_STRING "c:o:g::p:P:q:Q:k::n:N:o:O:xv::h0:1:2:3:4:5:6:7:8:9:f:"
+#define GETOPT_STRING "c:o:g::p:P:q:Q::n:N:o:O:xv::h0:1:2:3:4:5:6:7:8:9:f:V:"
 
 #if defined(HAVE_GETOPT_LONG)
 static struct option long_options[] =
@@ -108,8 +133,10 @@ static struct option long_options[] =
     {"scheduler",   required_argument,  0, 'o'},
     {"gpus",        required_argument,  0, 'g'},
     {"g",           required_argument,  0, 'g'},
-    {"prio-switch", optional_argument,  0, 'k'},
-    {"k",           optional_argument,  0, 'k'},
+
+    // TODO:: Should be moved with the other dague-specific options
+    {"V",           required_argument,  0, 'V'},
+    {"vpmap",       required_argument,  0, 'V'},
 
     {"0",           required_argument,  0, '0'},
     {"rsa",         required_argument,  0, '0'},
@@ -161,7 +188,6 @@ static void parse_arguments(int argc, char** argv, int* iparam, char** sparam)
 {
     int opt = 0;
     int c;
-
     do
     {
 #if defined(HAVE_GETOPT_LONG)
@@ -172,7 +198,7 @@ static void parse_arguments(int argc, char** argv, int* iparam, char** sparam)
         (void) opt;
 #endif  /* defined(HAVE_GETOPT_LONG) */
 
- //       printf("%c: %s = %s\n", c, long_options[opt].name, optarg);
+        //       printf("%c: %s = %s\n", c, long_options[opt].name, optarg);
         switch(c)
         {
             case 'c': iparam[IPARAM_NCORES] = atoi(optarg); break;
@@ -232,6 +258,34 @@ static void parse_arguments(int argc, char** argv, int* iparam, char** sparam)
                 if(optarg)  iparam[IPARAM_VERBOSE] = atoi(optarg);
                 else        iparam[IPARAM_VERBOSE] = 2;
                 break;
+
+
+            case 'V':
+
+                if( !strncmp(optarg, "display", 7 )) {
+                    vpmap_display_map(stderr);
+                } else {
+                    /* Change the vpmap choice: first cancel the previous one */
+                    vpmap_fini();
+                    if( !strncmp(optarg, "flat", 4) ) {
+                        /* default case (handled in dague_init) */
+                    } else if( !strncmp(optarg, "hwloc", 5) ) {
+                        vpmap_init_from_hardware_affinity();
+                    } else if( !strncmp(optarg, "file:", 5) ) {
+                        vpmap_init_from_file(optarg + 5);
+                    } else if( !strncmp(optarg, "rr:", 3) ) {
+                        int n, p, co;
+                        sscanf(optarg, "rr:%d:%d:%d", &n, &p, &co);
+                        vpmap_init_from_parameters(n, p, co);
+                        iparam[IPARAM_NCORES] = co;
+                    } else {
+                        fprintf(stderr, "invalid VPMAP choice (-V argument): %s\n", optarg);
+                        print_usage();
+                        exit(1);
+                    }
+                }
+                break;
+
             case 'h': print_usage(); exit(0);
 
             case '?': /* getopt_long already printed an error message. */
@@ -240,6 +294,7 @@ static void parse_arguments(int argc, char** argv, int* iparam, char** sparam)
                 break; /* Assume anything else is dague/mpi stuff */
         }
     } while(-1 != c);
+
     int verbose = iparam[IPARAM_RANK] ? 0 : iparam[IPARAM_VERBOSE];
     
     if(iparam[IPARAM_NGPUS] < 0) iparam[IPARAM_NGPUS] = 0;
@@ -326,13 +381,17 @@ dague_context_t* setup_dague(int argc, char **argv, int *iparam, char **sparam)
      update it with the default parameter computed in dague_init. */
     if(iparam[IPARAM_NCORES] <= 0)
     {
-        iparam[IPARAM_NCORES] = ctx->nb_cores;
+        int p, nb_total_comp_threads = 0;
+        for(p = 0; p < ctx->nb_vp; p++) {
+            nb_total_comp_threads += ctx->virtual_processes[p]->nb_cores;
+        }
+        iparam[IPARAM_NCORES] = nb_total_comp_threads;
     }
 
 #if defined(HAVE_CUDA)
     if(iparam[IPARAM_NGPUS] > 0)
     {
-        if(0 != dague_gpu_init(&iparam[IPARAM_NGPUS], 0))
+        if(0 != dague_gpu_init(ctx, &iparam[IPARAM_NGPUS], 0))
         {
             fprintf(stderr, "xxx DAGuE is unable to initialize the CUDA environment.\n");
             exit(3);
