@@ -48,7 +48,7 @@ dsparse_zsytrf_sp_Destruct( dague_object_t *o )
     dague_private_memory_fini( dague_zsytrf_sp->p_work2 );
     free( dague_zsytrf_sp->p_work2 );
 
-    dague_zsytrf_sp1dplus_destroy( dague_zsytrf_sp );
+    DAGUE_INTERNAL_OBJECT_DESTRUCT(o);
 }
 
 int dsparse_zsytrf_sp( dague_context_t *dague, sparse_matrix_desc_t *A) 

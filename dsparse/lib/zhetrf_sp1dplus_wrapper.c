@@ -48,7 +48,7 @@ dsparse_zhetrf_sp_Destruct( dague_object_t *o )
     dague_private_memory_fini( dague_zhetrf_sp->p_work2 );
     free( dague_zhetrf_sp->p_work2 );
 
-    dague_zhetrf_sp1dplus_destroy( dague_zhetrf_sp );
+    DAGUE_INTERNAL_OBJECT_DESTRUCT(o);
 }
 
 int dsparse_zhetrf_sp( dague_context_t *dague, sparse_matrix_desc_t *A) 

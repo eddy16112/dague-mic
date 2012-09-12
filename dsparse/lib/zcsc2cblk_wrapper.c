@@ -36,7 +36,7 @@ dsparse_zcsc2cblk_Destruct( dague_object_t *o )
 
     /*dsparse_datatype_undefine_type( &(opotrf->arenas[DAGUE_zcsc2cblk_Url_DEFAULT_ARENA]->opaque_dtt) );*/
 
-    dague_zcsc2cblk_destroy( dague_zcsc2cblk );
+    DAGUE_INTERNAL_OBJECT_DESTRUCT(o);
 }
 
 int dsparse_zcsc2cblk( dague_context_t *dague, sparse_matrix_desc_t *A) 
