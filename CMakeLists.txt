@@ -61,11 +61,11 @@ option(DAGUE_SCHED_REPORT_STATISTICS
   "Display statistics on the scheduling at the end of the run")
 
 mark_as_advanced(DAGUE_SCHED_CACHE_AWARE)
-cmake_dependent_option(DAGUE_SCHED_CACHE_AWARE 
+cmake_dependent_option(DAGUE_SCHED_CACHE_AWARE
   "Activate the cache awareness support (requires HWLOC)" OFF "HAVE_HWLOC" OFF)
 
 mark_as_advanced(DAGUE_SCHED_DEPS_MASK)
-option(DAGUE_SCHED_DEPS_MASK 
+option(DAGUE_SCHED_DEPS_MASK
   "Use a complete bitmask to track the dependencies, instead of a counter -- increase the debugging features, but limits to a maximum of 30 input dependencies" ON)
 
 ### Distributed engine parameters
@@ -79,7 +79,7 @@ option(DAGUE_DIST_THREAD
   "Use an extra thread to progress the data movements" ON)
 option(DAGUE_DIST_PRIORITIES
   "Favor the communications that unlock the most prioritary tasks" ON)
-option(DAGUE_DIST_COLLECTIVES 
+option(DAGUE_DIST_COLLECTIVES
   "Use optimized asynchronous operations where collective communication pattern is detected" ON)
 set   (DAGUE_DIST_EAGER_LIMIT 0 CACHE STRING
   "Use the eager protocol (no flow control) for messages smaller than the limit in KB")
@@ -223,7 +223,7 @@ ENDIF (_mach_ppc)
 #
 # Fix the building system for 32 or 64 bits.
 #
-# On MAC OS X there is a easy solution, by setting the 
+# On MAC OS X there is a easy solution, by setting the
 # CMAKE_OSX_ARCHITECTURES to a subset of the following values:
 # ppc;ppc64;i386;x86_64.
 # On Linux this is a little bit tricky. We have to check that the
@@ -277,7 +277,7 @@ ELSE( NOT _match_xlc )
   ENDIF( HAVE_STD_C99 )
 ENDIF( NOT _match_xlc )
 
-# Set warnings for debug builds 
+# Set warnings for debug builds
 CHECK_C_COMPILER_FLAG( "-Wall" HAVE_WALL )
 IF( HAVE_WALL )
     SET( C_WFLAGS "${C_WFLAGS} -Wall" )
@@ -291,10 +291,10 @@ CHECK_C_COMPILER_FLAG( "-wd424" HAVE_WD )
 IF( HAVE_WD )
     # 424: checks for duplicate ";"
     # 981: every volatile triggers a "unspecified evaluation order", obnoxious
-    #      but might be useful for some debugging sessions. 
+    #      but might be useful for some debugging sessions.
     # 1419: warning about extern functions being declared in .c
     #       files
-    # 1572: cuda compares floats with 0.0f. 
+    # 1572: cuda compares floats with 0.0f.
     SET( C_WFLAGS "${C_WFLAGS} -wd424 -wd981 -wd1419 -wd1572" )
 ENDIF( HAVE_WD )
 CHECK_C_COMPILER_FLAG( "-g3" HAVE_G3 )
@@ -351,7 +351,7 @@ if (HAVE_STDARG_H)
       }"
       HAVE_VA_COPY
       )
- 
+
   if (NOT HAVE_VA_COPY)
     check_c_source_compiles("
         #include <stdarg.h>
@@ -442,7 +442,7 @@ IF( BUILD_DAGUE )
       include_directories( ${PAPI_INCLUDE_DIR} )
     endif (PAPI_FOUND)
   endif (DAGUE_PROF_PAPI)
-  
+
   if( DAGUE_PROF_TRACE )
     list(APPEND EXTRA_SOURCES src/profiling.c)
   endif( DAGUE_PROF_TRACE )
@@ -456,24 +456,6 @@ IF( BUILD_DAGUE )
   endif( DAGUE_PROF_GRAPHER )
 ENDIF( BUILD_DAGUE )
 
-<<<<<<< local
-find_package(GTG)
-
-if( DAGUE_PROF_TRACE )
-  list(APPEND EXTRA_SOURCES src/profiling.c)
-endif( DAGUE_PROF_TRACE )
-
-if( DAGUE_PROF_GRAPHER )
-  list(APPEND EXTRA_SOURCES src/dague_prof_grapher.c)
-endif( DAGUE_PROF_GRAPHER )
-
-if( BUILD_DSPARSE )
-  find_package( PASTIX REQUIRED )
-  find_package( SCOTCH REQUIRED )
-endif()
-
-=======
->>>>>>> other
 #
 ##
 ###
@@ -506,25 +488,21 @@ ELSE(CMAKE_CROSSCOMPILING)
 ENDIF(CMAKE_CROSSCOMPILING)
 #
 #  Settings for targets
-# 
-set(SRCS 
-  src/barrier.c 
+#
+set(SRCS
+  src/barrier.c
   src/scheduling.c
-  src/schedulers.c 
-  src/dague.c 
+  src/schedulers.c
+  src/dague.c
   src/arena.c
   src/moesi.c
-  src/remote_dep.c 
-  src/debug.c 
-  src/bindthread.c 
-  src/mempool.c 
-<<<<<<< local
-  src/memory_pool.c 
-  ${EXTRA_SOURCES} 
-=======
+  src/remote_dep.c
+  src/debug.c
+  src/bindthread.c
+  src/mempool.c
+  src/memory_pool.c
   src/vpmap.c
- ${EXTRA_SOURCES} 
->>>>>>> other
+  ${EXTRA_SOURCES}
 )
 
 #
@@ -574,11 +552,9 @@ install(FILES "${PROJECT_INCLUDE_DIR}/dague.pc" DESTINATION include)
 # build a CPack driven installer package
 include (InstallRequiredSystemLibraries)
 set(CPACK_GENERATOR "TBZ2")
-set (CPACK_RESOURCE_FILE_LICENSE  
+set (CPACK_RESOURCE_FILE_LICENSE
      "${CMAKE_CURRENT_SOURCE_DIR}/License.txt")
 set (CPACK_PACKAGE_VERSION_MAJOR "${DAGUE_VERSION_MAJOR}")
 set (CPACK_PACKAGE_VERSION_MINOR "${DAGUE_VERSION_MINOR}")
 set (CPACK_PACKAGE_VERSION_PATCH "gamma")
 include (CPack)
-
-
