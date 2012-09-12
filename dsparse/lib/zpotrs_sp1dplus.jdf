@@ -15,7 +15,7 @@ extern "C" %{
 
 #include "data_dist/sparse-matrix/pastix_internal/pastix_internal.h"
 #include "data_dist/sparse-matrix/sparse-matrix.h"
-#include "dsparse/lib/core_z.h"
+#include "dsparse/cores/dsparse_zcores.h"
 
 #define PRECISION_z
 #undef printf

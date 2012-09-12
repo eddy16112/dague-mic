@@ -9,12 +9,11 @@ set(EXTRA_SOURCES
 )
 
 set(HEADERS
-  core_z.h
 )
 
-precisions_rules_py(generated_headers
-                 "${HEADERS}"
-                 PRECISIONS "z;c;d;s")
+# precisions_rules_py(generated_headers
+#                  "${HEADERS}"
+#                  PRECISIONS "z;c;d;s")
 
 ### Generate .c files from .jdf for all required precisions
 set(JDF
@@ -32,17 +31,8 @@ precisions_rules_py(generated_jdf
 
 jdf_rules(generated_files "${generated_jdf}")
 
-### Generate the dplasma wrappers for all required precisions 
+### Generate the dsparse wrappers for all required precisions 
 set(SOURCES
-  # extra kernel
-  core_zgemdm.c
-  core_zgetro.c
-  # Kernels
-  core_zsytrfsp.c
-  core_zhetrfsp.c
-  core_zgetrfsp.c
-  core_zpotrfsp.c
-  # Wrapper
   zcsc2cblk_wrapper.c
   zsytrf_sp1dplus_wrapper.c
   zhetrf_sp1dplus_wrapper.c

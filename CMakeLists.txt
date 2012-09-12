@@ -457,6 +457,14 @@ IF( BUILD_DAGUE )
 ENDIF( BUILD_DAGUE )
 
 #
+# Find dsparse packages
+#
+IF( BUILD_DSPARSE )
+    find_package(PASTIX REQUIRED)
+    find_package(SCOTCH REQUIRED)
+ENDIF( BUILD_DSPARSE )
+
+#
 ##
 ###
 # Finished detecting the system, lets do our own things now

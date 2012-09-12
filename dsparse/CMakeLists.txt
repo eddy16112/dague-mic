@@ -1,5 +1,11 @@
+IF( NOT BUILD_DSPARSE )
+  message(FATAL "The CMakeLists.txt in the dsparse directory is not supposed to be included if support for DSPARSE has been disabled")
+ENDIF( NOT BUILD_DSPARSE )
+
 if(NOT DSPARSE_PRECISIONS)
   set(DSPARSE_PRECISIONS "z;c;d;s" CACHE STRING "The precisions to compile in dsparse (accepts a colon separated list of z;c;d;s)" FORCE)
+else()
+  set(DSPARSE_PRECISIONS "${DSPARSE_PRECISIONS}" CACHE STRING "The precisions to compile in dsparse (accepts a colon separated list of s;d;c;z)" FORCE)
 endif()
 
 include_directories(${PLASMA_INCLUDE_DIRS})
@@ -17,9 +23,7 @@ else( ${CMAKE_CURRENT_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR} )
 endif( ${CMAKE_CURRENT_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR} )
 
 add_subdirectory(include)
-if(CUDA_FOUND)
-      add_subdirectory(cores)
-endif()
+add_subdirectory(cores)
 add_subdirectory(lib)
 
 if( BUILD_TESTING )

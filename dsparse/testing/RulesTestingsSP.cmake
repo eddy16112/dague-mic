@@ -22,14 +22,8 @@ macro(testingssp_addexec OUTPUTLIST PRECISIONS ZSOURCES)
 #      )
   else ( MPI_FOUND )
     set(testingssp_addexec_LIBS   
-      commonsp dsparse dague dague_distribution_sparse_matrix
+      commonsp dsparse dsparse_cores dague dague_distribution_sparse_matrix
       ${testingssp_addexec_LIBS}
-      )
-  endif()
-
-  if( CUDA_FOUND )
-    set(testingssp_addexec_LIBS   
-      ${testingssp_addexec_LIBS} dsparse_cores dsparse-sm_20
       )
   endif()
 
