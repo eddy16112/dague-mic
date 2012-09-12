@@ -35,6 +35,7 @@ extern "C" %{
 #include "data_dist/matrix/precision.h"
 #include "data_dist/matrix/matrix.h"
 #include "memory_pool.h"
+#include "dplasma/lib/dplasmajdf.h"
 #include "dplasma/cores/dplasma_zcores.h"
 
 %}
@@ -68,12 +69,14 @@ RWCOL(m, n) [profile = off]
            -> (n > (descA.nt-1)) ? W STEP2(m, n)    [type = COL]
 
 BODY
+{
     DRYRUN(
         /* Initialize W */
         int i;
         for(i = 0; i < descA.mb; i++)
             ((double *)W)[i] = 0;
            );
+}
 END
 
 RWELT(m, n) [profile = off]
@@ -127,10 +130,10 @@ BODY
     int tempnn = ( n == (descA.nt-1) ) ? descA.n - n * descA.nb : descA.nb;
     int ldam = BLKLDD( descA, m );
 
-    printlog("thread %d zlange STEP1(%d, %d)\n"
-             "\t( tempmm=%d, tempnn=%d, A(%d, %d)[%p], lda=%d, W(%d,%d)[%p])\n",
-             context->th_id, m, n, tempmm, tempnn, m, n, A, ldam, m, n%Q, W);
-
+    printlog("zlange STEP1(%d, %d)\n"
+             "\t( tempmm=%d, tempnn=%d, A(%d, %d)[%p], lda=%d, W(%d,%d)[%p])",
+             m, n, tempmm, tempnn, m, n, A, ldam, m, n%Q, W);
+                                                       
     DRYRUN(
 
         CORE_dzasum(PlasmaRowwise, PlasmaUpperLower,
@@ -274,8 +277,8 @@ WRITE_RES(m,n)
 
 BODY
 {
-    printlog("thread %d zlange STORE RESULT(%d, %d)\n",
-             context->th_id, m, n);
+    printlog("zlange STORE RESULT(%d, %d)\n",
+             m, n);
 
     *norm = *( (double*)W );
 }
