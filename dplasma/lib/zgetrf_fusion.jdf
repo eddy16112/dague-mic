@@ -876,15 +876,16 @@ m = k   .. descA.mt-1
 n = k+1 .. descA.nt-1
 i = inline_c %{ return ((m-k)%P); %}
 
+lastM = inline_c %{ return descA.mt - ( descA.mt - 1 - k - i)%P - 1; %}
+
+
 // Parallel partitioning
 :A(m, n)
 
 // Parameters
 RW    BUF   <-  ((m-k) <  P ) ? A(m, n)                            /* Unused */
-            <-  ((m-k) >= P ) && ((m-k) < (P*2) ) ? BUFIN SWAP_COLLECT(k, m-P, n)
-            <-  ((m-k) >= (P*2) )                 ? BUF   SWAP_COLLECT(k, m-P, n)
+            <-  ((m-k) >= P ) ? BUFIN SWAP_COLLECT(k, k + i, n)
 
-            ->  ((m-k) >= P) && ((descA.mt-m-1) >= P) ? BUF SWAP_COLLECT(k, m+P, n)
             ->  ((m-k) >= P) && ((descA.mt-m-1) <  P) && (i%2 == 0) ? Rtop    SWAP_SND(k, 1, i/2, n )
             ->  ((m-k) >= P) && ((descA.mt-m-1) <  P) && (i%2 == 1) ? Rbottom SWAP_SND(k, 1, i/2, n )
 
@@ -897,9 +898,12 @@ READ  PERM  <-  PERM GETRF_FNL(k, k + ((m-k)%P) )                               
             ->  PERM SWAP_RECV(k, m, n )                                               [type = PERMUT]
             ->  (((descA.mt-m-1) <  P) && (i%2 == 0) ) ? PERM SWAP_SND(k, 1, i/2, n )  [type = PERMUT]
 
-WRITE BUFIN ->  ((m-k) < P) && ((descA.mt-m-1) >= P) ? BUF SWAP_COLLECT(k, m+P, n)
+WRITE BUFIN ->  ((m-k) < P) && ((descA.mt-m-1) >= P) ? BUF SWAP_COLLECT(k, m+P .. (descA.mt-1) .. P, n)
             ->  ((m-k) < P) && ((descA.mt-m-1) <  P) && (i%2 == 0) ? Rtop    SWAP_SND(k, 1, i/2, n )
             ->  ((m-k) < P) && ((descA.mt-m-1) <  P) && (i%2 == 1) ? Rbottom SWAP_SND(k, 1, i/2, n )
+
+CTL   ctl   ->   ((descA.mt-m-1) >=  P)? ctl SWAP_COLLECT(k, lastM, n)
+            <-  (((descA.mt-m-1) <  P) && ((descA.mt-k+i-1) >=  P))? ctl SWAP_COLLECT(k, k+i .. m-P .. P, n)
 
 ;inline_c %{ return get_priority(k, n); %}
 
