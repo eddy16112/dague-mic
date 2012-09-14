@@ -935,8 +935,8 @@ BODY
             index       = *perm % descA.mb;
 
             if(owner_index == m) {
-                cblas_zcopy(tempnn, lT + index, ldam,
-                                    lM + j    , descA.mb);
+                cblas_zcopy(tempnn, lT + index,      ldam,
+                                    lM + j*descA.mb, 1);
             }
             perm++;
         }
@@ -1013,8 +1013,8 @@ BODY
                 owner_index = (owner_index - k)%P - iB;
 
                 if( (0 <= owner_index) && (owner_index < size) ) {
-                    cblas_zcopy(tempnn, lB + j, descA.mb,
-                                        lT + j, descA.mb);
+                    cblas_zcopy(tempnn, lB + j * descA.mb, 1,
+                                        lT + j * descA.mb, 1);
                 }
                 perm++;
             }
@@ -1061,11 +1061,14 @@ BODY
 
     DRYRUN(
         /* Put back the swapped tile */
-        LAPACKE_zlacpy_work(LAPACK_COL_MAJOR, 'A',
-                            tempkm, tempnn,
-                            B /* Buf(k,n)*/, descA.mb,
-                            C /* A(k, n) */, ldak );
-
+        CORE_zlatro(PlasmaUpperLower, PlasmaTrans,
+                    tempnn, tempkm,
+                    B /* Buf(k,n)*/, descA.mb,
+                    C /* A(k, n) */, ldak );
+        /* LAPACKE_zlacpy_work(LAPACK_COL_MAJOR, 'A', */
+        /*                     tempkm, tempnn, */
+        /*                     B /\* Buf(k,n)*\/, descA.mb, */
+        /*                     C /\* A(k, n) *\/, ldak ); */
 
         CORE_ztrsm(
             PlasmaLeft, PlasmaLower, PlasmaNoTrans, PlasmaUnit,
