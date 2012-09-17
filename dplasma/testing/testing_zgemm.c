@@ -15,9 +15,9 @@
 
 static int check_solution( dague_context_t *dague, int loud,
                            PLASMA_enum transA, PLASMA_enum transB,
-                           Dague_Complex64_t alpha, int Am, int An, int Aseed,
+                           dague_complex64_t alpha, int Am, int An, int Aseed,
                                                     int Bm, int Bn, int Bseed,
-                           Dague_Complex64_t beta,  int M,  int N,  int Cseed,
+                           dague_complex64_t beta,  int M,  int N,  int Cseed,
                            two_dim_block_cyclic_t *ddescCfinal );
 
 int main(int argc, char ** argv)
@@ -32,7 +32,7 @@ int main(int argc, char ** argv)
     /* Set defaults for non argv iparams */
     iparam_default_gemm(iparam);
     iparam_default_ibnbmb(iparam, 0, 200, 200);
-#if 0 && defined(HAVE_CUDA)
+#if defined(HAVE_CUDA) && 1
     iparam[IPARAM_NGPUS] = 0;
 #endif
     /* Initialize DAGuE */
@@ -43,8 +43,8 @@ int main(int argc, char ** argv)
 
     int tA = PlasmaNoTrans;
     int tB = PlasmaNoTrans;
-    Dague_Complex64_t alpha =  0.51;
-    Dague_Complex64_t beta  = -0.42;
+    dague_complex64_t alpha =  0.51;
+    dague_complex64_t beta  = -0.42;
 
     LDA = max(LDA, max(M, K));
     LDB = max(LDB, max(K, N));
@@ -84,13 +84,13 @@ int main(int argc, char ** argv)
             }
             dague_gpu_data_register(dague,
                                     (dague_ddesc_t*)&ddescC,
-                                    MT*NT, MB*NB*sizeof(Dague_Complex64_t));
+                                    MT*NT, MB*NB*sizeof(dague_complex64_t));
             dague_gpu_data_register(dague,
                                     (dague_ddesc_t*)&ddescA,
-                                    MT*KT, MB*NB*sizeof(Dague_Complex64_t));
+                                    MT*KT, MB*NB*sizeof(dague_complex64_t));
             dague_gpu_data_register(dague,
                                     (dague_ddesc_t*)&ddescB,
-                                    KT*NT, MB*NB*sizeof(Dague_Complex64_t));
+                                    KT*NT, MB*NB*sizeof(dague_complex64_t));
             if(loud > 3) printf("Done\n");
         }
 #endif
@@ -110,9 +110,9 @@ int main(int argc, char ** argv)
 
 #if defined(HAVE_CUDA) 
         if(iparam[IPARAM_NGPUS] > 0) {
-            //dague_gpu_data_unregister(); A
-            //dague_gpu_data_unregister(); B
-            //dague_gpu_data_unregister(); C
+            dague_gpu_data_unregister((dague_ddesc_t*)&ddescA);
+            dague_gpu_data_unregister((dague_ddesc_t*)&ddescB);
+            dague_gpu_data_unregister((dague_ddesc_t*)&ddescC);
             dague_gpu_kernel_fini(dague, "zgemm");
         }
 #endif
@@ -175,10 +175,10 @@ int main(int argc, char ** argv)
                 /* Create GEMM DAGuE */
                 if(loud) printf("Compute ... ... ");
                 dplasma_zgemm(dague, trans[tA], trans[tB],
-                              (Dague_Complex64_t)alpha,
+                              (dague_complex64_t)alpha,
                               (tiled_matrix_desc_t *)&ddescA,
                               (tiled_matrix_desc_t *)&ddescB,
-                              (Dague_Complex64_t)beta,
+                              (dague_complex64_t)beta,
                               (tiled_matrix_desc_t *)&ddescC);
                 if(loud) printf("Done\n");
 
@@ -232,9 +232,9 @@ int main(int argc, char ** argv)
  */
 static int check_solution( dague_context_t *dague, int loud,
                            PLASMA_enum transA, PLASMA_enum transB,
-                           Dague_Complex64_t alpha, int Am, int An, int Aseed,
+                           dague_complex64_t alpha, int Am, int An, int Aseed,
                                                     int Bm, int Bn, int Bseed,
-                           Dague_Complex64_t beta,  int M,  int N,  int Cseed,
+                           dague_complex64_t beta,  int M,  int N,  int Cseed,
                            two_dim_block_cyclic_t *ddescCfinal )
 {
     int info_solution;

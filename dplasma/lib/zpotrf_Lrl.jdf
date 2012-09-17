@@ -32,7 +32,6 @@ extern "C" %{
 #include "gpu_data.h"
 #include "dplasma/cores/cuda_zgemm.h"
 extern int *gpu_counter;
-extern dague_gpu_data_map_t dague_gpu_map;
 #endif  /* defined(HAVE_CUDA) */
 
 #define MYGEMM
@@ -135,7 +134,7 @@ BODY
 
 #if defined(HAVE_CUDA)
     if (tempkm > GPU_TILE_THRESHOLD) {
-        dague_gpu_update_data_version( &dague_gpu_map, GEMM_KEY( &descA, k, k) );
+        moesi_master_update( descA.super.moesi_map, GEMM_KEY( &descA, k, k) );
     }
 #endif  /* defined(HAVE_CUDA) */
 
@@ -188,8 +187,8 @@ BODY
 #endif
 
     printlog(
-             "thread %d VP %d CORE_zpotrf( %d )\n\t( %s, %d, A(%d,%d)[%p], %d)\n",
-             context->th_id, context->virtual_process->vp_id, k,
+             "CORE_zpotrf( %d )\n\t( %s, %d, A(%d,%d)[%p], %d)\n",
+             k,
              plasma_const(uplo), tempkm, k, k, T, descA.mb );
 END
 
@@ -234,7 +233,7 @@ BODY
     int ldam = BLKLDD( descA, m );
 #if defined(HAVE_CUDA) 
     if (tempmm > GPU_TILE_THRESHOLD || descA.nb > GPU_TILE_THRESHOLD) {
-        dague_gpu_update_data_version( &dague_gpu_map, GEMM_KEY( &descA, m, k) );
+        moesi_master_update( descA.super.moesi_map, GEMM_KEY( &descA, m, k) );
     }
 #endif  /* defined(HAVE_CUDA) */
 
@@ -263,7 +262,7 @@ BODY
 
         dague_object_t* dague_ztrsm = dplasma_ztrsm_New(PlasmaRight,  PlasmaLower,
                                                         PlasmaConjTrans, PlasmaNonUnit,
-                                                        (Dague_Complex64_t)1.0,
+                                                        (dague_complex64_t)1.0,
                                                         (tiled_matrix_desc_t *)small_descT,
                                                         (tiled_matrix_desc_t *)small_descC );
 
@@ -283,7 +282,7 @@ BODY
             CORE_ztrsm(
                 PlasmaRight, PlasmaLower, PlasmaConjTrans, PlasmaNonUnit,
                 tempmm, descA.nb,
-                (Dague_Complex64_t)1.0, T /*A(k, k)*/, ldak,
+                (dague_complex64_t)1.0, T /*A(k, k)*/, ldak,
                 C /*A(m, k)*/, ldam);
                );
     }
@@ -292,13 +291,13 @@ BODY
         CORE_ztrsm(
             PlasmaRight, PlasmaLower, PlasmaConjTrans, PlasmaNonUnit,
             tempmm, descA.nb,
-            (Dague_Complex64_t)1.0, T /*A(k, k)*/, ldak,
+            (dague_complex64_t)1.0, T /*A(k, k)*/, ldak,
                                     C /*A(m, k)*/, ldam);
            );
 #endif
 
-    printlog("thread %d VP %d CORE_ztrsm( %d, %d )\n\t( %s, %s, %s, %s, %d, %d, %f, A(%d,%d)[%p], %d,  A(%d,%d)[%p], %d)\n",
-             context->th_id, context->virtual_process->vp_id, m, k,
+    printlog("CORE_ztrsm( %d, %d )\n\t( %s, %s, %s, %s, %d, %d, %f, A(%d,%d)[%p], %d,  A(%d,%d)[%p], %d)\n",
+             m, k,
              plasma_const( PlasmaRight ), plasma_const( PlasmaLower ),
              plasma_const( PlasmaConjTrans ), plasma_const( PlasmaNonUnit ),
              tempmm, descA.nb,
@@ -345,7 +344,7 @@ BODY
 
 #if defined(HAVE_CUDA)
    if (tempmm > GPU_TILE_THRESHOLD || descA.mb > GPU_TILE_THRESHOLD) {
-        dague_gpu_update_data_version( &dague_gpu_map, GEMM_KEY( &descA, m, m) );
+        moesi_master_update( descA.super.moesi_map, GEMM_KEY( &descA, m, m) );
     }
 #endif  /* defined(HAVE_CUDA) && */
 
@@ -405,8 +404,8 @@ BODY
 #endif
 
     printlog(
-             "thread %d VP %d CORE_zherk( %d, %d )\n\t( %s, %s, %d, %d, %f, A(%d,%d)[%p], %d, %f, A(%d,%d)[%p], %d)\n",
-             context->th_id, context->virtual_process->vp_id, k, m,
+             "CORE_zherk( %d, %d )\n\t( %s, %s, %d, %d, %f, A(%d,%d)[%p], %d, %f, A(%d,%d)[%p], %d)\n",
+             k, m,
              plasma_const( PlasmaLower ), plasma_const( PlasmaNoTrans ),
              tempmm, descA.mb,
              -1.0, m, k, A, ldam,
@@ -461,9 +460,9 @@ BODY
                                   ( n == k+1 ),
                                   PlasmaNoTrans, PlasmaConjTrans,
                                   tempmm, descA.mb, descA.mb,
-                                  (Dague_Complex64_t)-1.0, m, k, &descA, ldam,
+                                  (dague_complex64_t)-1.0, m, k, &descA, ldam,
                                                            n, k, &descA, ldan,
-                                  (Dague_Complex64_t) 1.0, m, n, &descA, ldam)) )
+                                  (dague_complex64_t) 1.0, m, n, &descA, ldam)) )
             	goto FIN;
         	if( -1 == rc ) {
             	/* The task is pending in the device, and will be subsequently completed */
@@ -475,11 +474,13 @@ BODY
 	    		exit(2);
         	}
     	}
-    	dague_gpu_update_data_version( &dague_gpu_map, GEMM_KEY( &descA, m, n) );
+		moesi_master_update( descA.super.moesi_map, GEMM_KEY( &descA, m, n) );
     }
+
     else {
         goto MYCPU;
     }
+    
 #endif  /* defined(HAVE_CUDA) */
 
 #if defined(HAVE_CUDA)
@@ -509,9 +510,9 @@ MYCPU:
         small_descB->mat = B;
         small_descC->mat = C;
 
-        dague_object_t *dague_zgemm = dplasma_zgemm_New(PlasmaNoTrans, PlasmaConjTrans, (Dague_Complex64_t)-1.0,
+        dague_object_t *dague_zgemm = dplasma_zgemm_New(PlasmaNoTrans, PlasmaConjTrans, (dague_complex64_t)-1.0,
                                                         (tiled_matrix_desc_t *)small_descA, (tiled_matrix_desc_t *)small_descB,
-                                                        (Dague_Complex64_t) 1.0,  (tiled_matrix_desc_t *)small_descC);
+                                                        (dague_complex64_t) 1.0,  (tiled_matrix_desc_t *)small_descC);
 
         callback_data *gemm_cb_data = (callback_data *) malloc(sizeof(callback_data));
         gemm_cb_data->context = context;
@@ -530,9 +531,9 @@ MYCPU:
             CORE_zgemm(
                 PlasmaNoTrans, PlasmaConjTrans,
                 tempmm, descA.mb, descA.mb,
-                (Dague_Complex64_t)-1.0, A /*A(m, k)*/, ldam,
+                (dague_complex64_t)-1.0, A /*A(m, k)*/, ldam,
                 B /*A(n, k)*/, ldan,
-                (Dague_Complex64_t) 1.0, C /*A(m, n)*/, ldam);
+                (dague_complex64_t) 1.0, C /*A(m, n)*/, ldam);
                );
     }
 #else
@@ -540,14 +541,14 @@ MYCPU:
         CORE_zgemm(
             PlasmaNoTrans, PlasmaConjTrans,
             tempmm, descA.mb, descA.mb,
-            (Dague_Complex64_t)-1.0, A /*A(m, k)*/, ldam,
+            (dague_complex64_t)-1.0, A /*A(m, k)*/, ldam,
                                      B /*A(n, k)*/, ldan,
-            (Dague_Complex64_t) 1.0, C /*A(m, n)*/, ldam);
+            (dague_complex64_t) 1.0, C /*A(m, n)*/, ldam);
         );
 #endif
 
-    printlog("thread %d VP %d CORE_zgemm( %d, %d, %d )\n\t( %s, %s, %d, %d, %d, %f, A(%d,%d)[%p], %d, A(%d,%d)[%p], %d, %f, A(%d,%d)[%p], %d)\n",
-             context->th_id, context->virtual_process->vp_id, k, m, n,
+    printlog("CORE_zgemm( %d, %d, %d )\n\t( %s, %s, %d, %d, %d, %f, A(%d,%d)[%p], %d, A(%d,%d)[%p], %d, %f, A(%d,%d)[%p], %d)\n",
+             k, m, n,
              plasma_const( PlasmaNoTrans ),  plasma_const( PlasmaConjTrans ),
              tempmm, descA.mb, descA.mb,
              -1.0, m, k, A, ldam,

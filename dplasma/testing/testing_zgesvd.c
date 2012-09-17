@@ -231,7 +231,7 @@ int main(int argc, char ** argv)
          ddescT.super.lm, ddescT.super.ln, ddescT.super.i, ddescT.super.j,
          ddescT.super.m, ddescT.super.n);
 
-    dplasma_zplrnt(dague, (tiled_matrix_desc_t *)&ddescA, 3129);
+    dplasma_zplrnt(dague, (tiled_matrix_desc_t *)&ddescA, 3872);
 
     PASTE_CODE_ENQUEUE_KERNEL(dague, zgerbb,
          (IB, *plasmaDescA, (tiled_matrix_desc_t*)&ddescA, *plasmaDescT, (tiled_matrix_desc_t*)&ddescT));
@@ -242,7 +242,7 @@ int main(int argc, char ** argv)
             MT, NT, MB, NB, sizeof(matrix_ComplexDouble));
     dague_arena_t* arena = DAGUE_diag_band_to_rect->arenas[DAGUE_diag_band_to_rect_DEFAULT_ARENA];
     dplasma_add2arena_tile(arena,
-        MB*NB*sizeof(Dague_Complex64_t),
+        MB*NB*sizeof(dague_complex64_t),
         DAGUE_ARENA_ALIGNMENT_SSE,
         MPI_DOUBLE_COMPLEX, MB);
     dague_enqueue(dague, (dague_object_t*)DAGUE_diag_band_to_rect);

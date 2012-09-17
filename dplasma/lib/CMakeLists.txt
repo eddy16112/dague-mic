@@ -23,7 +23,7 @@ jdf_rules(generated_files "${OLDJDF}")
 ### Generate .c files from .jdf for all required precisions
 set(JDF
   zprint.jdf
-  zgemm_NN.jdf zgemm_TN.jdf zgemm_NT.jdf zgemm_TT.jdf zgemm_NN_bcast.jdf
+  zgemm_NN.jdf zgemm_TN.jdf zgemm_NT.jdf zgemm_TT.jdf
   zhemm.jdf zsymm.jdf
   zherk_LN.jdf zherk_LT.jdf zherk_UN.jdf zherk_UT.jdf
   ztrsm_LLN.jdf ztrsm_LLT.jdf ztrsm_LUN.jdf ztrsm_LUT.jdf ztrsm_RLN.jdf ztrsm_RLT.jdf ztrsm_RUN.jdf ztrsm_RUT.jdf
@@ -72,7 +72,6 @@ set(SOURCES
   zprint_wrapper.c
   # Level 3 Blas
   zgemm_wrapper.c
-  zgemm_bcast_wrapper.c
   zhemm_wrapper.c
   zherk_wrapper.c
   ztrsm_wrapper.c

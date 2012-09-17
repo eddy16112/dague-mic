@@ -48,6 +48,9 @@ int zgemm_NN_bcast_profiling_array[2*DAGUE_zgemm_NN_bcast_NB_FUNCTIONS] = {-1};
 #endif
 #include "dague_prof_grapher.h"
 #include <mempool.h>
+#if defined(DAGUE_PROF_PTR_FILE)
+static FILE *pointers_file;
+#endif /*defined(DAGUE_PROF_PTR_FILE) */
 typedef struct __dague_zgemm_NN_bcast_internal_object {
  dague_zgemm_NN_bcast_object_t super;
   /* The list of data repositories */
@@ -357,6 +360,7 @@ static const expr_t expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep1_iftrue
 static const dep_t flow_of_zgemm_NN_bcast_GEMM_for_A_dep1_iftrue_atline_88 = {
   .cond = &expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep1_iftrue_atline_88,
   .dague = &zgemm_NN_bcast_READ_A,
+  .ctl_gather_nb = NULL,
   .flow = &flow_of_zgemm_NN_bcast_READ_A_for_A,
   .datatype = { .index = DAGUE_zgemm_NN_bcast_DEFAULT_ARENA, .index_fct = NULL,.nb_elt = 1, .nb_elt_fct = NULL },
   .call_params = {
@@ -415,6 +419,7 @@ static const expr_t expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep1_iffals
 static const dep_t flow_of_zgemm_NN_bcast_GEMM_for_A_dep1_iffalse_atline_88 = {
   .cond = &expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep1_iffalse_atline_88,
   .dague = &zgemm_NN_bcast_GEMM,
+  .ctl_gather_nb = NULL,
   .flow = &flow_of_zgemm_NN_bcast_GEMM_for_A,
   .datatype = { .index = DAGUE_zgemm_NN_bcast_DEFAULT_ARENA, .index_fct = NULL,.nb_elt = 1, .nb_elt_fct = NULL },
   .call_params = {
@@ -494,6 +499,7 @@ static const expr_t expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline
 static const dep_t flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89 = {
   .cond = &expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_A_dep2_atline_89,
   .dague = &zgemm_NN_bcast_GEMM,
+  .ctl_gather_nb = NULL,
   .flow = &flow_of_zgemm_NN_bcast_GEMM_for_A,
   .datatype = { .index = DAGUE_zgemm_NN_bcast_DEFAULT_ARENA, .index_fct = NULL,.nb_elt = 1, .nb_elt_fct = NULL },
   .call_params = {
@@ -550,6 +556,7 @@ static const expr_t expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep1_iftrue
 static const dep_t flow_of_zgemm_NN_bcast_GEMM_for_B_dep1_iftrue_atline_90 = {
   .cond = &expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep1_iftrue_atline_90,
   .dague = &zgemm_NN_bcast_READ_B,
+  .ctl_gather_nb = NULL,
   .flow = &flow_of_zgemm_NN_bcast_READ_B_for_B,
   .datatype = { .index = DAGUE_zgemm_NN_bcast_DEFAULT_ARENA, .index_fct = NULL,.nb_elt = 1, .nb_elt_fct = NULL },
   .call_params = {
@@ -608,6 +615,7 @@ static const expr_t expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep1_iffals
 static const dep_t flow_of_zgemm_NN_bcast_GEMM_for_B_dep1_iffalse_atline_90 = {
   .cond = &expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep1_iffalse_atline_90,
   .dague = &zgemm_NN_bcast_GEMM,
+  .ctl_gather_nb = NULL,
   .flow = &flow_of_zgemm_NN_bcast_GEMM_for_B,
   .datatype = { .index = DAGUE_zgemm_NN_bcast_DEFAULT_ARENA, .index_fct = NULL,.nb_elt = 1, .nb_elt_fct = NULL },
   .call_params = {
@@ -687,6 +695,7 @@ static const expr_t expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline
 static const dep_t flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91 = {
   .cond = &expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_B_dep2_atline_91,
   .dague = &zgemm_NN_bcast_GEMM,
+  .ctl_gather_nb = NULL,
   .flow = &flow_of_zgemm_NN_bcast_GEMM_for_B,
   .datatype = { .index = DAGUE_zgemm_NN_bcast_DEFAULT_ARENA, .index_fct = NULL,.nb_elt = 1, .nb_elt_fct = NULL },
   .call_params = {
@@ -743,6 +752,7 @@ static const expr_t expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_C_dep1_iftrue
 static const dep_t flow_of_zgemm_NN_bcast_GEMM_for_C_dep1_iftrue_atline_92 = {
   .cond = &expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_C_dep1_iftrue_atline_92,
   .dague = &zgemm_NN_bcast_C,
+  .ctl_gather_nb = NULL,
   .datatype = { .index = DAGUE_zgemm_NN_bcast_DEFAULT_ARENA, .index_fct = NULL,.nb_elt = 1, .nb_elt_fct = NULL },
   .call_params = {
     &expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_C_dep1_iftrue_atline_92,
@@ -800,6 +810,7 @@ static const expr_t expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_C_dep1_iffals
 static const dep_t flow_of_zgemm_NN_bcast_GEMM_for_C_dep1_iffalse_atline_92 = {
   .cond = &expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_C_dep1_iffalse_atline_92,
   .dague = &zgemm_NN_bcast_GEMM,
+  .ctl_gather_nb = NULL,
   .flow = &flow_of_zgemm_NN_bcast_GEMM_for_C,
   .datatype = { .index = DAGUE_zgemm_NN_bcast_DEFAULT_ARENA, .index_fct = NULL,.nb_elt = 1, .nb_elt_fct = NULL },
   .call_params = {
@@ -847,6 +858,7 @@ static const expr_t expr_of_p2_for_flow_of_zgemm_NN_bcast_GEMM_for_C_dep2_iftrue
 static const dep_t flow_of_zgemm_NN_bcast_GEMM_for_C_dep2_iftrue_atline_121 = {
   .cond = &expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_C_dep2_iftrue_atline_121,
   .dague = &zgemm_NN_bcast_C,
+  .ctl_gather_nb = NULL,
   .datatype = { .index = DAGUE_zgemm_NN_bcast_DEFAULT_ARENA, .index_fct = NULL,.nb_elt = 1, .nb_elt_fct = NULL },
   .call_params = {
     &expr_of_p1_for_flow_of_zgemm_NN_bcast_GEMM_for_C_dep2_iftrue_atline_121,
@@ -904,6 +916,7 @@ static const expr_t expr_of_p3_for_flow_of_zgemm_NN_bcast_GEMM_for_C_dep2_iffals
 static const dep_t flow_of_zgemm_NN_bcast_GEMM_for_C_dep2_iffalse_atline_121 = {
   .cond = &expr_of_cond_for_flow_of_zgemm_NN_bcast_GEMM_for_C_dep2_iffalse_atline_121,
   .dague = &zgemm_NN_bcast_GEMM,
+  .ctl_gather_nb = NULL,
   .flow = &flow_of_zgemm_NN_bcast_GEMM_for_C,
   .datatype = { .index = DAGUE_zgemm_NN_bcast_DEFAULT_ARENA, .index_fct = NULL,.nb_elt = 1, .nb_elt_fct = NULL },
   .call_params = {
@@ -936,6 +949,7 @@ iterate_successors_of_zgemm_NN_bcast_GEMM(dague_execution_unit_t *eu, dague_exec
   (void)rank_src; (void)rank_dst; (void)__dague_object; (void)vpid_dst; (void)__nb_elt;
   (void)m;  (void)n;  (void)k;
   nc.dague_object = this_task->dague_object;
+  nc.priority = this_task->priority;
 #if defined(DISTRIBUTED)
   rank_src = ((dague_ddesc_t*)__dague_object->super.C)->rank_of((dague_ddesc_t*)__dague_object->super.C, m, n);
 #endif
@@ -966,6 +980,8 @@ iterate_successors_of_zgemm_NN_bcast_GEMM(dague_execution_unit_t *eu, dague_exec
 #else /* !DISTRIBUTED */
                       vpid_dst = ((dague_ddesc_t*)__dague_object->super.C)->vpid_of((dague_ddesc_t*)__dague_object->super.C, GEMM_m, GEMM_n);
 #endif /* DISTRIBUTED */
+                      nc.flowname = "A";
+                      nc.priority = __dague_object->super.super.object_priority;
 #if defined(DAGUE_DEBUG_VERBOSE1)
                     if( NULL != eu ) {
                       char tmp[128], tmp1[128];
@@ -975,17 +991,15 @@ iterate_successors_of_zgemm_NN_bcast_GEMM(dague_execution_unit_t *eu, dague_exec
                              dague_snprintf_execution_context(tmp1, 128, &nc), rank_src, rank_dst));
                     }
 #endif
-                      nc.flowname = "A";
-                      nc.priority = __dague_object->super.super.object_priority;
                       if( DAGUE_ITERATE_STOP == ontask(eu, &nc, this_task, 0, 0, rank_src, rank_dst, vpid_dst, arena, __nb_elt, ontask_arg) )
                         return;
-        }
-          }
-            }
-              }
-                }
-                  }
+                      }
                     }
+                  }
+                }
+              }
+            }
+          }
     }
   }
   /* Flow of Data B */
@@ -1015,6 +1029,8 @@ iterate_successors_of_zgemm_NN_bcast_GEMM(dague_execution_unit_t *eu, dague_exec
 #else /* !DISTRIBUTED */
                       vpid_dst = ((dague_ddesc_t*)__dague_object->super.C)->vpid_of((dague_ddesc_t*)__dague_object->super.C, GEMM_m, GEMM_n);
 #endif /* DISTRIBUTED */
+                      nc.flowname = "B";
+                      nc.priority = __dague_object->super.super.object_priority;
 #if defined(DAGUE_DEBUG_VERBOSE1)
                     if( NULL != eu ) {
                       char tmp[128], tmp1[128];
@@ -1024,17 +1040,15 @@ iterate_successors_of_zgemm_NN_bcast_GEMM(dague_execution_unit_t *eu, dague_exec
                              dague_snprintf_execution_context(tmp1, 128, &nc), rank_src, rank_dst));
                     }
 #endif
-                      nc.flowname = "B";
-                      nc.priority = __dague_object->super.super.object_priority;
                       if( DAGUE_ITERATE_STOP == ontask(eu, &nc, this_task, 1, 0, rank_src, rank_dst, vpid_dst, arena, __nb_elt, ontask_arg) )
                         return;
-        }
-          }
-            }
-              }
-                }
-                  }
+                      }
                     }
+                  }
+                }
+              }
+            }
+          }
     }
   }
   /* Flow of Data C */
@@ -1063,6 +1077,8 @@ iterate_successors_of_zgemm_NN_bcast_GEMM(dague_execution_unit_t *eu, dague_exec
 #else /* !DISTRIBUTED */
                     vpid_dst = ((dague_ddesc_t*)__dague_object->super.C)->vpid_of((dague_ddesc_t*)__dague_object->super.C, GEMM_m, GEMM_n);
 #endif /* DISTRIBUTED */
+                    nc.flowname = "C";
+                    nc.priority = __dague_object->super.super.object_priority;
 #if defined(DAGUE_DEBUG_VERBOSE1)
                   if( NULL != eu ) {
                     char tmp[128], tmp1[128];
@@ -1072,16 +1088,14 @@ iterate_successors_of_zgemm_NN_bcast_GEMM(dague_execution_unit_t *eu, dague_exec
                            dague_snprintf_execution_context(tmp1, 128, &nc), rank_src, rank_dst));
                   }
 #endif
-                    nc.flowname = "C";
-                    nc.priority = __dague_object->super.super.object_priority;
                     if( DAGUE_ITERATE_STOP == ontask(eu, &nc, this_task, 2, 1, rank_src, rank_dst, vpid_dst, arena, __nb_elt, ontask_arg) )
                       return;
-        }
-          }
-            }
-              }
-                }
+                    }
                   }
+                }
+              }
+            }
+          }
     }
   }
   (void)nc;(void)arena;(void)eu;(void)ontask;(void)ontask_arg;(void)rank_dst;(void)action_mask;
@@ -1111,16 +1125,6 @@ static int release_deps_of_zgemm_NN_bcast_GEMM(dague_execution_unit_t *eu, dague
 #endif
   iterate_successors_of_zgemm_NN_bcast_GEMM(eu, context, action_mask, dague_release_dep_fct, &arg);
 
-  if(action_mask & DAGUE_ACTION_RELEASE_LOCAL_DEPS) {
-    struct dague_vp** vps = eu->virtual_process->dague_context->virtual_processes;
-    data_repo_entry_addto_usage_limit(GEMM_repo, arg.output_entry->key, arg.output_usage);
-    for(__vp_id = 0; __vp_id < eu->virtual_process->dague_context->nb_vp; __vp_id++) {
-      if( NULL == arg.ready_lists[__vp_id] ) continue;
-      __dague_schedule(vps[__vp_id]->execution_units[0], arg.ready_lists[__vp_id]);
-      arg.ready_lists[__vp_id] = NULL;
-    }
-    free(arg.ready_lists);
-  }
 #if defined(DISTRIBUTED)
   if( 0 == arg.remote_deps_count ) {
     if( NULL != arg.remote_deps ) {
@@ -1132,6 +1136,17 @@ static int release_deps_of_zgemm_NN_bcast_GEMM(dague_execution_unit_t *eu, dague
     arg.nb_released += dague_remote_dep_activate(eu, context, arg.remote_deps, arg.remote_deps_count);
   }
 #endif
+
+  if(action_mask & DAGUE_ACTION_RELEASE_LOCAL_DEPS) {
+    struct dague_vp** vps = eu->virtual_process->dague_context->virtual_processes;
+    data_repo_entry_addto_usage_limit(GEMM_repo, arg.output_entry->key, arg.output_usage);
+    for(__vp_id = 0; __vp_id < eu->virtual_process->dague_context->nb_vp; __vp_id++) {
+      if( NULL == arg.ready_lists[__vp_id] ) continue;
+      __dague_schedule(vps[__vp_id]->execution_units[0], arg.ready_lists[__vp_id]);
+      arg.ready_lists[__vp_id] = NULL;
+    }
+    free(arg.ready_lists);
+  }
   if( action_mask & DAGUE_ACTION_RELEASE_LOCAL_REFS ) {
     int m = context->locals[0].value;
     int n = context->locals[1].value;
@@ -1251,6 +1266,15 @@ static int hook_of_zgemm_NN_bcast_GEMM(dague_execution_unit_t *context, dague_ex
   if( (NULL != eC) && (eC->sim_exec_date > __dague_simulation_date) )
     __dague_simulation_date =  eC->sim_exec_date;
 #endif
+  /** Store pointer used in the function for antidependencies detection */
+#if defined(DAGUE_PROF_PTR_FILE)
+  if( NULL != pointers_file ) {
+    char nmp[MAX_TASK_STRLEN];
+    dague_prof_grapher_taskid(this_task, nmp, MAX_TASK_STRLEN);
+    fprintf( pointers_file, "%s R%p,R%p,M%p\n",
+             nmp, A, B, C );
+  }
+#endif /*defined(DAGUE_PROF_PTR_FILE) */
 #if defined(DAGUE_SIM)
   if( this_task->function->sim_cost_fct != NULL ) {
     this_task->sim_exec_date = __dague_simulation_date + this_task->function->sim_cost_fct(this_task);
@@ -1308,7 +1332,7 @@ static int hook_of_zgemm_NN_bcast_GEMM(dague_execution_unit_t *context, dague_ex
                                k, n, ldbk,
                  creal(lbeta), m, n, ldcm );
 
-#line 1312 "zgemm_NN_bcast.c"
+#line 1336 "zgemm_NN_bcast.c"
 /*--------------------------------------------------------------------------------*
  *                                END OF GEMM BODY                                *
  *--------------------------------------------------------------------------------*/
@@ -1441,9 +1465,7 @@ static int zgemm_NN_bcast_GEMM_internal_init(__dague_zgemm_NN_bcast_internal_obj
 static const dague_function_t zgemm_NN_bcast_GEMM = {
   .name = "GEMM",
   .deps = 0,
-  .flags = 0x0 | DAGUE_HAS_IN_IN_DEPENDENCIES,
   .function_id = 0,
-  .dependencies_goal = 0x7,
   .nb_parameters = 3,
   .nb_definitions = 3,
   .params = { &symb_zgemm_NN_bcast_GEMM_m, &symb_zgemm_NN_bcast_GEMM_n, &symb_zgemm_NN_bcast_GEMM_k },
@@ -1452,6 +1474,8 @@ static const dague_function_t zgemm_NN_bcast_GEMM = {
   .priority = NULL,
   .in = { &flow_of_zgemm_NN_bcast_GEMM_for_A, &flow_of_zgemm_NN_bcast_GEMM_for_B, &flow_of_zgemm_NN_bcast_GEMM_for_C },
   .out = { &flow_of_zgemm_NN_bcast_GEMM_for_A, &flow_of_zgemm_NN_bcast_GEMM_for_B, &flow_of_zgemm_NN_bcast_GEMM_for_C },
+  .flags = 0x0 | DAGUE_HAS_IN_IN_DEPENDENCIES|DAGUE_USE_DEPS_MASK,
+  .dependencies_goal = 0x7,
   .iterate_successors = iterate_successors_of_zgemm_NN_bcast_GEMM,
   .release_deps = release_deps_of_zgemm_NN_bcast_GEMM,
   .hook = hook_of_zgemm_NN_bcast_GEMM,
@@ -1563,6 +1587,7 @@ static const expr_t expr_of_p2_for_flow_of_zgemm_NN_bcast_READ_B_for_B_dep1_atli
 static const dep_t flow_of_zgemm_NN_bcast_READ_B_for_B_dep1_atline_68 = {
   .cond = NULL,
   .dague = &zgemm_NN_bcast_B,
+  .ctl_gather_nb = NULL,
   .datatype = { .index = DAGUE_zgemm_NN_bcast_DEFAULT_ARENA, .index_fct = NULL,.nb_elt = 1, .nb_elt_fct = NULL },
   .call_params = {
     &expr_of_p1_for_flow_of_zgemm_NN_bcast_READ_B_for_B_dep1_atline_68,
@@ -1628,6 +1653,7 @@ static const expr_t expr_of_p3_for_flow_of_zgemm_NN_bcast_READ_B_for_B_dep2_atli
 static const dep_t flow_of_zgemm_NN_bcast_READ_B_for_B_dep2_atline_71 = {
   .cond = NULL,
   .dague = &zgemm_NN_bcast_GEMM,
+  .ctl_gather_nb = NULL,
   .flow = &flow_of_zgemm_NN_bcast_GEMM_for_B,
   .datatype = { .index = DAGUE_zgemm_NN_bcast_DEFAULT_ARENA, .index_fct = NULL,.nb_elt = 1, .nb_elt_fct = NULL },
   .call_params = {
@@ -1659,6 +1685,7 @@ iterate_successors_of_zgemm_NN_bcast_READ_B(dague_execution_unit_t *eu, dague_ex
   (void)rank_src; (void)rank_dst; (void)__dague_object; (void)vpid_dst; (void)__nb_elt;
   (void)k;  (void)n;
   nc.dague_object = this_task->dague_object;
+  nc.priority = this_task->priority;
 #if defined(DISTRIBUTED)
   rank_src = ((dague_ddesc_t*)__dague_object->super.B)->rank_of((dague_ddesc_t*)__dague_object->super.B, k, n);
 #endif
@@ -1688,6 +1715,8 @@ iterate_successors_of_zgemm_NN_bcast_READ_B(dague_execution_unit_t *eu, dague_ex
 #else /* !DISTRIBUTED */
                     vpid_dst = ((dague_ddesc_t*)__dague_object->super.C)->vpid_of((dague_ddesc_t*)__dague_object->super.C, GEMM_m, GEMM_n);
 #endif /* DISTRIBUTED */
+                    nc.flowname = "B";
+                    nc.priority = __dague_object->super.super.object_priority;
 #if defined(DAGUE_DEBUG_VERBOSE1)
                   if( NULL != eu ) {
                     char tmp[128], tmp1[128];
@@ -1697,17 +1726,15 @@ iterate_successors_of_zgemm_NN_bcast_READ_B(dague_execution_unit_t *eu, dague_ex
                            dague_snprintf_execution_context(tmp1, 128, &nc), rank_src, rank_dst));
                   }
 #endif
-                    nc.flowname = "B";
-                    nc.priority = __dague_object->super.super.object_priority;
                     if( DAGUE_ITERATE_STOP == ontask(eu, &nc, this_task, 0, 0, rank_src, rank_dst, vpid_dst, arena, __nb_elt, ontask_arg) )
                       return;
-      }
-        }
-          }
-            }
-              }
-                }
+                    }
                   }
+                }
+              }
+            }
+          }
+        }
   }
   (void)nc;(void)arena;(void)eu;(void)ontask;(void)ontask_arg;(void)rank_dst;(void)action_mask;
 }
@@ -1736,16 +1763,6 @@ static int release_deps_of_zgemm_NN_bcast_READ_B(dague_execution_unit_t *eu, dag
 #endif
   iterate_successors_of_zgemm_NN_bcast_READ_B(eu, context, action_mask, dague_release_dep_fct, &arg);
 
-  if(action_mask & DAGUE_ACTION_RELEASE_LOCAL_DEPS) {
-    struct dague_vp** vps = eu->virtual_process->dague_context->virtual_processes;
-    data_repo_entry_addto_usage_limit(READ_B_repo, arg.output_entry->key, arg.output_usage);
-    for(__vp_id = 0; __vp_id < eu->virtual_process->dague_context->nb_vp; __vp_id++) {
-      if( NULL == arg.ready_lists[__vp_id] ) continue;
-      __dague_schedule(vps[__vp_id]->execution_units[0], arg.ready_lists[__vp_id]);
-      arg.ready_lists[__vp_id] = NULL;
-    }
-    free(arg.ready_lists);
-  }
 #if defined(DISTRIBUTED)
   if( 0 == arg.remote_deps_count ) {
     if( NULL != arg.remote_deps ) {
@@ -1757,6 +1774,17 @@ static int release_deps_of_zgemm_NN_bcast_READ_B(dague_execution_unit_t *eu, dag
     arg.nb_released += dague_remote_dep_activate(eu, context, arg.remote_deps, arg.remote_deps_count);
   }
 #endif
+
+  if(action_mask & DAGUE_ACTION_RELEASE_LOCAL_DEPS) {
+    struct dague_vp** vps = eu->virtual_process->dague_context->virtual_processes;
+    data_repo_entry_addto_usage_limit(READ_B_repo, arg.output_entry->key, arg.output_usage);
+    for(__vp_id = 0; __vp_id < eu->virtual_process->dague_context->nb_vp; __vp_id++) {
+      if( NULL == arg.ready_lists[__vp_id] ) continue;
+      __dague_schedule(vps[__vp_id]->execution_units[0], arg.ready_lists[__vp_id]);
+      arg.ready_lists[__vp_id] = NULL;
+    }
+    free(arg.ready_lists);
+  }
   if( action_mask & DAGUE_ACTION_RELEASE_LOCAL_REFS ) {
     int k = context->locals[0].value;
     int n = context->locals[1].value;
@@ -1796,6 +1824,15 @@ static int hook_of_zgemm_NN_bcast_READ_B(dague_execution_unit_t *context, dague_
   if( (NULL != eB) && (eB->sim_exec_date > __dague_simulation_date) )
     __dague_simulation_date =  eB->sim_exec_date;
 #endif
+  /** Store pointer used in the function for antidependencies detection */
+#if defined(DAGUE_PROF_PTR_FILE)
+  if( NULL != pointers_file ) {
+    char nmp[MAX_TASK_STRLEN];
+    dague_prof_grapher_taskid(this_task, nmp, MAX_TASK_STRLEN);
+    fprintf( pointers_file, "%s M%p\n",
+             nmp, B );
+  }
+#endif /*defined(DAGUE_PROF_PTR_FILE) */
 #if defined(DAGUE_SIM)
   if( this_task->function->sim_cost_fct != NULL ) {
     this_task->sim_exec_date = __dague_simulation_date + this_task->function->sim_cost_fct(this_task);
@@ -1824,7 +1861,7 @@ static int hook_of_zgemm_NN_bcast_READ_B(dague_execution_unit_t *context, dague_
 #line 69 "zgemm_NN_bcast.jdf"
      printlog("rank %u <- B(%d,%d)\n", __dague_object->super.B->myrank, k, n);
 
-#line 1828 "zgemm_NN_bcast.c"
+#line 1865 "zgemm_NN_bcast.c"
 /*--------------------------------------------------------------------------------*
  *                              END OF READ_B BODY                              *
  *--------------------------------------------------------------------------------*/
@@ -1973,9 +2010,7 @@ static int zgemm_NN_bcast_READ_B_startup_tasks(dague_context_t *context, const _
 static const dague_function_t zgemm_NN_bcast_READ_B = {
   .name = "READ_B",
   .deps = 1,
-  .flags = 0x0 | DAGUE_HAS_IN_IN_DEPENDENCIES,
   .function_id = 1,
-  .dependencies_goal = 0x1,
   .nb_parameters = 2,
   .nb_definitions = 2,
   .params = { &symb_zgemm_NN_bcast_READ_B_k, &symb_zgemm_NN_bcast_READ_B_n },
@@ -1984,6 +2019,8 @@ static const dague_function_t zgemm_NN_bcast_READ_B = {
   .priority = NULL,
   .in = { &flow_of_zgemm_NN_bcast_READ_B_for_B },
   .out = { &flow_of_zgemm_NN_bcast_READ_B_for_B },
+  .flags = 0x0 | DAGUE_HAS_IN_IN_DEPENDENCIES|DAGUE_USE_DEPS_MASK,
+  .dependencies_goal = 0x1,
   .iterate_successors = iterate_successors_of_zgemm_NN_bcast_READ_B,
   .release_deps = release_deps_of_zgemm_NN_bcast_READ_B,
   .hook = hook_of_zgemm_NN_bcast_READ_B,
@@ -2095,6 +2132,7 @@ static const expr_t expr_of_p2_for_flow_of_zgemm_NN_bcast_READ_A_for_A_dep1_atli
 static const dep_t flow_of_zgemm_NN_bcast_READ_A_for_A_dep1_atline_52 = {
   .cond = NULL,
   .dague = &zgemm_NN_bcast_A,
+  .ctl_gather_nb = NULL,
   .datatype = { .index = DAGUE_zgemm_NN_bcast_DEFAULT_ARENA, .index_fct = NULL,.nb_elt = 1, .nb_elt_fct = NULL },
   .call_params = {
     &expr_of_p1_for_flow_of_zgemm_NN_bcast_READ_A_for_A_dep1_atline_52,
@@ -2160,6 +2198,7 @@ static const expr_t expr_of_p3_for_flow_of_zgemm_NN_bcast_READ_A_for_A_dep2_atli
 static const dep_t flow_of_zgemm_NN_bcast_READ_A_for_A_dep2_atline_55 = {
   .cond = NULL,
   .dague = &zgemm_NN_bcast_GEMM,
+  .ctl_gather_nb = NULL,
   .flow = &flow_of_zgemm_NN_bcast_GEMM_for_A,
   .datatype = { .index = DAGUE_zgemm_NN_bcast_DEFAULT_ARENA, .index_fct = NULL,.nb_elt = 1, .nb_elt_fct = NULL },
   .call_params = {
@@ -2191,6 +2230,7 @@ iterate_successors_of_zgemm_NN_bcast_READ_A(dague_execution_unit_t *eu, dague_ex
   (void)rank_src; (void)rank_dst; (void)__dague_object; (void)vpid_dst; (void)__nb_elt;
   (void)m;  (void)k;
   nc.dague_object = this_task->dague_object;
+  nc.priority = this_task->priority;
 #if defined(DISTRIBUTED)
   rank_src = ((dague_ddesc_t*)__dague_object->super.A)->rank_of((dague_ddesc_t*)__dague_object->super.A, m, k);
 #endif
@@ -2220,6 +2260,8 @@ iterate_successors_of_zgemm_NN_bcast_READ_A(dague_execution_unit_t *eu, dague_ex
 #else /* !DISTRIBUTED */
                     vpid_dst = ((dague_ddesc_t*)__dague_object->super.C)->vpid_of((dague_ddesc_t*)__dague_object->super.C, GEMM_m, GEMM_n);
 #endif /* DISTRIBUTED */
+                    nc.flowname = "A";
+                    nc.priority = __dague_object->super.super.object_priority;
 #if defined(DAGUE_DEBUG_VERBOSE1)
                   if( NULL != eu ) {
                     char tmp[128], tmp1[128];
@@ -2229,17 +2271,15 @@ iterate_successors_of_zgemm_NN_bcast_READ_A(dague_execution_unit_t *eu, dague_ex
                            dague_snprintf_execution_context(tmp1, 128, &nc), rank_src, rank_dst));
                   }
 #endif
-                    nc.flowname = "A";
-                    nc.priority = __dague_object->super.super.object_priority;
                     if( DAGUE_ITERATE_STOP == ontask(eu, &nc, this_task, 0, 0, rank_src, rank_dst, vpid_dst, arena, __nb_elt, ontask_arg) )
                       return;
-      }
-        }
-          }
-            }
-              }
-                }
+                    }
                   }
+                }
+              }
+            }
+          }
+        }
   }
   (void)nc;(void)arena;(void)eu;(void)ontask;(void)ontask_arg;(void)rank_dst;(void)action_mask;
 }
@@ -2268,16 +2308,6 @@ static int release_deps_of_zgemm_NN_bcast_READ_A(dague_execution_unit_t *eu, dag
 #endif
   iterate_successors_of_zgemm_NN_bcast_READ_A(eu, context, action_mask, dague_release_dep_fct, &arg);
 
-  if(action_mask & DAGUE_ACTION_RELEASE_LOCAL_DEPS) {
-    struct dague_vp** vps = eu->virtual_process->dague_context->virtual_processes;
-    data_repo_entry_addto_usage_limit(READ_A_repo, arg.output_entry->key, arg.output_usage);
-    for(__vp_id = 0; __vp_id < eu->virtual_process->dague_context->nb_vp; __vp_id++) {
-      if( NULL == arg.ready_lists[__vp_id] ) continue;
-      __dague_schedule(vps[__vp_id]->execution_units[0], arg.ready_lists[__vp_id]);
-      arg.ready_lists[__vp_id] = NULL;
-    }
-    free(arg.ready_lists);
-  }
 #if defined(DISTRIBUTED)
   if( 0 == arg.remote_deps_count ) {
     if( NULL != arg.remote_deps ) {
@@ -2289,6 +2319,17 @@ static int release_deps_of_zgemm_NN_bcast_READ_A(dague_execution_unit_t *eu, dag
     arg.nb_released += dague_remote_dep_activate(eu, context, arg.remote_deps, arg.remote_deps_count);
   }
 #endif
+
+  if(action_mask & DAGUE_ACTION_RELEASE_LOCAL_DEPS) {
+    struct dague_vp** vps = eu->virtual_process->dague_context->virtual_processes;
+    data_repo_entry_addto_usage_limit(READ_A_repo, arg.output_entry->key, arg.output_usage);
+    for(__vp_id = 0; __vp_id < eu->virtual_process->dague_context->nb_vp; __vp_id++) {
+      if( NULL == arg.ready_lists[__vp_id] ) continue;
+      __dague_schedule(vps[__vp_id]->execution_units[0], arg.ready_lists[__vp_id]);
+      arg.ready_lists[__vp_id] = NULL;
+    }
+    free(arg.ready_lists);
+  }
   if( action_mask & DAGUE_ACTION_RELEASE_LOCAL_REFS ) {
     int m = context->locals[0].value;
     int k = context->locals[1].value;
@@ -2328,6 +2369,15 @@ static int hook_of_zgemm_NN_bcast_READ_A(dague_execution_unit_t *context, dague_
   if( (NULL != eA) && (eA->sim_exec_date > __dague_simulation_date) )
     __dague_simulation_date =  eA->sim_exec_date;
 #endif
+  /** Store pointer used in the function for antidependencies detection */
+#if defined(DAGUE_PROF_PTR_FILE)
+  if( NULL != pointers_file ) {
+    char nmp[MAX_TASK_STRLEN];
+    dague_prof_grapher_taskid(this_task, nmp, MAX_TASK_STRLEN);
+    fprintf( pointers_file, "%s M%p\n",
+             nmp, A );
+  }
+#endif /*defined(DAGUE_PROF_PTR_FILE) */
 #if defined(DAGUE_SIM)
   if( this_task->function->sim_cost_fct != NULL ) {
     this_task->sim_exec_date = __dague_simulation_date + this_task->function->sim_cost_fct(this_task);
@@ -2356,7 +2406,7 @@ static int hook_of_zgemm_NN_bcast_READ_A(dague_execution_unit_t *context, dague_
 #line 53 "zgemm_NN_bcast.jdf"
     printlog("rank %u <- A(%d,%d)\n", __dague_object->super.A->myrank, m, k);
 
-#line 2360 "zgemm_NN_bcast.c"
+#line 2410 "zgemm_NN_bcast.c"
 /*--------------------------------------------------------------------------------*
  *                              END OF READ_A BODY                              *
  *--------------------------------------------------------------------------------*/
@@ -2505,9 +2555,7 @@ static int zgemm_NN_bcast_READ_A_startup_tasks(dague_context_t *context, const _
 static const dague_function_t zgemm_NN_bcast_READ_A = {
   .name = "READ_A",
   .deps = 2,
-  .flags = 0x0 | DAGUE_HAS_IN_IN_DEPENDENCIES,
   .function_id = 2,
-  .dependencies_goal = 0x1,
   .nb_parameters = 2,
   .nb_definitions = 2,
   .params = { &symb_zgemm_NN_bcast_READ_A_m, &symb_zgemm_NN_bcast_READ_A_k },
@@ -2516,6 +2564,8 @@ static const dague_function_t zgemm_NN_bcast_READ_A = {
   .priority = NULL,
   .in = { &flow_of_zgemm_NN_bcast_READ_A_for_A },
   .out = { &flow_of_zgemm_NN_bcast_READ_A_for_A },
+  .flags = 0x0 | DAGUE_HAS_IN_IN_DEPENDENCIES|DAGUE_USE_DEPS_MASK,
+  .dependencies_goal = 0x1,
   .iterate_successors = iterate_successors_of_zgemm_NN_bcast_READ_A,
   .release_deps = release_deps_of_zgemm_NN_bcast_READ_A,
   .hook = hook_of_zgemm_NN_bcast_READ_A,
@@ -2560,6 +2610,10 @@ static void zgemm_NN_bcast_destructor( dague_zgemm_NN_bcast_object_t *o )
    data_repo_destroy_nothreadsafe(__dague_object->GEMM_repository);
    data_repo_destroy_nothreadsafe(__dague_object->READ_B_repository);
    data_repo_destroy_nothreadsafe(__dague_object->READ_A_repository);
+  /* Open the file to store the pointers used during execution */
+#if defined(DAGUE_PROF_PTR_FILE)
+  fclose(pointers_file);
+#endif /*defined(DAGUE_PROF_PTR_FILE)*/
   for(i = 0; i < DAGUE_zgemm_NN_bcast_NB_FUNCTIONS; i++) {
     dague_destruct_dependencies( d->dependencies_array[i] );
     d->dependencies_array[i] = NULL;
@@ -2647,10 +2701,23 @@ dague_zgemm_NN_bcast_object_t *dague_zgemm_NN_bcast_new(int transA, int transB, 
   __dague_object->super.super.startup_hook      = zgemm_NN_bcast_startup;
   __dague_object->super.super.object_destructor = (dague_destruct_object_fn_t)zgemm_NN_bcast_destructor;
   (void)dague_object_register((dague_object_t*)__dague_object);
+  /* Open the file to store the pointers used during execution */
+#if defined(DAGUE_PROF_PTR_FILE)
+{
+    int myrank = 0;
+    char *filename;
+#if defined(DISTRIBUTED) && defined(HAVE_MPI)
+    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+#endif /*defined(DISTRIBUTED) && defined(HAVE_MPI)*/
+    asprintf(&filename, "%d-zgemm_NN_bcast-%d.txt", __dague_object->super.super.object_id, myrank);
+    pointers_file = fopen( filename, "w");
+    free( filename );
+}
+#endif /*defined(DAGUE_PROF_PTR_FILE)*/
   return (dague_zgemm_NN_bcast_object_t*)__dague_object;
 }
 
 #line 125 "zgemm_NN_bcast.jdf"
 
 
-#line 2657 "zgemm_NN_bcast.c"
+#line 2724 "zgemm_NN_bcast.c"

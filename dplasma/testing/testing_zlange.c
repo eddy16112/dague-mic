@@ -44,7 +44,7 @@ int main(int argc, char ** argv)
                                M, N, SMB, SNB, 1));
     /* matrix generation */
     if(loud > 2) printf("+++ Generate matrices ... ");
-    dplasma_zplrnt( dague, (tiled_matrix_desc_t *)&ddescA, 7657);
+    dplasma_zplrnt( dague, (tiled_matrix_desc_t *)&ddescA, 3872);
     dplasma_zlacpy(dague,
                    PlasmaUpperLower,
                    (tiled_matrix_desc_t *)&ddescA,
@@ -66,7 +66,7 @@ int main(int argc, char ** argv)
 
         if ( rank == 0 ) {
             normlap = LAPACKE_zlange_work(LAPACK_COL_MAJOR, normsstr[i][0], M, N,
-                                          (Dague_Complex64_t*)(ddescA0.mat), ddescA0.super.lm, work);
+                                          (dague_complex64_t*)(ddescA0.mat), ddescA0.super.lm, work);
         }
         if(loud > 2) printf("Done.\n");
 
