@@ -14,12 +14,12 @@ if(CUDA_FOUND)
 
 ### CUDA .cu sources
     set( CUDA11_SOURCES
-         zgemmsp_11_12_13.cu
+         #zgemm_sparse_11_12_13.cu
     )
     set( CUDA13_SOURCES 
          ${CUDA11_SOURCES} )
     set( CUDA20_SOURCES 
-         zgemmsp_20_30.cu
+         zgemm_sparse_20_30.cu
     )
 
     foreach( _smtarget ${CUDA_SM_TARGETS} )
@@ -51,25 +51,31 @@ if(CUDA_FOUND)
         endif()
     endforeach()
 
-    cuda_build_clean_target()
+    #cuda_build_clean_target()
 
 ### Now the gpu wrappers to the .cu files
-    set(GPU_KERNEL_SOURCES
+    set(GPU_KERNEL_SOURCES_GEN
+         cuda_zpotrfsp_gemm.c
 #        cuda_zgemmsp.c
     )
-    set(GPU_KERNEL_HEADERS
+    set(GPU_KERNEL_HEADERS_GEN
+         cuda_zpotrfsp_gemm.h
 #        cuda_zgemmsp.h
     )
 
+    set(GPU_KERNEL_SOURCES
+         cuda_sparse.c
+    )
 else()
-    set(GPU_KERNEL_SOURCES "")
-    set(GPU_KERNEL_HEADERS "")
-    set(GPU_KERNEL_LIBS    "")
+    set(GPU_KERNEL_SOURCES_GEN "")
+    set(GPU_KERNEL_HEADERS_GEN "")
+    set(GPU_KERNEL_SOURCES     "")
+    set(GPU_KERNEL_LIBS        "")
 endif()
 
 set(HEADERS
     dsparse_zcores.h
-    ${GPU_KERNEL_HEADERS}
+    ${GPU_KERNEL_HEADERS_GEN}
 )
 ### generate the dsparse_cores headers for all possible precisions
 precisions_rules_py(generated_headers
@@ -86,7 +92,7 @@ set(SOURCES
   core_zhetrfsp.c
   core_zgetrfsp.c
   core_zpotrfsp.c
-  ${GPU_KERNEL_SOURCES}
+  ${GPU_KERNEL_SOURCES_GEN}
 )
 precisions_rules_py(generated_files
                  "${SOURCES}"
@@ -96,6 +102,7 @@ precisions_rules_py(generated_files
 add_library(dsparse_cores
   ${generated_headers}
   ${generated_files}
+  ${GPU_KERNEL_SOURCES}
 )
 target_link_libraries(dsparse_cores ${GPU_KERNEL_LIBS})
 install(TARGETS dsparse_cores ARCHIVE DESTINATION lib)

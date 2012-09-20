@@ -50,8 +50,11 @@ void     kernel_name (int M, int N, int K,
                       FloatingPoint_t alpha, const FloatingPoint_t *A, int LDA,
                                              const FloatingPoint_t *B, int LDB, 
                       FloatingPoint_t beta,        FloatingPoint_t *C, int LDC,
-                      int offsetA, int offsetB)
+                      int offsetA, int offsetB,
+                      int blocknbr, const int *blocktab, int fblocknbr, const int *fblocktab)
 {
+    int offset[THR_M+1];
+
     int idx = threadIdx.x;  // thread's m dimension
     int idy = threadIdx.y;  // thread's n dimension
 
@@ -310,6 +313,48 @@ void     kernel_name (int M, int N, int K,
                 #endif
     }
 
+    {
+#define FROWNUM(tab, b) tab[2*b]
+#define LROWNUM(tab, b) tab[2*b+1]
+#define BLOCKSIZE(tab, b) LROWNUM(tab, b) - FROWNUM(tab, b) + 1
+        int blocknum = 0, fblocknum = 0;
+        size_t totalblocksize = 0;
+        size_t blocksize = BLOCKSIZE(blocktab, blocknum);
+        int    rownum;
+        
+        offset[0] = 0;
+        for (m = 0; m < THR_M; m++) {
+            int coord_dCm = blx*BLK_M + m*DIM_X+idx;
+
+            if (coord_dCm < M) {
+                
+                /*
+                 * We should keep blocknum < blocknbr
+                 */
+                while( totalblocksize + blocksize < coord_dCm + 1) 
+                {
+                    totalblocksize += blocksize;
+                    blocknum++;
+                    blocksize = BLOCKSIZE(blocktab, blocknum);
+                }
+
+                /* Global row index */
+                rownum = coord_dCm - totalblocksize + FROWNUM(blocktab, blocknum);
+
+                while (LROWNUM(fblocktab, fblocknum) < rownum) {
+                    offset[m] += BLOCKSIZE(fblocktab, fblocknum);
+                    fblocknum++;
+                }
+                offset[m+1] = offset[m];
+                offset[m] += rownum - FROWNUM(fblocktab, fblocknum);
+            }
+        }
+        __syncthreads();
+#undef FROWNUM
+#undef LROWNUM
+    }
+
+
     // Store C regs->dev
     #pragma unroll
     for (n = 0; n < THR_N; n++) {
@@ -318,7 +363,7 @@ void     kernel_name (int M, int N, int K,
         for (m = 0; m < THR_M; m++) {
             int coord_dCm = blx*BLK_M + m*DIM_X+idx;
             if (coord_dCm < M && coord_dCn < N) {
-                int offsC = coord_dCn*LDC + coord_dCm;
+                int offsC = coord_dCn*LDC + offset[m]; /*coord_dCm;*/
 
                 FloatingPoint_t &regC = rC[n][m];
                 FloatingPoint_t &memC = C[offsC];

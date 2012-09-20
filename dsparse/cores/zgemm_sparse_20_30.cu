@@ -28,11 +28,11 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define GENERATE_SM_VERSION_KERNEL_NAME_I(func, version)  zgemm_##func##_SM##version
+#define GENERATE_SM_VERSION_KERNEL_NAME_I(func, version)  kernel_##func##_SM##version
 #define GENERATE_SM_VERSION_KERNEL_NAME_I2(func, version) GENERATE_SM_VERSION_KERNEL_NAME_I(func, version)
 #define GENERATE_SM_VERSION_KERNEL_NAME(func)             GENERATE_SM_VERSION_KERNEL_NAME_I2(func, CUDA_SM_VERSION)
 
-#define GENERATE_SM_VERSION_NAME_I(func, version)  magmablas_##func##_SM##version
+#define GENERATE_SM_VERSION_NAME_I(func, version)  func##_SM##version
 #define GENERATE_SM_VERSION_NAME_I2(func, version) GENERATE_SM_VERSION_NAME_I(func, version)
 #define GENERATE_SM_VERSION_NAME(func)             GENERATE_SM_VERSION_NAME_I2(func, CUDA_SM_VERSION)
 
@@ -148,11 +148,12 @@
     =====================================================================    */
 
 extern "C" void
-GENERATE_SM_VERSION_NAME(zgemm)( char TRANSA, char TRANSB, int m, int n, int k,
-                                 dague_complex64_t alpha, dague_complex64_t *d_A, int lda,
-                                                          dague_complex64_t *d_B, int ldb,
-                                 dague_complex64_t beta,  dague_complex64_t *d_C, int ldc,
-                                 CUstream stream )
+GENERATE_SM_VERSION_NAME(zgemm_sparse)( char TRANSA, char TRANSB, int m, int n, int k,
+                                        dague_complex64_t alpha, dague_complex64_t *d_A, int lda,
+                                                                 dague_complex64_t *d_B, int ldb,
+                                        dague_complex64_t beta,  dague_complex64_t *d_C, int ldc,
+                                        int blocknbr, const int *blocktab, int fblocknbr, const int *fblocktab,
+                                        CUstream stream )
 {
     if (m<=0 || n<=0 || k<=0)
         return;
@@ -242,7 +243,8 @@ GENERATE_SM_VERSION_NAME(zgemm)( char TRANSA, char TRANSB, int m, int n, int k,
                                                                                 lalpha, (cuDoubleComplex*)d_A, lda,
                                                                                         (cuDoubleComplex*)d_B, ldb,
                                                                                 lbeta,  (cuDoubleComplex*)d_C, ldc,
-                                                                                (int)offsetA, (int)offsetB);
+                                                                                (int)offsetA, (int)offsetB,
+                                                                                blocknbr, blocktab, fblocknbr, fblocktab);
     } 
     else if (TransA==0 && TransB ==1){
         dim3 dimGrid(m/BLK_M_nt + (m%BLK_M_nt != 0),
@@ -251,7 +253,8 @@ GENERATE_SM_VERSION_NAME(zgemm)( char TRANSA, char TRANSB, int m, int n, int k,
                                                                                 lalpha, (cuDoubleComplex*)d_A, lda,
                                                                                         (cuDoubleComplex*)d_B, ldb,
                                                                                 lbeta,  (cuDoubleComplex*)d_C, ldc,
-                                                                                (int)offsetA, (int)offsetB);
+                                                                                (int)offsetA, (int)offsetB,
+                                                                                blocknbr, blocktab, fblocknbr, fblocktab);
     }
     else if (TransA==1 && TransB ==0){
         dim3 dimGrid(m/BLK_M_tn + (m%BLK_M_tn != 0),
@@ -260,7 +263,8 @@ GENERATE_SM_VERSION_NAME(zgemm)( char TRANSA, char TRANSB, int m, int n, int k,
                                                                                 lalpha, (cuDoubleComplex*)d_A, lda,
                                                                                         (cuDoubleComplex*)d_B, ldb,
                                                                                 lbeta,  (cuDoubleComplex*)d_C, ldc,
-                                                                                (int)offsetA, (int)offsetB);
+                                                                                (int)offsetA, (int)offsetB,
+                                                                                blocknbr, blocktab, fblocknbr, fblocktab);
     }
     else if (TransA==1 && TransB ==1){
         dim3 dimGrid(m/BLK_M_tt + (m%BLK_M_tt != 0),
@@ -269,7 +273,8 @@ GENERATE_SM_VERSION_NAME(zgemm)( char TRANSA, char TRANSB, int m, int n, int k,
                                                                                 lalpha, (cuDoubleComplex*)d_A, lda,
                                                                                         (cuDoubleComplex*)d_B, ldb,
                                                                                 lbeta,  (cuDoubleComplex*)d_C, ldc,
-                                                                                (int)offsetA, (int)offsetB);
+                                                                                (int)offsetA, (int)offsetB,
+                                                                                blocknbr, blocktab, fblocknbr, fblocktab);
     }
 #if defined(PRECISION_z) || defined(PRECISION_c) 
     else if (TransA==0 && TransB ==2){
@@ -279,7 +284,8 @@ GENERATE_SM_VERSION_NAME(zgemm)( char TRANSA, char TRANSB, int m, int n, int k,
                                                                                 lalpha, (cuDoubleComplex*)d_A, lda,
                                                                                         (cuDoubleComplex*)d_B, ldb,
                                                                                 lbeta,  (cuDoubleComplex*)d_C, ldc,
-                                                                                (int)offsetA, (int)offsetB);
+                                                                                (int)offsetA, (int)offsetB,
+                                                                                blocknbr, blocktab, fblocknbr, fblocktab);
     } 
     else if (TransA==1 && TransB ==2){
         dim3 dimGrid(m/BLK_M_tt + (m%BLK_M_tt != 0),
@@ -288,7 +294,8 @@ GENERATE_SM_VERSION_NAME(zgemm)( char TRANSA, char TRANSB, int m, int n, int k,
                                                                                 lalpha, (cuDoubleComplex*)d_A, lda,
                                                                                         (cuDoubleComplex*)d_B, ldb,
                                                                                 lbeta,  (cuDoubleComplex*)d_C, ldc,
-                                                                                (int)offsetA, (int)offsetB);
+                                                                                (int)offsetA, (int)offsetB,
+                                                                                blocknbr, blocktab, fblocknbr, fblocktab);
     }
     else if (TransA==2 && TransB ==0){
         dim3 dimGrid(m/BLK_M_tn + (m%BLK_M_tn != 0),
@@ -297,7 +304,8 @@ GENERATE_SM_VERSION_NAME(zgemm)( char TRANSA, char TRANSB, int m, int n, int k,
                                                                                 lalpha, (cuDoubleComplex*)d_A, lda,
                                                                                         (cuDoubleComplex*)d_B, ldb,
                                                                                 lbeta,  (cuDoubleComplex*)d_C, ldc,
-                                                                                (int)offsetA, (int)offsetB);
+                                                                                (int)offsetA, (int)offsetB,
+                                                                                blocknbr, blocktab, fblocknbr, fblocktab);
     }
     else if (TransA==2 && TransB ==1){
         dim3 dimGrid(m/BLK_M_tt + (m%BLK_M_tt != 0),
@@ -306,7 +314,8 @@ GENERATE_SM_VERSION_NAME(zgemm)( char TRANSA, char TRANSB, int m, int n, int k,
                                                                                 lalpha, (cuDoubleComplex*)d_A, lda,
                                                                                         (cuDoubleComplex*)d_B, ldb,
                                                                                 lbeta,  (cuDoubleComplex*)d_C, ldc,
-                                                                                (int)offsetA, (int)offsetB);
+                                                                                (int)offsetA, (int)offsetB,
+                                                                                blocknbr, blocktab, fblocknbr, fblocktab);
     } 
     else if (TransA==2 && TransB ==2){
         dim3 dimGrid(m/BLK_M_tt + (m%BLK_M_tt != 0),
@@ -315,7 +324,8 @@ GENERATE_SM_VERSION_NAME(zgemm)( char TRANSA, char TRANSB, int m, int n, int k,
                                                                                 lalpha, (cuDoubleComplex*)d_A, lda,
                                                                                         (cuDoubleComplex*)d_B, ldb,
                                                                                 lbeta,  (cuDoubleComplex*)d_C, ldc,
-                                                                                (int)offsetA, (int)offsetB);
+                                                                                (int)offsetA, (int)offsetB,
+                                                                                blocknbr, blocktab, fblocknbr, fblocktab);
     }
 #endif
 

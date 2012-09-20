@@ -13,7 +13,7 @@
 #if defined(HAVE_CUDA)
 #include <cublas.h>
 #include "dsparse/cores/cuda_sparse.h"
-#include "dsparse/cores/cuda_zpotrf1d_gemm.h"
+#include "dsparse/cores/cuda_zpotrfsp_gemm.h"
 #endif
 
 int main(int argc, char ** argv)
@@ -71,24 +71,21 @@ int main(int argc, char ** argv)
     }
 
     /* load the GPU kernel */
-#if defined(HAVE_CUDA) && defined(PRECISION_s)
-    if(iparam[IPARAM_NGPUS] > 0)
-        {
-            if(loud) printf("+++ Load GPU kernel ... ");
-            if(0 != gpu_kernel_init_zpotrfsp1d(dague, 
-                                               (sparse_matrix_desc_t*)&ddescA))
-                {
-                    fprintf(stderr, "XXX Unable to load GPU kernel.\n");
-                    exit(3);
-                }
-            int cblknbr = sparse_register_bloktab( dague, 
-                                     (sparse_matrix_desc_t*)&ddescA);
-            dague_gpu_data_register(dague,
-                                    (dague_ddesc_t*)&ddescA,
-                                    cblknbr, 
-                                    sizeof(dague_complex64_t) );
-            if(loud) printf("Done\n");
+#if defined(HAVE_CUDA)
+    if(iparam[IPARAM_NGPUS] > 0) {
+        if(loud) printf("+++ Load GPU kernel ... ");
+        if(0 != gpu_kernel_init_zpotrfsp_gemm(dague)) {
+            fprintf(stderr, "XXX Unable to load GPU kernel.\n");
+            exit(3);
         }
+        int cblknbr = sparse_register_bloktab( dague, 
+                                               (sparse_matrix_desc_t*)&ddescA);
+        dague_gpu_data_register(dague,
+                                (dague_ddesc_t*)&ddescA,
+                                cblknbr, 
+                                sizeof(dague_complex64_t) );
+        if(loud) printf("Done\n");
+    }
 #endif
 
     /* Initialize the matrix */
@@ -190,9 +187,9 @@ int main(int argc, char ** argv)
     }
     sparse_matrix_zclean( &dspctxt );
     
-#if defined(HAVE_CUDA) && defined(PRECISION_s)
+#if defined(HAVE_CUDA)
     if(iparam[IPARAM_NGPUS] > 0) {
-        dague_gpu_data_unregister();
+        dague_gpu_data_unregister((dague_ddesc_t*)&ddescA);
         sparse_unregister_bloktab(dague, 
                                   (sparse_matrix_desc_t*)&ddescA);
         dague_gpu_kernel_fini(dague, "gemm");

@@ -25,7 +25,7 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define GENERATE_SM_VERSION_KERNEL_NAME_I(func, version) zgemm_##func##_SM##version
+#define GENERATE_SM_VERSION_KERNEL_NAME_I(func, version) func##_SM##version
 #define GENERATE_SM_VERSION_KERNEL_NAME_I2(func, version) GENERATE_SM_VERSION_KERNEL_NAME_I(func, version)
 #define GENERATE_SM_VERSION_KERNEL_NAME(func) GENERATE_SM_VERSION_KERNEL_NAME_I2(func, CUDA_SM_VERSION)
 

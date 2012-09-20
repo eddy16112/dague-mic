@@ -29,18 +29,19 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define GENERATE_SM_VERSION_NAME_I(func, version)  magmablas_##func##_SM##version
+#define GENERATE_SM_VERSION_NAME_I(func, version)  func##_SM##version
 #define GENERATE_SM_VERSION_NAME_I2(func, version) GENERATE_SM_VERSION_NAME_I(func, version)
 #define GENERATE_SM_VERSION_NAME(func)             GENERATE_SM_VERSION_NAME_I2(func, CUDA_SM_VERSION)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 extern "C" void
-GENERATE_SM_VERSION_NAME(zgemm)( char TRANSA, char TRANSB, int m, int n, int k,
-                                 dague_complex64_t alpha, dague_complex64_t *d_A, int lda,
-                                                          dague_complex64_t *d_B, int ldb,
-                                 dague_complex64_t beta,  dague_complex64_t *d_C, int ldc,
-                                 CUstream stream )
+GENERATE_SM_VERSION_NAME(zgemm_sparse)( char TRANSA, char TRANSB, int m, int n, int k,
+                                        dague_complex64_t alpha, dague_complex64_t *d_A, int lda,
+                                                                 dague_complex64_t *d_B, int ldb,
+                                        dague_complex64_t beta,  dague_complex64_t *d_C, int ldc,
+                                        int blocknbr, const int *blocktab, int fblocknbr, const int *fblocktab,
+                                        CUstream stream )
 {
 #if defined(PRECISION_z) || defined(PRECISION_c)    
     cuDoubleComplex lalpha = make_cuDoubleComplex( creal(alpha), cimag(alpha) );
