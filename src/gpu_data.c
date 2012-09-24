@@ -519,8 +519,11 @@ int dague_gpu_data_register( dague_context_t *dague_context,
         while( free_mem > (total_mem - thread_gpu_mem) ) {
             gpu_elem_t* gpu_elem;
             cudaError_t cuda_status;
-#if 0
+#if 1
             if( nb_allocations > (uint32_t)(nbelem/2*3) )
+                break;
+#else
+            if( nb_allocations > (uint32_t)20 )
                 break;
 #endif
             gpu_elem = (gpu_elem_t*)calloc(1, sizeof(gpu_elem_t));
