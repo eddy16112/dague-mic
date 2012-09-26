@@ -182,9 +182,12 @@ void sparse_matrix_init( sparse_matrix_desc_t *desc,
     desc->super.nodes   = nodes;
     desc->super.cores   = cores;
     desc->super.myrank  = myrank;
+    desc->super.moesi_map = NULL;
+
     desc->super.rank_of = sparse_matrix_rank_of;
     desc->super.vpid_of = sparse_matrix_vpid_of;
     desc->super.data_of = sparse_matrix_data_of;
+
 #ifdef DAGUE_PROF_TRACE
     desc->super.data_key      = sparse_matrix_data_key;
     desc->super.key_to_string = sparse_matrix_key_to_string;
