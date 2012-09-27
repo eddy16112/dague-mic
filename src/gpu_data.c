@@ -239,6 +239,12 @@ int dague_gpu_init(dague_context_t *dague_context,
 
         status = cuDeviceGetAttribute( &concurrency, CU_DEVICE_ATTRIBUTE_CONCURRENT_KERNELS, hcuDevice );
         DAGUE_CUDA_CHECK_ERROR( "cuDeviceGetAttribute ", status, {continue;} );
+        
+        printf("name: %s\n", szName);
+        printf("major: %d\n", major);
+        printf("minor: %d\n", minor);
+    //    minor=3;
+  //      major=1;
 
         if ( isdouble )
             device_weight[i+1] = ( major == 1 ) ? gpu_speeds[1][0] : gpu_speeds[1][1];

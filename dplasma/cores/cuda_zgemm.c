@@ -41,6 +41,8 @@ extern cuda_zgemm_t magmablas_zgemm_SM13;
 FORCE_UNDEFINED_SYMBOL(magmablas_zgemm_SM13)
 extern cuda_zgemm_t magmablas_zgemm_SM20;
 FORCE_UNDEFINED_SYMBOL(magmablas_zgemm_SM20)
+extern cuda_zgemm_t magmablas_zgemm_SM35;
+FORCE_UNDEFINED_SYMBOL(magmablas_zgemm_SM35)
 
 static inline
 int gpu_kernel_push_zgemm( gpu_device_t* gpu_device,

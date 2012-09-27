@@ -10,7 +10,7 @@
        
 */
 
-#if (CUDA_SM_VERSION == 11) || (CUDA_SM_VERSION == 12) || (CUDA_SM_VERSION == 13)
+#if (CUDA_SM_VERSION == 11) || (CUDA_SM_VERSION == 12) || (CUDA_SM_VERSION == 13) || (CUDA_SM_VERSION == 35)
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -77,5 +77,5 @@ GENERATE_SM_VERSION_NAME(zgemm)( char TRANSA, char TRANSB, int m, int n, int k,
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-#endif /* (CUDA_SM_VERSION == 11) || (CUDA_SM_VERSION == 12) || (CUDA_SM_VERSION == 13) */
+#endif /* (CUDA_SM_VERSION == 11) || (CUDA_SM_VERSION == 12) || (CUDA_SM_VERSION == 13) || (CUDA_SM_VERSION == 35)*/
 
