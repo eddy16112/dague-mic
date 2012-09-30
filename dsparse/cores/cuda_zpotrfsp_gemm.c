@@ -468,6 +468,8 @@ int gpu_zpotrfsp_gemm( dague_execution_unit_t* eu_context,
                        my_tmp_int_t cblknum, my_tmp_int_t bloknum, my_tmp_int_t fcblknum,
                        const sparse_matrix_desc_t *ddesc )
 {
+    static double refcost = 1e6;
+    double ratio;
     int which_gpu;
     dague_zpotrfsp_gemm_args_t *gpu_task = (dague_zpotrfsp_gemm_args_t*)malloc(sizeof(dague_zpotrfsp_gemm_args_t));
     SolverMatrix *datacode = &(ddesc->pastix_data->solvmatr);
@@ -485,6 +487,8 @@ int gpu_zpotrfsp_gemm( dague_execution_unit_t* eu_context,
     gpu_task->sizefcblk= sizeof(dague_complex64_t) * (size_t)symbol_get_cblk_stride(datacode, fcblknum) * symbol_get_cblk_width(datacode, fcblknum);
     gpu_task->ddesc    = (dague_ddesc_t*)ddesc;
 
+    ratio = ((double)(gpu_task->M) * (double)(gpu_task->N) * (double)(gpu_task->K)) / refcost;
+
     /* We always schedule the task on the GPU owning the C tile. */
     which_gpu = moesi_locate_device_with_valid_copy( ddesc->super.moesi_map, KERNEL_KEY( ddesc, fcblknum ) );
     if( which_gpu < 0 ) {  /* this is the first time we see this tile.
@@ -497,9 +501,9 @@ int gpu_zpotrfsp_gemm( dague_execution_unit_t* eu_context,
          * decision regarding the status of the current GEMM should be therefore
          * based only on the number of pending tasks on the GPUs.
          */
-        float weight, best_weight = device_load[0] + device_weight[0];
+        float weight, best_weight = device_load[0] + ratio * device_weight[0];
         for( which_gpu = 0; which_gpu < ndevices; which_gpu++ ) {
-            weight = device_load[which_gpu+1] + device_weight[which_gpu+1];
+            weight = device_load[which_gpu+1] + ratio * device_weight[which_gpu+1];
             if( best_weight > weight ) {
                 best_index = which_gpu;
                 best_weight = weight;
@@ -512,7 +516,7 @@ int gpu_zpotrfsp_gemm( dague_execution_unit_t* eu_context,
         which_gpu = best_index;
     }
     /* Update the load of the selected GPU */
-    device_load[which_gpu+1] += device_weight[which_gpu+1];
+    device_load[which_gpu+1] += ratio * device_weight[which_gpu+1];
 
     return gpu_kernel_scheduler_zpotrfsp_gemm( eu_context, (dague_gpu_context_t*)gpu_task, which_gpu );
 }
