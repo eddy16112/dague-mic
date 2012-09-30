@@ -331,6 +331,9 @@ gpu_kernel_submit_zpotrfsp_gemm( gpu_device_t        *gpu_device,
         
         d_blocktab = sdesc->d_blocktab[gpu_device->index] + 2 * bloknum                * sizeof(my_tmp_int_t);
         d_fbloktab = sdesc->d_blocktab[gpu_device->index] + 2 * SYMB_BLOKNUM(fcblknum) * sizeof(my_tmp_int_t);
+
+        d_C = d_C + sizeof(dague_complex64_t) * symbol_get_cblk_stride(datacode, fcblknum) * 
+            (symbol_get_blok_frownum(datacode, bloknum) - symbol_get_cblk_fcolnum(datacode, fcblknum));
         
         cuda_zpotrfsp_gemm('N', 'T', m, n, k, 
                            alpha, (cuDoubleComplex*)d_blok, symbol_get_cblk_stride(datacode, cblknum),
@@ -339,7 +342,6 @@ gpu_kernel_submit_zpotrfsp_gemm( gpu_device_t        *gpu_device,
                            bloknbr, (const int *)d_blocktab,
                            fblknbr, (const int *)d_fbloktab,
                            stream );
-        cudaThreadSynchronize();
     }
 
     return 0;

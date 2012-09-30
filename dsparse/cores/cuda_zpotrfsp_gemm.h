@@ -42,7 +42,9 @@ int gpu_zpotrfsp_gemm( dague_execution_unit_t* eu_context,
 #define symbol_get_cblk_bloknbr( _datacode_, _cblknum_ ) (SYMB_BLOKNUM((_cblknum_)+1)-SYMB_BLOKNUM(_cblknum_))
 #define symbol_get_cblk_stride(  _datacode_, _cblknum_ ) (SOLV_STRIDE(_cblknum_))
 #define symbol_get_cblk_width(   _datacode_, _cblknum_ ) (SYMB_LCOLNUM(_cblknum_)-SYMB_FCOLNUM(_cblknum_)+1)
+#define symbol_get_cblk_fcolnum( _datacode_, _cblknum_ ) (SYMB_FCOLNUM(_cblknum_))
 #define symbol_get_blok_coefind( _datacode_, _bloknum_ ) (SOLV_COEFIND(_bloknum_))
+#define symbol_get_blok_frownum( _datacode_, _bloknum_ ) (SYMB_FROWNUM(_bloknum_))
 #define symbol_get_blok_height(  _datacode_, _bloknum_ ) (SYMB_LROWNUM(_bloknum_)-SYMB_FROWNUM(_bloknum_)+1)
 
 #endif
