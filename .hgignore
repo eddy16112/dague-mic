@@ -294,8 +294,11 @@ dplasma/testing/testing_[sdcz]syev$
 dplasma/testing/testing_[sdcz]syrbt$
 dplasma/testing/testing_[sdcz]trmm$
 dplasma/testing/testing_[sdcz]trsm$
+dsparse/cores/dsparse_[scd]cores\.h
+dsparse/cores/core_[scd].*\.[ch]
+dsparse/cores/cuda_[scd].*\.[ch]
+dsparse/cores/[scd]gemm_sparse_.*\.[ch]
 dsparse/include/dsparse_[scd]\.h
-dsparse/lib/core_[scd].*\.[ch]
 dsparse/lib/[scdz]csc2cblk\.[ch]
 dsparse/lib/[scdz]getrf_sp1dplus\.[ch]
 dsparse/lib/[scdz]getrs_sp1dplus\.[ch]
@@ -323,7 +326,7 @@ dsparse/lib/[scd]potrf_sp1dplus_wrapper\.c
 dsparse/lib/[scd]potrs_sp1dplus_wrapper\.c
 dsparse/lib/[scd]sytrf_sp1dplus_wrapper\.c
 dsparse/lib/[scd]sytrs_sp1dplus_wrapper\.c
-dsparse/testing/testing_[sdcz]potrf_sp
+dsparse/testing/testing_[sdcz]potrf_sp$
 dsparse/testing/testing_[sdc]potrf_sp\.c
 tests/operator
 tests/reduce
