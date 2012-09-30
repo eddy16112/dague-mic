@@ -38,7 +38,7 @@ typedef void (*cuda_zgetrfsp_gemm_t) ( char TRANSA, char TRANSB, int m, int n, i
 
 cuda_zgetrfsp_gemm_t* zgetrfsp_gemm_functions;
 
-#define FORCE_UNDEFINED_SYMBOL(x) void* __ ## x ## _fp =(void*)&x;
+#define FORCE_UNDEFINED_SYMBOL(x) void* __ ## x ## _getrf =(void*)&x;
 /* extern cuda_zgetrfsp_gemm_t zgemm_sparse_SM11; */
 /* FORCE_UNDEFINED_SYMBOL(zgemm_sparse_SM11) */
 /* extern cuda_zgetrfsp_gemm_t zgemm_sparse_SM13; */

@@ -56,10 +56,12 @@ if(CUDA_FOUND)
 ### Now the gpu wrappers to the .cu files
     set(GPU_KERNEL_SOURCES_GEN
          cuda_zpotrfsp_gemm.c
+         cuda_zgetrfsp_gemm.c
 #        cuda_zgemmsp.c
     )
     set(GPU_KERNEL_HEADERS_GEN
          cuda_zpotrfsp_gemm.h
+         cuda_zgetrfsp_gemm.h
 #        cuda_zgemmsp.h
     )
 
