@@ -14,6 +14,7 @@
 #include <cublas.h>
 #include "dsparse/cores/cuda_sparse.h"
 #include "dsparse/cores/cuda_zpotrfsp_gemm.h"
+#include "dsparse/cores/cuda_zgetrfsp_gemm.h"
 #endif
 
 int main(int argc, char ** argv)
@@ -74,9 +75,21 @@ int main(int argc, char ** argv)
 #if defined(HAVE_CUDA)
     if(iparam[IPARAM_NGPUS] > 0) {
         if(loud) printf("+++ Load GPU kernel ... ");
-        if(0 != gpu_kernel_init_zpotrfsp_gemm(dague)) {
-            fprintf(stderr, "XXX Unable to load GPU kernel.\n");
-            exit(3);
+        switch ( factotype ) {
+        case DSPARSE_LLT:
+            if(0 != gpu_kernel_init_zpotrfsp_gemm(dague)) {
+                fprintf(stderr, "XXX Unable to load GPU kernel.\n");
+                exit(3);
+            }
+            break;
+        case DSPARSE_LU:
+            if(0 != gpu_kernel_init_zgetrfsp_gemm(dague)) {
+                fprintf(stderr, "XXX Unable to load GPU kernel.\n");
+                exit(3);
+            }
+            break;
+        default:
+            fprintf(stderr, "No GPU kernel for this one :)\n");
         }
         int cblknbr = sparse_register_bloktab( dague,
                                                (sparse_matrix_desc_t*)&ddescA);
