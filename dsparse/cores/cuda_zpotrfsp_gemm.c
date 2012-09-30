@@ -27,18 +27,12 @@
 
 #include "cuda_zpotrfsp_gemm.h"
 
-#define CBLK_SIZE(cblk)                                                 \
-    (SOLV_STRIDE(cblk)*(SYMB_LCOLNUM(cblk)-SYMB_FCOLNUM(cblk)+1))
-
-#define TYPE_SIZE                               \
-    (sparse_matrix_size_of( UGLY_A->mtype) )
-
 #define KERNEL_NAME zpotrfsp_gemm
 
 typedef void (*cuda_zpotrfsp_gemm_t) ( char TRANSA, char TRANSB, int m, int n, int k,
-                                       dague_complex64_t alpha, dague_complex64_t *d_A, int lda,
-                                                                dague_complex64_t *d_B, int ldb,
-                                       dague_complex64_t beta,  dague_complex64_t *d_C, int ldc,
+                                       cuDoubleComplex alpha, cuDoubleComplex *d_A, int lda,
+                                                              cuDoubleComplex *d_B, int ldb,
+                                       cuDoubleComplex beta,  cuDoubleComplex *d_C, int ldc,
                                        int blocknbr, const int *blocktab, int fblocknbr, const int *fblocktab,
                                        CUstream stream );
 
@@ -230,20 +224,19 @@ gpu_kernel_push_zpotrfsp_gemm( gpu_device_t        *gpu_device,
     dague_execution_context_t  *this_task = gpu_task->ec;
     dague_zpotrfsp_gemm_args_t *args = (dague_zpotrfsp_gemm_args_t*)gpu_task;
 
-    moesi_get_master(args->ddesc->moesi_map, KERNEL_KEY( args->ddesc, args->fcblknum ),
+    moesi_get_master(args->ddesc->moesi_map, KERNEL_KEY( args->ddesc, args->cblknum ),
                      &(this_task->data[0].moesi_master));
     if( NULL == (this_task->data[0].moesi_master)->device_copies[gpu_device->index])
         move_data_count++;
 
-    moesi_get_master(args->ddesc->moesi_map, KERNEL_KEY( args->ddesc, args->cblknum ),
+    moesi_get_master(args->ddesc->moesi_map, KERNEL_KEY( args->ddesc, args->fcblknum ),
                      &(this_task->data[1].moesi_master));
     if( NULL == (this_task->data[1].moesi_master)->device_copies[gpu_device->index])
         move_data_count++;
 
+    sizeloc[0] = args->sizecblk;
+    sizeloc[1] = args->sizefcblk;
     if( 0 != move_data_count ) { /* Try to reserve enough room for all data */
-        sizeloc[0] = args->sizefcblk;
-        sizeloc[1] = args->sizecblk;
-
         ret = dague_gpu_data_reserve_device_space( gpu_device,
                                                    this_task,
                                                    sizeloc,
@@ -267,7 +260,7 @@ gpu_kernel_push_zpotrfsp_gemm( gpu_device_t        *gpu_device,
             gpu_device->device_index, this_task->function->in[0]->name,
             args->bloknum, args->fcblknum, args->cblknum, args->prev, args->next));
     ret = dague_gpu_data_stage_in( gpu_device, this_task->function->in[0]->access_type,
-                                   &(this_task->data[0]), args->sizefcblk, stream );
+                                   &(this_task->data[0]), sizeloc[0], stream );
     if( ret < 0 ) {
         goto release_and_return_error;
     }
@@ -276,7 +269,7 @@ gpu_kernel_push_zpotrfsp_gemm( gpu_device_t        *gpu_device,
             gpu_device->device_index, this_task->function->in[1]->name,
             args->bloknum, args->fcblknum, args->cblknum, args->prev, args->next));
     ret = dague_gpu_data_stage_in( gpu_device, this_task->function->in[1]->access_type,
-                                   &(this_task->data[1]), args->sizecblk, stream );
+                                   &(this_task->data[1]), sizeloc[1], stream );
     if( ret < 0 ) {
         goto release_and_return_error;
     }
@@ -346,6 +339,7 @@ gpu_kernel_submit_zpotrfsp_gemm( gpu_device_t        *gpu_device,
                            bloknbr, (const int *)d_blocktab,
                            fblknbr, (const int *)d_fbloktab,
                            stream );
+        cudaDeviceSynchronize();
     }
 
     return 0;
@@ -385,12 +379,13 @@ gpu_kernel_pop_zpotrfsp_gemm( gpu_device_t        *gpu_device,
             gpu_elem = gpu_elem_obtain_from_master(this_task->data[i].moesi_master, gpu_device->index);
 
             /* Stage the transfer of the data back to main memory */
-            gpu_device->required_data_out += args->sizecblk;
+            gpu_device->required_data_out += args->sizefcblk;
             assert( ((dague_list_item_t*)gpu_elem)->list_next == (dague_list_item_t*)gpu_elem );
             assert( ((dague_list_item_t*)gpu_elem)->list_prev == (dague_list_item_t*)gpu_elem );
 
             if( args->pushout ) { /* next == 0 */
-                DEBUG3(("GPU[%1d]:\tOUT Data of %s key %d\n", gpu_device->device_index, this_task->function->in[i]->name, this_task->data[i].moesi_master->key));
+                DEBUG3(("GPU[%1d]:\tOUT Data of %s key %d\n", gpu_device->device_index,
+                        this_task->function->in[i]->name, this_task->data[i].moesi_master->key));
 #if defined(DAGUE_PROF_TRACE)
                 if( dague_cuda_trackable_events & DAGUE_PROFILE_CUDA_TRACK_DATA_OUT )
                     dague_profiling_trace( gpu_device->profiling, dague_cuda_moveout_key_start,
@@ -398,13 +393,13 @@ gpu_kernel_pop_zpotrfsp_gemm( gpu_device_t        *gpu_device,
                                            NULL );
 #endif  /* defined(DAGUE_PROF_TRACE) */
                 /* Move the data back into main memory */
-                status = (cudaError_t)cuMemcpyDtoHAsync( ADATA(this_task->data[1].data), gpu_elem->gpu_mem_ptr, args->sizecblk, stream );
+                status = (cudaError_t)cuMemcpyDtoHAsync( ADATA(this_task->data[1].data), gpu_elem->gpu_mem_ptr, args->sizefcblk, stream );
                 DAGUE_CUDA_CHECK_ERROR( "cuMemcpyDtoHAsync from device ", status,
                                         { WARNING(("data %s <<%p>> -> <<%p>>\n", this_task->function->in[1]->name,
                                                   (void*)gpu_elem->gpu_mem_ptr, (void*)ADATA(this_task->data[1].data)));
                                           return_code = -2;
                                           goto release_and_return_error;} );
-                gpu_device->transferred_data_out += args->sizecblk; /* TODO: not hardcoded, use datatype size */
+                gpu_device->transferred_data_out += args->sizefcblk; /* TODO: not hardcoded, use datatype size */
                 how_many++;
             }
         }
