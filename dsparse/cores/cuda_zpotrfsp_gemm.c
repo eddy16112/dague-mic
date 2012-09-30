@@ -97,7 +97,7 @@ void gpu_kernel_profile_zpotrfsp_gemm( gpu_device_t        *gpu_device,
         dague_ddesc_t *ddesc = (dague_ddesc_t*)(args->ddesc);
         int data_id =
             ddesc->data_key(ddesc,
-                            args->cblknum );
+                            args->fcblknum );
 
         uint64_t task_id =
             ec->function->key( ec->dague_object, ec->locals );
@@ -339,7 +339,7 @@ gpu_kernel_submit_zpotrfsp_gemm( gpu_device_t        *gpu_device,
                            bloknbr, (const int *)d_blocktab,
                            fblknbr, (const int *)d_fbloktab,
                            stream );
-        cudaDeviceSynchronize();
+        cudaThreadSynchronize();
     }
 
     return 0;
