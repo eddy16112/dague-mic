@@ -14,7 +14,7 @@ if(CUDA_FOUND)
 
 ### CUDA .cu sources
     set( CUDA11_SOURCES
-         #zgemm_sparse_11_12_13.cu
+         zgemm_sparse_11_12_13.cu
     )
     set( CUDA13_SOURCES 
          ${CUDA11_SOURCES} )
