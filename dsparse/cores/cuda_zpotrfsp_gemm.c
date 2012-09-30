@@ -488,12 +488,20 @@ int gpu_zpotrfsp_gemm( dague_execution_unit_t* eu_context,
     gpu_task->ddesc    = (dague_ddesc_t*)ddesc;
 
     ratio = ((double)(gpu_task->M) * (double)(gpu_task->N) * (double)(gpu_task->K)) / refcost;
-
+    
     /* We always schedule the task on the GPU owning the C tile. */
     which_gpu = moesi_locate_device_with_valid_copy( ddesc->super.moesi_map, KERNEL_KEY( ddesc, fcblknum ) );
     if( which_gpu < 0 ) {  /* this is the first time we see this tile.
                             * Let's decide which GPU will work on it. */
         int best_index = -1;  /* cores */
+
+        dague_int_t browfirst = UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblknum))  );
+        dague_int_t browlast  = UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblknum))+1);
+        if ( browlast - browfirst < 5 ) {
+            dague_atomic_inc_32b( &dague_cpu_counter );
+            return -99;
+        }
+
         /* There are 3 types of GEMMs kernels: the ones waiting on the
          * execution contextes queues to be investigated, the current one
          * which is investigated for execution on the context of the current
