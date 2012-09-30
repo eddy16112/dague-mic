@@ -509,7 +509,7 @@ int dague_gpu_data_register( dague_context_t *dague_context,
          */
         cuMemGetInfo( &free_mem, &total_mem );
         /* We allocate 9/10 of the total memory */
-        thread_gpu_mem = (total_mem - total_mem / 10);
+        thread_gpu_mem = (free_mem - free_mem / 10);
 
 #if defined(DAGUE_GPU_CUDA_ALLOC_PER_TILE)
         if( dague_ulist_is_empty(gpu_device->gpu_mem_lru) ) {
