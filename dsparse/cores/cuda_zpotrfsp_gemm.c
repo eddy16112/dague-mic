@@ -335,7 +335,7 @@ gpu_kernel_submit_zpotrfsp_gemm( gpu_device_t        *gpu_device,
         d_C = d_C + sizeof(dague_complex64_t) * symbol_get_cblk_stride(datacode, fcblknum) * 
             (symbol_get_blok_frownum(datacode, bloknum) - symbol_get_cblk_fcolnum(datacode, fcblknum));
         
-        cuda_zpotrfsp_gemm('N', 'T', m, n, k, 
+        cuda_zpotrfsp_gemm('N', 'C', m, n, k, 
                            alpha, (cuDoubleComplex*)d_blok, symbol_get_cblk_stride(datacode, cblknum),
                                   (cuDoubleComplex*)d_blok, symbol_get_cblk_stride(datacode, cblknum),
                            beta,  (cuDoubleComplex*)d_C,    symbol_get_cblk_stride(datacode, fcblknum),
