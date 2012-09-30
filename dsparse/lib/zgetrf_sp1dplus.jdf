@@ -67,8 +67,8 @@ RW U <- ( browk == browk1 ) ? A(1, k) : Cu GEMM( lastbrow )
 BODY
 {
 #if defined(HAVE_CUDA)
-    moesi_master_update( descA->super.moesi_map, KERNEL_KEY( descA, 0, k ) );
-    moesi_master_update( descA->super.moesi_map, KERNEL_KEY( descA, 1, k ) );
+    moesi_master_update( descA->super.moesi_map, GETRFSP_KERNEL_KEY( descA, 0, k ) );
+    moesi_master_update( descA->super.moesi_map, GETRFSP_KERNEL_KEY( descA, 1, k ) );
 #endif  /* defined(HAVE_CUDA) */
 
 #if defined(ACCESS_STATISTICS)
@@ -156,8 +156,8 @@ BODY
             }
             /* Continue with the task on the cores */
         }
-        moesi_master_update( descA->super.moesi_map, KERNEL_KEY( descA, 0, fcblk ) );
-        moesi_master_update( descA->super.moesi_map, KERNEL_KEY( descA, 1, fcblk ) );
+        moesi_master_update( descA->super.moesi_map, GETRFSP_KERNEL_KEY( descA, 0, fcblk ) );
+        moesi_master_update( descA->super.moesi_map, GETRFSP_KERNEL_KEY( descA, 1, fcblk ) );
 #endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
 
         work = (dague_complex64_t *)dague_private_memory_pop( p_work );

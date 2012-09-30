@@ -224,22 +224,22 @@ gpu_kernel_push_zgetrfsp_gemm( gpu_device_t        *gpu_device,
     dague_execution_context_t  *this_task = gpu_task->ec;
     dague_zgetrfsp_gemm_args_t *args = (dague_zgetrfsp_gemm_args_t*)gpu_task;
 
-    moesi_get_master(args->ddesc->moesi_map, KERNEL_KEY( args->ddesc, 0, args->cblknum ),
+    moesi_get_master(args->ddesc->moesi_map, GETRFSP_KERNEL_KEY( args->ddesc, 0, args->cblknum ),
                      &(this_task->data[0].moesi_master));
     if( NULL == (this_task->data[0].moesi_master)->device_copies[gpu_device->index])
         move_data_count++;
 
-    moesi_get_master(args->ddesc->moesi_map, KERNEL_KEY( args->ddesc, 1, args->cblknum ),
+    moesi_get_master(args->ddesc->moesi_map, GETRFSP_KERNEL_KEY( args->ddesc, 1, args->cblknum ),
                      &(this_task->data[1].moesi_master));
     if( NULL == (this_task->data[1].moesi_master)->device_copies[gpu_device->index])
         move_data_count++;
 
-    moesi_get_master(args->ddesc->moesi_map, KERNEL_KEY( args->ddesc, 0, args->fcblknum ),
+    moesi_get_master(args->ddesc->moesi_map, GETRFSP_KERNEL_KEY( args->ddesc, 0, args->fcblknum ),
                      &(this_task->data[2].moesi_master));
     if( NULL == (this_task->data[2].moesi_master)->device_copies[gpu_device->index])
         move_data_count++;
 
-    moesi_get_master(args->ddesc->moesi_map, KERNEL_KEY( args->ddesc, 1, args->fcblknum ),
+    moesi_get_master(args->ddesc->moesi_map, GETRFSP_KERNEL_KEY( args->ddesc, 1, args->fcblknum ),
                      &(this_task->data[3].moesi_master));
     if( NULL == (this_task->data[3].moesi_master)->device_copies[gpu_device->index])
         move_data_count++;
@@ -363,35 +363,42 @@ gpu_kernel_submit_zgetrfsp_gemm( gpu_device_t        *gpu_device,
         int m = args->M;
         int n = args->N;
         int k = args->K;
-        CUdeviceptr d_blok;
-        CUdeviceptr d_blocktab, d_fbloktab;
+        CUdeviceptr d_A, d_B, d_C;
+        int *d_blocktab, *d_fbloktab;
 
-        d_blocktab = sdesc->d_blocktab[gpu_device->index] + 2 * bloknum                * sizeof(my_tmp_int_t);
-        d_fbloktab = sdesc->d_blocktab[gpu_device->index] + 2 * SYMB_BLOKNUM(fcblknum) * sizeof(my_tmp_int_t);
+        d_blocktab = (int*)(sdesc->d_blocktab[gpu_device->index] + 2 * bloknum                * sizeof(my_tmp_int_t));
+        d_fbloktab = (int*)(sdesc->d_blocktab[gpu_device->index] + 2 * SYMB_BLOKNUM(fcblknum) * sizeof(my_tmp_int_t));
 
-        d_blok = d_Al + symbol_get_blok_coefind(datacode, bloknum)*sizeof(dague_complex64_t);
-        d_Cl   = d_Cl + sizeof(dague_complex64_t) * symbol_get_cblk_stride(datacode, fcblknum) *
+        d_A = d_Al + symbol_get_blok_coefind(datacode, bloknum)*sizeof(dague_complex64_t);
+        d_B = d_Au + symbol_get_blok_coefind(datacode, bloknum)*sizeof(dague_complex64_t);
+        d_C = d_Cl + sizeof(dague_complex64_t) * symbol_get_cblk_stride(datacode, fcblknum) *
             (symbol_get_blok_frownum(datacode, bloknum) - symbol_get_cblk_fcolnum(datacode, fcblknum));
 
         cuda_zgetrfsp_gemm('N', 'C', m, n, k,
-                           alpha, (cuDoubleComplex*)d_blok, symbol_get_cblk_stride(datacode, cblknum),
-                                  (cuDoubleComplex*)d_blok, symbol_get_cblk_stride(datacode, cblknum),
-                           beta,  (cuDoubleComplex*)d_Cl,   symbol_get_cblk_stride(datacode, fcblknum),
+                           alpha, (cuDoubleComplex*)d_A, symbol_get_cblk_stride(datacode, cblknum),
+                                  (cuDoubleComplex*)d_B, symbol_get_cblk_stride(datacode, cblknum),
+                           beta,  (cuDoubleComplex*)d_C, symbol_get_cblk_stride(datacode, fcblknum),
                            bloknbr, (const int *)d_blocktab,
                            fblknbr, (const int *)d_fbloktab,
                            stream );
+        
+        if (bloknbr > 1) {
+            m -= symbol_get_blok_coefind(datacode, (bloknum+1)) - symbol_get_blok_coefind(datacode, bloknum);
+            d_A = d_Au + symbol_get_blok_coefind(datacode, (bloknum+1))*sizeof(dague_complex64_t);
+            d_B = d_Al + symbol_get_blok_coefind(datacode,  bloknum   )*sizeof(dague_complex64_t);
+            d_C = d_Cu + sizeof(dague_complex64_t) * symbol_get_cblk_stride(datacode, fcblknum) *
+                (symbol_get_blok_frownum(datacode, bloknum) - symbol_get_cblk_fcolnum(datacode, fcblknum));
+            //            d_blocktab = d_blocktab + 2;
 
-        d_blok = d_Au + symbol_get_blok_coefind(datacode, bloknum)*sizeof(dague_complex64_t);
-        d_Cu   = d_Cu + sizeof(dague_complex64_t) * symbol_get_cblk_stride(datacode, fcblknum) *
-            (symbol_get_blok_frownum(datacode, bloknum) - symbol_get_cblk_fcolnum(datacode, fcblknum));
+            cuda_zgetrfsp_gemm('N', 'C', m, n, k,
+                               alpha, (cuDoubleComplex*)d_A, symbol_get_cblk_stride(datacode, cblknum),
+                                      (cuDoubleComplex*)d_B, symbol_get_cblk_stride(datacode, cblknum),
+                               beta,  (cuDoubleComplex*)d_C, symbol_get_cblk_stride(datacode, fcblknum),
+                               bloknbr-1, (const int *)d_blocktab,
+                               fblknbr,   (const int *)d_fbloktab,
+                               stream );
 
-        cuda_zgetrfsp_gemm('N', 'C', m, n, k,
-                           alpha, (cuDoubleComplex*)d_blok, symbol_get_cblk_stride(datacode, cblknum),
-                                  (cuDoubleComplex*)d_blok, symbol_get_cblk_stride(datacode, cblknum),
-                           beta,  (cuDoubleComplex*)d_Cu,   symbol_get_cblk_stride(datacode, fcblknum),
-                           bloknbr, (const int *)d_blocktab,
-                           fblknbr, (const int *)d_fbloktab,
-                           stream );
+        }
     }
 
     return 0;
@@ -536,7 +543,7 @@ int gpu_zgetrfsp_gemm( dague_execution_unit_t* eu_context,
     gpu_task->ddesc    = (dague_ddesc_t*)ddesc;
 
     /* We always schedule the task on the GPU owning the C tile. */
-    which_gpu = moesi_locate_device_with_valid_copy( ddesc->super.moesi_map, KERNEL_KEY( ddesc, 0, fcblknum ) );
+    which_gpu = moesi_locate_device_with_valid_copy( ddesc->super.moesi_map, GETRFSP_KERNEL_KEY( ddesc, 0, fcblknum ) );
     if( which_gpu < 0 ) {  /* this is the first time we see this tile.
                             * Let's decide which GPU will work on it. */
         int best_index = -1;  /* cores */
