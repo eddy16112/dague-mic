@@ -2,7 +2,7 @@
  *
  * @file sparse-matrix.c
  *
- * @author Mathieu Faverge 
+ * @author Mathieu Faverge
  * @author Pierre Ramet
  * @date 2011-10-17
  * @precisions normal z -> c d s
@@ -33,7 +33,7 @@ dague_int_t sparse_matrix_get_lcblknum(sparse_matrix_desc_t *spmtx, dague_int_t 
 {
     dague_int_t cblknum;
     dague_int_t first, last, middle;
-    
+
     first   = 0;
     last    = spmtx->pastix_data->solvmatr.symbmtx.cblknbr;
     middle  = (last+first) / 2;
@@ -52,16 +52,16 @@ dague_int_t sparse_matrix_get_lcblknum(sparse_matrix_desc_t *spmtx, dague_int_t 
         }
         middle = (last+first) / 2;
     }
-    assert( spmtx->pastix_data->solvmatr.symbmtx.cblktab[cblknum].bloknum <= bloknum 
-	    && spmtx->pastix_data->solvmatr.symbmtx.cblktab[cblknum+1].bloknum > bloknum);
+    assert( spmtx->pastix_data->solvmatr.symbmtx.cblktab[cblknum].bloknum <= bloknum
+            && spmtx->pastix_data->solvmatr.symbmtx.cblktab[cblknum+1].bloknum > bloknum);
     return cblknum;
 }
 
-dague_int_t sparse_matrix_get_listptr_prev(sparse_matrix_desc_t *spmtx, dague_int_t bloknum, dague_int_t fcblknum ) 
+dague_int_t sparse_matrix_get_listptr_prev(sparse_matrix_desc_t *spmtx, dague_int_t bloknum, dague_int_t fcblknum )
 {
     dague_int_t count, browfirst, browlast;
     SolverMatrix *datacode=&(spmtx->pastix_data->solvmatr);
-    
+
     /* fprintf(stderr, "TOTO cblknum=%d, browfirst=%d, browlast=%d\n", */
     /*         cblknum,  */
     /*         UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(cblknum))  ),  */
@@ -70,7 +70,7 @@ dague_int_t sparse_matrix_get_listptr_prev(sparse_matrix_desc_t *spmtx, dague_in
     browfirst = UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblknum))  );
     browlast  = UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblknum))+1);
     if ( bloknum == UPDOWN_LISTBLOK( browfirst ) )
-        return 0; 
+        return 0;
     for (count=browfirst; count<browlast-1; count++)
         if (bloknum==UPDOWN_LISTBLOK(count+1)) return UPDOWN_LISTBLOK(count);
     assert(0);
@@ -81,12 +81,12 @@ dague_int_t sparse_matrix_get_listptr_next(sparse_matrix_desc_t *spmtx, dague_in
 {
     dague_int_t count, browfirst, browlast;
     SolverMatrix *datacode=&(spmtx->pastix_data->solvmatr);
-    
+
     browfirst = UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblknum))   );
     browlast  = UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblknum))+1 );
-    
+
     if ( bloknum == UPDOWN_LISTBLOK( browlast-1 ) )
-        return 0; 
+        return 0;
     for (count=browlast-1; count>browfirst; count--)
         if (bloknum==UPDOWN_LISTBLOK(count-1)) return UPDOWN_LISTBLOK(count);
     assert(0);
@@ -109,25 +109,32 @@ void *sparse_matrix_data_of(struct dague_ddesc *mat, ... )
 {
     sparse_matrix_desc_t *spmtx = (sparse_matrix_desc_t*)mat;
     va_list ap;
-    dague_int_t cblknum, bloknum;
+    dague_int_t uplo, cblknum, bloknum;
 
     va_start(ap, mat);
+    uplo    = va_arg(ap, unsigned int);
     cblknum = va_arg(ap, unsigned int);
     va_end(ap);
     bloknum = spmtx->pastix_data->solvmatr.symbmtx.cblktab[cblknum].bloknum;
 
-    return (char*)(spmtx->pastix_data->solvmatr.coeftab[cblknum])
-        + (size_t)(spmtx->typesze) * (size_t)(spmtx->pastix_data->solvmatr.bloktab[bloknum].coefind);
+    if (uplo == 0) {
+        return (char*)(spmtx->pastix_data->solvmatr.coeftab[cblknum])
+            + (size_t)(spmtx->typesze) * (size_t)(spmtx->pastix_data->solvmatr.bloktab[bloknum].coefind);
+    } else {
+        return (char*)(spmtx->pastix_data->solvmatr.ucoeftab[cblknum])
+            + (size_t)(spmtx->typesze) * (size_t)(spmtx->pastix_data->solvmatr.bloktab[bloknum].coefind);
+    }
 }
 
 #ifdef DAGUE_PROF_TRACE
 uint32_t sparse_matrix_data_key(struct dague_ddesc *mat, ... )
 {
     va_list ap;
-    dague_int_t cblknum, bloknum;
+    dague_int_t uplo, cblknum, bloknum;
     sparse_matrix_desc_t *spmtx = (sparse_matrix_desc_t*)mat;
-    
+
     va_start(ap, mat);
+    uplo    = va_arg(ap, unsigned int);
     cblknum = va_arg(ap, unsigned int);
     va_end(ap);
     bloknum = spmtx->pastix_data->solvmatr.symbmtx.cblktab[cblknum].bloknum;
@@ -142,7 +149,7 @@ int sparse_matrix_key_to_string(struct dague_ddesc *mat, uint32_t datakey, char 
 
     dague_int_t first, last, middle;
     int res;
-    
+
     first   = 0;
     last    = spmtx->pastix_data->solvmatr.symbmtx.cblknbr;
     middle  = (last+first) / 2;
@@ -163,19 +170,19 @@ int sparse_matrix_key_to_string(struct dague_ddesc *mat, uint32_t datakey, char 
         middle = (last+first) / 2;
     }
 
-    res = snprintf(buffer, buffer_size, "(%ld, %ld)", 
+    res = snprintf(buffer, buffer_size, "(%ld, %ld)",
                    (long int)cblknum, (long int)bloknum);
     if (res < 0)
     {
-        printf("error in key_to_string for tile (%ld, %ld) key: %u\n", 
+        printf("error in key_to_string for tile (%ld, %ld) key: %u\n",
                (long int)cblknum, (long int)bloknum, datakey);
     }
     return res;
 }
 #endif
 
-void sparse_matrix_init( sparse_matrix_desc_t *desc, 
-                         enum spmtx_type mtype, 
+void sparse_matrix_init( sparse_matrix_desc_t *desc,
+                         enum spmtx_type mtype,
                          int nodes, int cores, int myrank)
 {
     /* dague_ddesc structure */

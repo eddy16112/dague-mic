@@ -31,7 +31,7 @@ extern int *gpu_counter;
 descA    [type = "sparse_matrix_desc_t *"]
 A        [type = "dague_ddesc_t *"]
 datacode [type = "SolverMatrix*" default="&(descA->pastix_data->solvmatr)" hidden=on]
-cblknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.cblknbr - 1" hidden=on] 
+cblknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.cblknbr - 1" hidden=on]
 bloknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.bloknbr - 2" hidden=on] /* -2 to avoid last diagonal block */
 p_work   [type = "dague_memory_pool_t *" size = "datacode->coefmax * sizeof(dague_complex64_t)"]
 
@@ -50,14 +50,15 @@ browk1    = inline_c %{ if ( gcblk2list != -1 ) return UPDOWN_LISTPTR( gcblk2lis
 lastbrow  = inline_c %{ if (browk1 > 0) return UPDOWN_LISTBLOK(browk1-1); else return 0; %}
 firstblok = inline_c %{ return SYMB_BLOKNUM(k); %}
 lastblok  = inline_c %{ return SYMB_BLOKNUM(k+1); %}
+
 // Parallel partitioning
-:A(k) // Should match SOLV_COEFTAB(k)
+:A(0, k) // Should match SOLV_COEFTAB(k)
 
 // Parameters
 /* C is A(k) if it's a leaf or get the cblk from the last update */
-RW A <- ( browk == browk1 ) ? A(k) : C GEMM( lastbrow )
+RW A <- ( browk == browk1 ) ? A(0, k) : C GEMM( lastbrow )
      -> A GEMM(firstblok+1..lastblok-1)
-     -> A(k)
+     -> A(0, k)
 
 ; inline_c %{ return - TASK_PRIONUM(k); %}
 
@@ -66,13 +67,13 @@ BODY
 #if defined(HAVE_CUDA)
     moesi_master_update( descA->super.moesi_map, KERNEL_KEY( descA, k ) );
 #endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
-    
+
 #if defined(ACCESS_STATISTICS)
     if ( browk == browk1 ) {
         fprintf(stderr, "Access %lu %lu\n", descA->cblksize[k], descA->cblksize[k+1]-descA->cblksize[k] );
     }
 #endif
-    
+
     DRYRUN(
            core_zpotrfsp1d(A, datacode, k, descA->pastix_data->sopar.espilondiag );
            );
@@ -99,12 +100,12 @@ prev   = inline_c %{ if (phony) return 0; else return sparse_matrix_get_listptr_
 next   = inline_c %{ if (phony) return 0; else return sparse_matrix_get_listptr_next( descA, (dague_int_t)k, (dague_int_t)fcblk ); %} // next column updating fcblk-th column
 
 // Parallel partitioning
-:A(fcblk)
+:A(0, fcblk)
 
 // Parameters
-READ  A <- phony ? A(fcblk) : A POTRF_TRSM(cblk)       // if off-diagonal, then take output from trsm
-RW    C <- ( prev == 0 ) ? A(fcblk) : C GEMM( prev )   // if off-diagonal, then take output from gemm by the previous column
-        -> phony ? A(fcblk)
+READ  A <- phony ? A(0, fcblk) : A POTRF_TRSM(cblk)       // if off-diagonal, then take output from trsm
+RW    C <- ( prev == 0 ) ? A(0, fcblk) : C GEMM( prev )   // if off-diagonal, then take output from gemm by the previous column
+        -> phony ? A(0, fcblk)
         -> ((!phony) && (next == 0)) ? A POTRF_TRSM( fcblk ) // if diagonal in the next column, then do trsm
         -> ((!phony) && (next != 0)) ? C GEMM( next )        // if off-diagonal in the next column, then do gemm
 
@@ -112,21 +113,24 @@ RW    C <- ( prev == 0 ) ? A(fcblk) : C GEMM( prev )   // if off-diagonal, then 
 
 BODY
     if (!phony) {
-        
+      dague_int_t browfirst = UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblk))  );
+      dague_int_t browlast  = UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblk))+1);
+
 #if defined(ACCESS_STATISTICS)
         if ( prev == 0 ) {
             fprintf(stderr, "Access %lu %lu\n", descA->cblksize[fcblk], descA->cblksize[fcblk+1]-descA->cblksize[fcblk] );
         }
 #endif
-        
+
 #if defined(HAVE_CUDA)
         printlog(
                  "thread %d compute_1dgemm START ( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
                  context->eu_id, k, fcblk, cblk, prev, next);
-        
-        if( dague_active_gpu() > 0 ) {
+
+        if( ( dague_active_gpu() > 0 ) &&
+            ( (browlast-browfirst) > 5 ) ){
             int rc;
-            
+
             if( 0 == (rc = gpu_zpotrfsp_gemm( context, this_task,
                                               (next == 0),
                                               cblk, k, fcblk,
@@ -152,25 +156,24 @@ BODY
         }
         moesi_master_update( descA->super.moesi_map, KERNEL_KEY( descA, fcblk ) );
 #endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
-        
+
         dague_complex64_t *work = (dague_complex64_t *)dague_private_memory_pop( p_work );
-        
+
         DRYRUN(
                core_zpotrfsp1d_gemm(cblk, k, fcblk, A, C, work, datacode);
                );
         printlog(
                  "thread %d compute_1dgemm( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
                  context->eu_id, k, fcblk, cblk, prev, next);
-        
+
         dague_private_memory_push( p_work, (void *)work );
     } else {
         printlog(
                  "thread %d phony_gemm( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
                  context->eu_id, k, fcblk, cblk, prev, next);
     }
-    
+
 #if defined(HAVE_CUDA)
  FIN:
 #endif
 END
-    
