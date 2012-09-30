@@ -83,7 +83,7 @@ int main(int argc, char ** argv)
         dague_gpu_data_register(dague,
                                 (dague_ddesc_t*)&ddescA,
                                 cblknbr, 
-                                sizeof(dague_complex64_t) );
+                                32*32*sizeof(dague_complex64_t) );
         if(loud) printf("Done\n");
     }
 #endif
