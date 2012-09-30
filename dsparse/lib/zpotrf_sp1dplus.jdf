@@ -23,7 +23,7 @@ extern "C" %{
 #include "gpu_data.h"
 #include "dsparse/cores/cuda_zpotrfsp_gemm.h"
 extern int *gpu_counter;
-#endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
+#endif  /* defined(HAVE_CUDA) */
 %}
 
 /* Globals
@@ -65,7 +65,7 @@ RW A <- ( browk == browk1 ) ? A(0, k) : C GEMM( lastbrow )
 BODY
 {
 #if defined(HAVE_CUDA)
-    moesi_master_update( descA->super.moesi_map, KERNEL_KEY( descA, k ) );
+    moesi_master_update( descA->super.moesi_map, KERNEL_KEY( descA, 0, k ) );
 #endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
 
 #if defined(ACCESS_STATISTICS)
@@ -113,8 +113,6 @@ RW    C <- ( prev == 0 ) ? A(0, fcblk) : C GEMM( prev )   // if off-diagonal, th
 
 BODY
     if (!phony) {
-      dague_int_t browfirst = UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblk))  );
-      dague_int_t browlast  = UPDOWN_LISTPTR( UPDOWN_GCBLK2LIST(UPDOWN_LOC2GLOB(fcblk))+1);
 
 #if defined(ACCESS_STATISTICS)
         if ( prev == 0 ) {
@@ -127,8 +125,7 @@ BODY
                  "thread %d compute_1dgemm START ( k=%d, fcblk=%d, cblk=%d, prev=%d, next=%d )\n",
                  context->eu_id, k, fcblk, cblk, prev, next);
 
-        if( ( dague_active_gpu() > 0 ) &&
-            ( (browlast-browfirst) > 5 ) ){
+        if( dague_active_gpu() > 0 ) {
             int rc;
 
             if( 0 == (rc = gpu_zpotrfsp_gemm( context, this_task,
@@ -154,7 +151,7 @@ BODY
             }
             /* Continue with the task on the cores */
         }
-        moesi_master_update( descA->super.moesi_map, KERNEL_KEY( descA, fcblk ) );
+        moesi_master_update( descA->super.moesi_map, KERNEL_KEY( descA, 0, fcblk ) );
 #endif  /* defined(HAVE_CUDA) && defined(PRECISION_s) */
 
         dague_complex64_t *work = (dague_complex64_t *)dague_private_memory_pop( p_work );
