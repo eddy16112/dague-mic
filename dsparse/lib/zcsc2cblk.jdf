@@ -19,7 +19,7 @@ extern "C" %{
 #define PRECISION_z
 
 void sparse_matrix_zcsc2cblk(const SolverMatrix *solvmatr,
-                             dague_complex64_t  *transcsc, 
+                             dague_complex64_t  *transcsc,
                              dague_int_t         itercblk);
 
 %}
@@ -40,11 +40,11 @@ CSC2CBLK(k)[profile = off]
 k = 0..cblknbr
 
 // Parallel partitioning
-: A(k) // Should match SOLV_COEFTAB(k)
+: A(0, k) // Should match SOLV_COEFTAB(k)
 
 // Parameters
-RW A <- A(k)
-     -> A(k)
+RW A <- A(0, k)
+     -> A(0, k)
 
 BODY
       DRYRUN(

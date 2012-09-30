@@ -24,22 +24,22 @@ int main(int argc, char ** argv)
     char *sparam[SPARAM_SIZEOF];
     DagDouble_t flops, gflops;
     dague_complex64_t *rhssaved = NULL;
-#if defined(HAVE_CUDA) && defined(PRECISION_s)
+#if defined(HAVE_CUDA)
     iparam[IPARAM_NGPUS] = 0;
 #endif
 
     /* Set defaults for non argv iparams/sparam */
     param_default(iparam, sparam); /* setup default params (e.g., nodes = 1) *
-								    * see dsparse/testing/common.c           */
+                                    * see dsparse/testing/common.c           */
 
     /* Initialize DAGuE */
-	/* setup DAGue (e.g., dague_init(iparam[IPARAM_NCORES], &argc, &argv)) *
+    /* setup DAGue (e.g., dague_init(iparam[IPARAM_NCORES], &argc, &argv)) *
      * see dsparse/testing/common.c                                        */
     dague = setup_dague(argc, argv, iparam, sparam);
     PASTE_CODE_IPARAM_LOCALS(iparam);
 
     if( nodes != 1 ) {
-        fprintf(stderr, 
+        fprintf(stderr,
                 "Check that the absorbant property of the JDF refer only local tiles\n"
                 "and remove this warning in %s at line %d...\n",
                 __FILE__, __LINE__);
@@ -48,23 +48,23 @@ int main(int argc, char ** argv)
     }
     /* initializing matrix structure */
     PASTE_CODE_INIT_CONTEXT( dspctxt, factotype ); /* init matrix data structure (e.g., _dspctxt.colptr = NULL; ) *
-													* see dsparse/testing/common.h                                */
+                                                    * see dsparse/testing/common.h                                */
 
     /* Initialize the descriptor */
     sparse_matrix_desc_t ddescA;
     sparse_matrix_init( &ddescA, spmtx_ComplexDouble, nodes, cores, rank );
     dspctxt.desc = &ddescA;      /* setup matrix parameters (e.g., desc->super.cores   = cores) *
-								  * see data_dist/sparse-matrix/sparse-matrix.c                 */
+                                  * see data_dist/sparse-matrix/sparse-matrix.c                 */
 
     sparse_vector_desc_t ddescB;
     sparse_vector_init( &ddescB, spmtx_ComplexDouble, nodes, cores, rank );
     dspctxt.rhsdesc = &ddescB;
 
     /* Read the matrix files */
-	/* 1) call PaStIx for API_TASK_ORDERING, ..,  API_TASK_ANALYSE; *
+    /* 1) call PaStIx for API_TASK_ORDERING, ..,  API_TASK_ANALYSE; *
      * 2) allocate space to store factors                           */
     flops = sparse_matrix_zrdmtx( &dspctxt );
-    
+
     if ( check ) {
         rhssaved = malloc(dspctxt.n * sizeof(dague_complex64_t));
         memcpy(rhssaved, dspctxt.rhs, dspctxt.n * sizeof(dague_complex64_t));
@@ -78,20 +78,25 @@ int main(int argc, char ** argv)
             fprintf(stderr, "XXX Unable to load GPU kernel.\n");
             exit(3);
         }
-        int cblknbr = sparse_register_bloktab( dague, 
+        int cblknbr = sparse_register_bloktab( dague,
                                                (sparse_matrix_desc_t*)&ddescA);
+
+        if (factotype == DSPARSE_LU)
+            cblknbr *= 2;
+
         dague_gpu_data_register(dague,
                                 (dague_ddesc_t*)&ddescA,
-                                cblknbr, 
+                                cblknbr,
                                 32*32*sizeof(dague_complex64_t) );
+
         if(loud) printf("Done\n");
     }
 #endif
 
     /* Initialize the matrix */
-	/* call sparse_matrix_zcsc2cblk for each block column *
-	 * DAGUe is used to setup columns in parallel         *
-	 * solvmatr->cscmtx -> descA->pastix_data->solvmatr   */
+    /* call sparse_matrix_zcsc2cblk for each block column *
+     * DAGUe is used to setup columns in parallel         *
+     * solvmatr->cscmtx -> descA->pastix_data->solvmatr   */
     dsparse_zcsc2cblk( dague, &ddescA );
 
     if ( loud && rank == 0 ) {
@@ -103,7 +108,7 @@ int main(int argc, char ** argv)
       if(loud > 2) printf("+++ Computing potrf ... ");
       PASTE_CODE_ENQUEUE_KERNEL( dague, zpotrf_sp, (&ddescA) );
       PASTE_CODE_PROGRESS_KERNEL( dague, zpotrf_sp );
-      
+
       dsparse_zpotrf_sp_Destruct( DAGUE_zpotrf_sp );
 
       break;
@@ -113,7 +118,7 @@ int main(int argc, char ** argv)
       if(loud > 2) printf("+++ Computing sytrf ... ");
       PASTE_CODE_ENQUEUE_KERNEL( dague, zsytrf_sp, (&ddescA) );
       PASTE_CODE_PROGRESS_KERNEL( dague, zsytrf_sp );
-      
+
       dsparse_zsytrf_sp_Destruct( DAGUE_zsytrf_sp );
       break;
 #endif
@@ -122,7 +127,7 @@ int main(int argc, char ** argv)
       if(loud > 2) printf("+++ Computing hetrf ... ");
       PASTE_CODE_ENQUEUE_KERNEL( dague, zhetrf_sp, (&ddescA) );
       PASTE_CODE_PROGRESS_KERNEL( dague, zhetrf_sp );
-      
+
       dsparse_zhetrf_sp_Destruct( DAGUE_zhetrf_sp );
       break;
 
@@ -131,12 +136,12 @@ int main(int argc, char ** argv)
       if(loud > 2) printf("+++ Computing getrf ... ");
       PASTE_CODE_ENQUEUE_KERNEL( dague, zgetrf_sp, (&ddescA) );
       PASTE_CODE_PROGRESS_KERNEL( dague, zgetrf_sp );
-      
+
       dsparse_zgetrf_sp_Destruct( DAGUE_zgetrf_sp );
     }
-    
+
     if(loud > 2) printf("Done.\n");
-        
+
     /* dsparse_zdumpmat( dague, &ddescA ); */
 
     if( check ) {
@@ -152,7 +157,7 @@ int main(int argc, char ** argv)
         }
 #endif
         sparse_matrix_zcheck( &dspctxt );
-        
+
         {
             int i, j, ncol = dspctxt.n;
             dague_complex64_t *ax     = malloc(ncol*sizeof(dague_complex64_t));
@@ -179,18 +184,18 @@ int main(int argc, char ** argv)
                     norm1 += (double)( (ax[i] - rhssaved[i]) * conj(ax[i] - rhssaved[i]) );
                     norm2 += (double)( rhssaved[i] * conj(rhssaved[i]) );
                 }
-            
+
             fprintf(stdout, "Precision : ||ax-b||/||b|| = %.20lg\n", sqrt(norm1/norm2));
             free(ax);
             free(rhssaved);
         }
     }
     sparse_matrix_zclean( &dspctxt );
-    
+
 #if defined(HAVE_CUDA)
     if(iparam[IPARAM_NGPUS] > 0) {
         dague_gpu_data_unregister((dague_ddesc_t*)&ddescA);
-        sparse_unregister_bloktab(dague, 
+        sparse_unregister_bloktab(dague,
                                   (sparse_matrix_desc_t*)&ddescA);
         dague_gpu_kernel_fini(dague, "gemm");
     }
@@ -200,6 +205,6 @@ int main(int argc, char ** argv)
     sparse_vector_destroy( &ddescB );
 
     cleanup_dague(dague, iparam, sparam);
-    
+
     return EXIT_SUCCESS;
 }
