@@ -383,19 +383,17 @@ gpu_kernel_submit_zgetrfsp_gemm( gpu_device_t        *gpu_device,
                            stream );
         
         if (bloknbr > 1) {
-            m -= symbol_get_blok_coefind(datacode, (bloknum+1)) - symbol_get_blok_coefind(datacode, bloknum);
-            d_A = d_Au + symbol_get_blok_coefind(datacode, (bloknum+1))*sizeof(dague_complex64_t);
-            d_B = d_Al + symbol_get_blok_coefind(datacode,  bloknum   )*sizeof(dague_complex64_t);
+            d_A = d_Au + symbol_get_blok_coefind(datacode, bloknum)*sizeof(dague_complex64_t);
+            d_B = d_Al + symbol_get_blok_coefind(datacode, bloknum)*sizeof(dague_complex64_t);
             d_C = d_Cu + sizeof(dague_complex64_t) * symbol_get_cblk_stride(datacode, fcblknum) *
                 (symbol_get_blok_frownum(datacode, bloknum) - symbol_get_cblk_fcolnum(datacode, fcblknum));
-            //            d_blocktab = d_blocktab + 2;
 
             cuda_zgetrfsp_gemm('N', 'C', m, n, k,
                                alpha, (cuDoubleComplex*)d_A, symbol_get_cblk_stride(datacode, cblknum),
                                       (cuDoubleComplex*)d_B, symbol_get_cblk_stride(datacode, cblknum),
                                beta,  (cuDoubleComplex*)d_C, symbol_get_cblk_stride(datacode, fcblknum),
-                               bloknbr-1, (const int *)d_blocktab,
-                               fblknbr,   (const int *)d_fbloktab,
+                               bloknbr, (const int *)d_blocktab,
+                               fblknbr, (const int *)d_fbloktab,
                                stream );
 
         }
