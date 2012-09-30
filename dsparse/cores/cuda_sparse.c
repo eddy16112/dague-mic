@@ -20,7 +20,6 @@
 #include "data_dist/sparse-matrix/sparse-matrix.h"
 
 #include "cuda_sparse.h"
-typedef int my_tmp_int_t;
 
 int sparse_register_bloktab( dague_context_t* dague_context, 
                              sparse_matrix_desc_t *sparseA )

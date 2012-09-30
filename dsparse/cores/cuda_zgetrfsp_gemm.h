@@ -18,11 +18,9 @@
 #include "list.h"
 #include "fifo.h"
 #include "data_distribution.h"
-#include "data_dist/matrix/matrix.h"
+#include "data_dist/sparse-matrix/sparse-matrix.h"
 
-#define KERNEL_KEY( _desc_, _uplo_, _cblk_ ) (uint32_t)(NULL == (_desc_) ? 0 : 2*(_cblk_)+(_uplo_) )
-
-typedef int my_tmp_int_t;
+#define GETRFSP_KERNEL_KEY( _desc_, _uplo_, _cblk_ ) (uint32_t)(NULL == (_desc_) ? 0 : 2*(_cblk_)+(_uplo_) )
 
 int sparse_register_bloktab( dague_context_t* dague_context,
                              sparse_matrix_desc_t *tileA );

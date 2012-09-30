@@ -21,6 +21,7 @@
 #include "data_dist/matrix/precision.h"
 
 typedef int64_t dague_int_t;
+typedef int my_tmp_int_t;
 
 #if !defined(PASTIX_STR_H) && !defined(_PASTIX_H_)
 struct pastix_data_t;
