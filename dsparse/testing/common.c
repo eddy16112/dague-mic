@@ -122,7 +122,7 @@ void print_usage(void)
             dague_usage();
 }
 
-#define GETOPT_STRING "c:o:g::p:P:q:Q::n:N:o:O:xv::h0:1:2:3:4:5:6:7:8:9:f:V:"
+#define GETOPT_STRING "c:o:g::p:P:q:Q::n:N:o:O:xv::h0:1:2:3:4:5:6:7:8:9:f:V:r:"
 
 #if defined(HAVE_GETOPT_LONG)
 static struct option long_options[] =
@@ -161,6 +161,8 @@ static struct option long_options[] =
 
     {"f",           required_argument,  0, 'f'},
     {"facto",       required_argument,  0, 'f'},
+    {"r",           required_argument,  0, 'r'},
+    {"ratio",       required_argument,  0, 'r'},
 
     {"n",           required_argument,  0, 'n'},
     {"N",           required_argument,  0, 'n'},
@@ -253,6 +255,7 @@ static void parse_arguments(int argc, char** argv, int* iparam, char** sparam)
             case '.': iparam[IPARAM_DOT] = 1; dot_filename = strdup(optarg); break;
 
             case 'f': iparam[IPARAM_FACTORIZATION] = atoi(optarg); break;
+            case 'r': iparam[IPARAM_RATIOGPU] = atoi(optarg); break;
 
             case 'v': 
                 if(optarg)  iparam[IPARAM_VERBOSE] = atoi(optarg);
@@ -346,6 +349,7 @@ void param_default(int* iparam, char **sparam)
     iparam[IPARAM_NGPUS]  = 0;
     iparam[IPARAM_FORMAT] = RSA;
     iparam[IPARAM_FACTORIZATION] = DSPARSE_LU;
+    iparam[IPARAM_RATIOGPU] = 0;
 }
 
 #ifdef DAGUE_PROF_TRACE

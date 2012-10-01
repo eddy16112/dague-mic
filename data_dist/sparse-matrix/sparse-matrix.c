@@ -205,6 +205,7 @@ void sparse_matrix_init( sparse_matrix_desc_t *desc,
     desc->mtype       = mtype;
     desc->typesze     = sparse_matrix_size_of( mtype );
     desc->pastix_data = NULL;
+    desc->gpu_limit   = 0;
 
 /*     DEBUG(("sparse_matrix_init: desc = %p, mtype = %zu, \n" */
 /*            "\tnodes = %u, cores = %u, myrank = %u\n", */

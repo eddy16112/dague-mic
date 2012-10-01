@@ -91,12 +91,14 @@ int main(int argc, char ** argv)
         default:
             fprintf(stderr, "No GPU kernel for this one :)\n");
         }
-        int cblknbr = sparse_register_bloktab( dague,
-                                               (sparse_matrix_desc_t*)&ddescA);
+        int cblknbr = sparse_register_bloktab( dague, &ddescA );
 
-        if (factotype == DSPARSE_LU)
+        if (factotype == DSPARSE_LU) {
             cblknbr *= 2;
-
+            ddescA.gpu_limit = (int)((1. - (double)(iparam[IPARAM_RATIOGPU]) / 200. ) * (double)cblknbr);
+        } else {
+            ddescA.gpu_limit = (int)((1. - (double)(iparam[IPARAM_RATIOGPU]) / 100. ) * (double)cblknbr);
+        }
         dague_gpu_data_register(dague,
                                 (dague_ddesc_t*)&ddescA,
                                 cblknbr,

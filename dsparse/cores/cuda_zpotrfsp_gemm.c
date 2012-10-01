@@ -464,7 +464,7 @@ gpu_kernel_epilog_zpotrfsp_gemm( gpu_device_t        *gpu_device,
  */
 int gpu_zpotrfsp_gemm( dague_execution_unit_t* eu_context,
                        dague_execution_context_t* this_task,
-                       int pushout, 
+                       int pushout,
                        my_tmp_int_t cblknum, my_tmp_int_t bloknum, my_tmp_int_t fcblknum,
                        const sparse_matrix_desc_t *ddesc )
 {
@@ -479,7 +479,7 @@ int gpu_zpotrfsp_gemm( dague_execution_unit_t* eu_context,
     gpu_task->pushout  = pushout;
     gpu_task->cblknum  = cblknum;
     gpu_task->bloknum  = bloknum;
-    gpu_task->fcblknum = fcblknum;    
+    gpu_task->fcblknum = fcblknum;
     gpu_task->M        = symbol_get_cblk_stride(datacode, cblknum) - symbol_get_blok_coefind(datacode, bloknum);
     gpu_task->N        = symbol_get_blok_height(datacode, bloknum);
     gpu_task->K        = symbol_get_cblk_width( datacode, cblknum);
@@ -487,9 +487,14 @@ int gpu_zpotrfsp_gemm( dague_execution_unit_t* eu_context,
     gpu_task->sizefcblk= sizeof(dague_complex64_t) * (size_t)symbol_get_cblk_stride(datacode, fcblknum) * symbol_get_cblk_width(datacode, fcblknum);
     gpu_task->ddesc    = (dague_ddesc_t*)ddesc;
 
-    //ratio = ((double)(gpu_task->M) * (double)(gpu_task->N) * (double)(gpu_task->K)) / refcost;
-    ratio = 1.;
-    
+    /* If not high enough in the tree, push back to CPU */
+    if( TASK_PRIONUM(fcblknum) < ddesc->gpu_limit ) {
+        dague_atomic_inc_32b( &dague_cpu_counter );
+        return -99;
+    }
+
+    ratio = ((double)(gpu_task->M) * (double)(gpu_task->N) * (double)(gpu_task->K)) / refcost;
+
     /* We always schedule the task on the GPU owning the C tile. */
     which_gpu = moesi_locate_device_with_valid_copy( ddesc->super.moesi_map, KERNEL_KEY( ddesc, fcblknum ) );
     if( which_gpu < 0 ) {  /* this is the first time we see this tile.

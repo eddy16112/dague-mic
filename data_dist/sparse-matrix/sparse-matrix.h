@@ -90,6 +90,7 @@ typedef struct sparse_matrix_desc_t {
 #endif
     pastix_data_t        *pastix_data;
     //    size_t *cblksize;
+    dague_int_t           gpu_limit;
 } sparse_matrix_desc_t;
 
 typedef struct sparse_vector_desc_t {
