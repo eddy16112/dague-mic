@@ -491,7 +491,7 @@ MYCPU:
     if (tempmm > SMALL_TILE_THRESHOLD || descA.mb > SMALL_TILE_THRESHOLD) {
         int small_mb = descA.mb / SMALL_TILE_RATE;
         int small_nb = descA.nb / SMALL_TILE_RATE;
-  //      printf("gemm dague\n");
+        printf("gemm dague\n");
         two_dim_block_cyclic_t *small_descA, *small_descB, *small_descC;
         small_descA = (two_dim_block_cyclic_t *) malloc(sizeof(two_dim_block_cyclic_t));
         small_descB = (two_dim_block_cyclic_t *) malloc(sizeof(two_dim_block_cyclic_t));

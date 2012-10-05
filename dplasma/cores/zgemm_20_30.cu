@@ -38,7 +38,7 @@
 #define GENERATE_SM_VERSION_NAME(func)             GENERATE_SM_VERSION_NAME_I2(func, CUDA_SM_VERSION)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-#if 1
+#if 0
 extern "C" void
 GENERATE_SM_VERSION_NAME(zgemm)( char TRANSA, char TRANSB, int m, int n, int k,
                                  dague_complex64_t alpha, dague_complex64_t *d_A, int lda,
