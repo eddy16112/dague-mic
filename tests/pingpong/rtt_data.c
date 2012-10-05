@@ -17,7 +17,9 @@ static uint32_t rank_of(dague_ddesc_t *desc, ...)
     k = va_arg(ap, int);
     va_end(ap);
 
-    return k % dat->super.nodes;
+    assert( k < dat->size && k >= 0 );
+    (void)dat;
+    return k;
 }
 
 static int32_t vpid_of(dague_ddesc_t *desc, ...)
@@ -45,9 +47,32 @@ static void *data_of(dague_ddesc_t *desc, ...)
     k = va_arg(ap, int);
     va_end(ap);
 
+<<<<<<< local
+=======
+    assert( k < dat->size && k >= 0 );
+    (void)dat; (void)k;
+    return 0;
+}
+
+static void *data_of(dague_ddesc_t *desc, ...)
+{
+    int k;
+    va_list ap;
+    my_datatype_t *dat = (my_datatype_t*)desc;
+
+    va_start(ap, desc);
+    k = va_arg(ap, int);
+    va_end(ap);
+
+    assert( k < dat->size && k >= 0 );
+>>>>>>> other
     (void)k;
+<<<<<<< local
 
     return (void*)(dat->data);
+=======
+    return (void*)dat->data;
+>>>>>>> other
 } 
 
 #if defined(DAGUE_PROF_TRACE)
