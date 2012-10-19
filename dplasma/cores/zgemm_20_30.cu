@@ -17,7 +17,7 @@
 #include <assert.h>
 #include <cuda.h>
 #include <cublas.h>
-
+#include <sys/time.h>
 #include "dague.h"
 #include "data_dist/matrix/precision.h"
 
@@ -38,7 +38,17 @@
 #define GENERATE_SM_VERSION_NAME(func)             GENERATE_SM_VERSION_NAME_I2(func, CUDA_SM_VERSION)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-#if 0
+float get_cur_time(void)
+{
+        struct timeval tv;
+            float t;
+
+                gettimeofday(&tv,NULL);
+                    t = tv.tv_sec + tv.tv_usec / 1e6;
+                        return t;
+}
+
+#if 1
 extern "C" void
 GENERATE_SM_VERSION_NAME(zgemm)( char TRANSA, char TRANSB, int m, int n, int k,
                                  dague_complex64_t alpha, dague_complex64_t *d_A, int lda,
@@ -46,6 +56,10 @@ GENERATE_SM_VERSION_NAME(zgemm)( char TRANSA, char TRANSB, int m, int n, int k,
                                  dague_complex64_t beta,  dague_complex64_t *d_C, int ldc,
                                  CUstream stream )
 {
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+        cudaEventCreate(&stop);
+        float elapsed, mys, mye;
 #if defined(PRECISION_z) || defined(PRECISION_c)    
     cuDoubleComplex lalpha = make_cuDoubleComplex( creal(alpha), cimag(alpha) );
     cuDoubleComplex lbeta  = make_cuDoubleComplex( creal(beta),  cimag(beta)  );
@@ -55,15 +69,21 @@ GENERATE_SM_VERSION_NAME(zgemm)( char TRANSA, char TRANSB, int m, int n, int k,
 #endif
 
 #if (__CUDA_API_VERSION < 4000)
-    
-    cublasSetKernelStream( stream );
 
+//    cublasSetKernelStream( stream );
+    mys = get_cur_time();
+   cudaEventRecord(start, 0);
     cublasZgemm(TRANSA, TRANSB, m, n, k, 
                 lalpha, (cuDoubleComplex*)d_A, lda,
                         (cuDoubleComplex*)d_B, ldb,
                 lbeta,  (cuDoubleComplex*)d_C, ldc); 
     assert( CUBLAS_STATUS_SUCCESS == cublasGetError() );
-
+    //sleep(2);
+    mye = get_cur_time();
+    cudaEventRecord(stop,0);
+    cudaEventSynchronize(stop);
+        cudaEventElapsedTime(&elapsed, start, stop);
+    printf("KERNEL %f, %f\n", elapsed/1000.0f, mye-mys);
 #else
     cudaStream_t current_stream;
     cublasHandle_t handle = cublasGetCurrentCtx();
