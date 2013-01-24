@@ -13,6 +13,7 @@
 #include "datarepo.h"
 #include "execution_unit.h"
 #include "vpmap.h"
+#include "dague/ayudame.h"
 
 #include <signal.h>
 #if defined(HAVE_STRING_H)
@@ -44,8 +45,9 @@ static sched_priority_trace_t sched_priority_trace[DAGUE_SCHED_MAX_PRIORITY_TRAC
 static uint32_t sched_priority_trace_counter;
 #endif
 
+#if 0
 /**
- *
+ * Disabled by now.
  */
 int __dague_progress_task( dague_execution_unit_t* eu_context,
                            dague_execution_context_t* task )
@@ -76,6 +78,7 @@ int __dague_progress_task( dague_execution_unit_t* eu_context,
     }
     return -1;
 }
+#endif
 
 int __dague_execute( dague_execution_unit_t* eu_context,
                      dague_execution_context_t* exec_context )
@@ -88,7 +91,7 @@ int __dague_execute( dague_execution_unit_t* eu_context,
            dague_snprintf_execution_context(tmp, MAX_TASK_STRLEN, exec_context)));
 #endif
     DAGUE_STAT_DECREASE(counter_nbtasks, 1ULL);
-
+    AYU_TASK_RUN(eu_context->th_id, exec_context);
     return function->incarnations[0].hook( eu_context, exec_context );
 }
 
@@ -148,8 +151,6 @@ int __dague_schedule( dague_execution_unit_t* eu_context,
         int set_parameters, i;
         char tmp[MAX_TASK_STRLEN];
 
-                  // PETER it seems like this while loop mostly verifies
-                  // that nothing is terrible wrong?
         do {
             for( i = set_parameters = 0; NULL != (flow = context->function->in[i]); i++ ) {
                 if( ACCESS_NONE == flow->access_type ) continue;
@@ -209,6 +210,7 @@ inline int __dague_complete_execution( dague_execution_unit_t *eu_context,
         rc = exec_context->function->complete_execution( eu_context, exec_context );
     /* Update the number of remaining tasks */
     __dague_complete_task(exec_context->dague_object, eu_context->virtual_process->dague_context);
+    AYU_TASK_COMPLETE(exec_context);
 
     /* Succesfull execution. The context is ready to be released, all
      * dependencies have been marked as completed.

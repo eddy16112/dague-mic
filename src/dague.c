@@ -16,6 +16,7 @@
 #if defined(HAVE_GETOPT_H)
 #include <getopt.h>
 #endif  /* defined(HAVE_GETOPT_H) */
+#include "dague/ayudame.h"
 
 #include "list.h"
 #include "scheduling.h"
@@ -166,7 +167,9 @@ static void* __dague_thread_init( __dague_temporary_thread_initialization_t* sta
 
     /* The main thread of VP 0 will go back to the user level */
     if( DAGUE_THREAD_IS_MASTER(eu) ) {
+#if (0 < DAGUE_DEBUG_VERBOSE)
         vpmap_display_map(stderr);
+#endif
         return NULL;
     }
 
@@ -418,6 +421,7 @@ dague_context_t* dague_init( int nb_cores, int* pargc, char** pargv[] )
     context->nb_nodes = dague_remote_dep_init(context);
     dague_statistics("DAGuE");
 
+    AYU_INIT();
     return context;
 }
 
@@ -471,6 +475,7 @@ int dague_fini( dague_context_t** pcontext )
         context->virtual_processes[p] = NULL;
     }
 
+    AYU_FINI();
 #ifdef DAGUE_PROF_TRACE
     dague_profiling_fini( );
 #endif  /* DAGUE_PROF_TRACE */
@@ -833,6 +838,7 @@ int dague_release_local_OUT_dependencies( dague_object_t *dague_object,
                     sizeof(dague_minimal_execution_context_t) - sizeof(dague_list_item_t) );
             new_context->mempool_owner = mpool;
             DAGUE_STAT_INCREASE(mem_contexts, sizeof(dague_execution_context_t) + STAT_MALLOC_OVERHEAD);
+            AYU_ADD_TASK(new_context);
 
             DEBUG(("%s becomes ready from %s on thread %d:%d, with mask 0x%04x and priority %d\n",
                    dague_snprintf_execution_context(tmp1, MAX_TASK_STRLEN, exec_context),
@@ -841,8 +847,8 @@ int dague_release_local_OUT_dependencies( dague_object_t *dague_object,
                    *deps,
                    exec_context->priority));
 
-            assert( dest_flow->flow_index <= new_context->function->nb_in);
-            memset( new_context->data, 0, sizeof(dague_data_pair_t) * new_context->function->nb_in);
+            assert( dest_flow->flow_index <= new_context->function->nb_flows);
+            memset( new_context->data, 0, sizeof(dague_data_pair_t) * new_context->function->nb_flows);
             /**
              * Save the data_repo and the pointer to the data for later use. This will prevent the
              * engine from atomically locking the hash table for at least one of the flow
@@ -850,6 +856,8 @@ int dague_release_local_OUT_dependencies( dague_object_t *dague_object,
              */
             new_context->data[(int)dest_flow->flow_index].data_repo = dest_repo_entry;
             new_context->data[(int)dest_flow->flow_index].data      = origin->data[(int)origin_flow->flow_index].data;
+            AYU_ADD_TASK_DEP(new_context, (int)dest_flow->flow_index);
+
             if(exec_context->function->flags & DAGUE_IMMEDIATE_TASK) {
                 DEBUG3(("  Task %s is immediate and will be executed ASAP\n", dague_snprintf_execution_context(tmp, MAX_TASK_STRLEN, new_context)));
                 __dague_execute(eu_context, new_context);
@@ -945,7 +953,7 @@ dague_release_dep_fct(dague_execution_unit_t *eu,
 
     if( (arg->action_mask & DAGUE_ACTION_RELEASE_LOCAL_DEPS) &&
         (eu->virtual_process->dague_context->my_rank == dst_rank) ) {
-        if( (NULL != arg->output_entry) && (NULL != oldcontext->data[target->flow_index].data) ) {
+        if( ACCESS_NONE != target->access_type ) {
             arg->output_entry->data[out_index] = oldcontext->data[target->flow_index].data;
             arg->output_usage++;
             /* BEWARE: This increment is required to be done here. As the target task

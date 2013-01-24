@@ -145,8 +145,7 @@ struct dague_function {
     uint8_t                      function_id;  /**< index in the dependency and in the function array */
     uint8_t                      nb_incarnations;
 
-    uint8_t                      nb_in;
-    uint8_t                      nb_out;
+    uint8_t                      nb_flows;
     uint8_t                      nb_parameters;
     uint8_t                      nb_locals;
 
@@ -198,14 +197,14 @@ struct dague_data_pair_t {
  * not the data pairs. We need this in order to be able to only copy the minimal
  * amount of information when a new task is constructed.
  */
-#define DAGUE_MINIMAL_EXECUTION_CONTEXT                  \
-    dague_list_item_t        list_item;                  \
-    struct dague_thread_mempool  *mempool_owner;         \
-    dague_object_t          *dague_object;               \
-    const  dague_function_t *function;                   \
-    int32_t                  priority;                   \
-    uint8_t                  status;                     \
-    uint8_t                  hook_id;                    \
+#define DAGUE_MINIMAL_EXECUTION_CONTEXT           \
+    dague_list_item_t        list_item;           \
+    struct dague_thread_mempool  *mempool_owner;  \
+    dague_object_t          *dague_object;        \
+    const  dague_function_t *function;            \
+    int32_t                  priority;            \
+    uint8_t                  status;              \
+    uint8_t                  hook_id;             \
     uint8_t                  unused[2];
 
 struct dague_minimal_execution_context_t {
