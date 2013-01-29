@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <cuda.h>
+#include "mymic.h"
 
 #define GPU_MALLOC_UNIT_SIZE (1024*1024)
 
@@ -30,11 +31,13 @@ typedef struct gpu_malloc_s {
     int        max_segment;          /* Maximum number of segment */
 } gpu_malloc_t;
 
-
 static inline gpu_malloc_t *gpu_malloc_init(int max_segment, size_t unit_size);
 static inline void  gpu_malloc_fini(gpu_malloc_t *gdata);
 static inline void *gpu_malloc(gpu_malloc_t *gdata, int nb_units);
 static inline void  gpu_free(  gpu_malloc_t *gdata, void *ptr);
+
+static inline gpu_malloc_t *mic_malloc_init(int max_segment, size_t unit_size);
+//static inline void *mic_malloc(gpu_malloc_t *gdata, int nb_units);
 
 static inline void gpu_malloc_error(const char *msg)
 {
@@ -156,6 +159,46 @@ static inline void gpu_free(gpu_malloc_t *gdata, void *add)
         p = s;
     }
     gpu_malloc_error("address to free not allocated\n");
+}
+
+static inline gpu_malloc_t *mic_malloc_init(int _max_segment, size_t _unit_size)
+{
+    gpu_malloc_t *gdata = (gpu_malloc_t*)malloc( sizeof(gpu_malloc_t) );
+    segment_t *s;
+    int i, rc;
+
+    gdata->base               = (char *)malloc(sizeof(mic_mem_t));;
+    gdata->allocated_segments = NULL;
+    gdata->free_segments      = NULL;
+    gdata->unit_size          = _unit_size;
+    gdata->max_segment        = _max_segment+2;
+
+	rc = micMalloc((mic_mem_t *)gdata->base, (_max_segment * gdata->unit_size));
+    if( (cudaSuccess != rc) || (NULL == ((mic_mem_t *)gdata->base)->addr) ) {
+        gpu_malloc_error("unable to allocate backend memory\n");
+        free(gdata);
+        return NULL;
+    }
+
+    for(i = 0 ; i < _max_segment; i++) {
+        s = (segment_t*)malloc(sizeof(segment_t));
+        s->next = gdata->free_segments;
+        gdata->free_segments = s;
+    }
+
+    /* First and last segments are persistent. Simplifies the algorithm */
+    gdata->allocated_segments = (segment_t*)malloc(sizeof(segment_t));
+    gdata->allocated_segments->start_index = 0;
+    gdata->allocated_segments->nb_units    = 1;
+    gdata->allocated_segments->nb_free     = _max_segment;
+
+    gdata->allocated_segments->next = (segment_t*)malloc(sizeof(segment_t));
+    gdata->allocated_segments->next->start_index = _max_segment+1;
+    gdata->allocated_segments->next->nb_units    = 1;
+    gdata->allocated_segments->next->nb_free     = 0;
+    gdata->allocated_segments->next->next        = NULL;
+
+    return gdata;
 }
 
 #endif /* _GPU_MALLOC_H_ */
