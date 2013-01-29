@@ -1,14 +1,23 @@
 #ifndef PASTIX_STR_H
 #define PASTIX_STR_H
 
+#ifndef SOPALIN_3D_H
+#error "sopalin3d.h must be included before pastixstr.h"
+#endif
+
+#ifndef ORDER_H
+#error "order.h must be included before pastixstr.h"
+#endif
 /*
    struct: pastix_data_t
 
    Structure used to store datas for a step by step execution.
 */
 
-typedef struct pastix_data_t {
+struct pastix_data_t {
   SolverMatrix     solvmatr;         /*+ Matrix informations                                                 +*/
+  CscMatrix	   cscmtx;	     /*+ Compress Sparse Column matrix                                       +*/
+  SymbolMatrix    *symbmtx;          /*+ Symbol Matrix                                                       +*/
   SopalinParam     sopar;            /*+ Sopalin parameters                                                  +*/
   Order            ordemesh;         /*+ Order                                                               +*/
 #ifdef WITH_SCOTCH
@@ -23,15 +32,13 @@ typedef struct pastix_data_t {
   INT             *PTS_peritab;
 #endif /* WITH_SCOTCH */
   INT             *glob2loc;         /*+ local column number of global column, or -(owner+1) is not local    +*/
-#endif
-#ifdef DISTRIBUTED
   INT              ncol_int;         /*+ Number of local columns in internal CSCD                            +*/
   INT             *l2g_int;          /*+ Local to global column numbers in internal CSCD                     +*/
   int              malrhsd_int;      /*+ Indicates if internal distributed rhs has been allocated            +*/
   int              mal_l2g_int;
   FLOAT           *b_int;            /*+ Local part of the right-hand-side                                   +*/
   INT             *loc2glob2;        /*+ local2global column number                                          +*/
-#endif
+#endif /* DISTRIBUTED */
   INT              gN;               /*+ global column number                                                +*/
   INT              n;                /*+ local column number                                                 +*/
   INT             *iparm;            /*+ Vecteur de parametres entiers                                       +*/
@@ -48,14 +55,14 @@ typedef struct pastix_data_t {
   int              malslv;           /*+ boolean indicating if solvmatr has been allocated                   +*/
   int              malcof;           /*+ boolean indicating if coeficients tabular(s) has(ve) been allocated +*/
   MPI_Comm         pastix_comm;      /*+ PaStiX MPI communicator                                             +*/
-  MPI_Comm         intra_node_comm;  /*+ PaStiX intra node MPI communicator                                     +*/
-  MPI_Comm         inter_node_comm;  /*+ PaStiX inter node MPI communicator                                     +*/
+  MPI_Comm         intra_node_comm;  /*+ PaStiX intra node MPI communicator                                  +*/
+  MPI_Comm         inter_node_comm;  /*+ PaStiX inter node MPI communicator                                  +*/
   int              procnbr;          /*+ Number of MPI tasks                                                 +*/
   int              procnum;          /*+ Local MPI rank                                                      +*/
-  int              intra_node_procnbr; /*+ Number of MPI tasks in node_comm                                    +*/
-  int              intra_node_procnum; /*+ Local MPI rank in node_comm                                         +*/
-  int              inter_node_procnbr; /*+ Number of MPI tasks in node_comm                                    +*/
-  int              inter_node_procnum; /*+ Local MPI rank in node_comm                                         +*/
+  int              intra_node_procnbr; /*+ Number of MPI tasks in node_comm                                  +*/
+  int              intra_node_procnum; /*+ Local MPI rank in node_comm                                       +*/
+  int              inter_node_procnbr; /*+ Number of MPI tasks in node_comm                                  +*/
+  int              inter_node_procnum; /*+ Local MPI rank in node_comm                                       +*/
   int             *bindtab;          /*+ Tabular giving for each thread a CPU to bind it too                 +*/
   INT              nschur;           /*+ Number of entries for the Schur complement.                         +*/
   INT             *listschur;        /*+ List of entries for the schur complement.                           +*/
@@ -71,6 +78,6 @@ typedef struct pastix_data_t {
   sem_t           *sem_barrier;      /*+ Semaphore used for AUTOSPLIT_COMM barrier                           +*/
 #endif
   INT              pastix_id;        /*+ Id of the pastix instance (PID of first MPI task)                   +*/
-} pastix_data_t;
+};
 
 #endif /* PASTIX_STR_H */
