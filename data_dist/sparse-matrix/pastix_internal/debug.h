@@ -77,7 +77,7 @@
   debug flag is the to 1.
  */
 #ifdef PASTIX_DEBUG
-#define print_debug(mod,...) {if (mod) fprintf(stderr, ##__VA_ARGS__);}
+#define print_debug(mod,...) {if (mod) fprintf(stderr, __VA_ARGS__);}
 #else
 #define print_debug(...)     {}
 #endif

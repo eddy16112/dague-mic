@@ -10,6 +10,8 @@
 
  */
 
+#ifndef API_H
+#define API_H
 /* Acces au tableau iparm*/
 /*
    enum: IPARM_ACCESS
@@ -67,7 +69,7 @@
    IPARM_OOC_THREAD            - Out of core thread number IGNORE                         Default: 1                   IN
    IPARM_OOC_ID                - Out of core run ID        IGNORE                         Default: -                   OUT
    IPARM_NB_SMP_NODE_USED      - Number of SMP node used   IGNORE                         Default:                     IN
-   IPARM_THREAD_COMM_MODE      - Threaded communication mode (see Communication modes)    Default: API_THCOMM_DISABLED IN
+   IPARM_THREAD_COMM_MODE      - Threaded communication mode (see Communication modes)    Default: API_THREAD_MULT     IN
    IPARM_NB_THREAD_COMM        - Number of thread(s) for communication                    Default: 1                   IN
    IPARM_FILL_MATRIX           - Initialize matrix coefficients (for test only)  IGNORE   Default:                     IN
    IPARM_INERTIA               - Return the inertia (symmetric matrix without pivoting)   Default: -                   OUT
@@ -77,8 +79,13 @@
    IPARM_MURGE_REFINEMENT      - Enable refinement in MURGE                               Default: API_YES             IN
    IPARM_STARPU                - Use StarPU runtime                                       Default: API_NO              IN
    IPARM_AUTOSPLIT_COMM        - Automaticaly split communicator to have one MPI task by node             Default: API_NO               IN
+   IPARM_FLOAT                 - Indicate the floating point type  IGNORE                 Default: -                   INOUT
    IPARM_PID                   - Pid of the first process (used for naming the log directory) Default: -1                  OUT
    IPARM_ERROR_NUMBER          - Return value                                             Default: -                   OUT
+   IPARM_CUDA_NBR              - Number of cuda devices                                   Default: 0                   IN
+   IPARM_TRANSPOSE_SOLVE       - Use transposed matrix during solve                       Default: API_NO              IN
+   IPARM_STARPU_CTX_DEPTH      - Tree depth of the contexts given to StarPU               Default:3                    IN
+   IPARM_STARPU_CTX_NBR        - Number of contexts created                               Default:-1                   INOUT
    IPARM_SIZE                  - Iparm Size                IGNORE                         Default:                     IN
 */
 enum IPARM_ACCESS {
@@ -146,7 +153,11 @@ enum IPARM_ACCESS {
   IPARM_FLOAT                   = 61,
   IPARM_PID                     = 62,
   IPARM_ERROR_NUMBER            = 63,
-  IPARM_SIZE                    = 64  /* Need to be greater or equal to 64 for backward compatibility */
+  IPARM_CUDA_NBR                = 64,
+  IPARM_TRANSPOSE_SOLVE         = 65,
+  IPARM_STARPU_CTX_DEPTH        = 66,
+  IPARM_STARPU_CTX_NBR          = 67,
+  IPARM_SIZE                    = 128  /* Need to be greater or equal to 64 for backward compatibility */
 };
 
 /* Acces au tableau dparm */
@@ -312,8 +323,8 @@ enum API_RHS {
 /* _POS_ 8 */
 enum API_RAF {
   API_RAF_GMRES = 0, /* Utilisation de GMRES */
-  API_RAF_GRAD  = 1, /* Utilisation du gradient conjugué */
-  API_RAF_PIVOT = 1  /* Utilisation de la méthode du pivot */
+  API_RAF_GRAD  = 1, /* Utilisation du gradient conjugue */
+  API_RAF_PIVOT = 1  /* Utilisation de la methode du pivot */
 };
 
 /** Type de facto utilisée (LLT,LDLT,LU)*/
@@ -370,21 +381,23 @@ enum API_ERASE_CSC{
 
 /** DMP communication mode */
 /*
-  Enum: API_COMM_THREAD_MODE
+  Enum: API_THREAD_MODE
 
-  Comunication modes (index IPARM_NB_THREAD_COMM)
+  Comunication modes (index IPARM_THREAD_COMM_MODE)
 
-  API_THCOMM_DISABLED - No dedicated communication thread
-  API_THCOMM_ONE      - One dedicated communication thread
-  API_THCOMM_DEFINED  - Given by IPARM_NB_THREAD_COMM
-  API_THCOMM_NBPROC   - One communication thread per computation thread
+  API_THREAD_MULTIPLE      - All threads communicate.
+  API_THREAD_FUNNELED      - One thread perform all the MPI Calls.
+  API_THREAD_COMM_ONE      - One dedicated communication thread will receive messages.
+  API_THREAD_COMM_DEFINED  - Then number of threads receiving the messages is given by IPARM_NB_THREAD_COMM.
+  API_THREAD_COMM_NBPROC   - One communication thread per computation thread will receive messages.
  */
 /* _POS_ 9 */
-enum API_COMM_THREAD_MODE {
-  API_THCOMM_DISABLED = 0, /* Chaque Thread s'ocupe de ses communications                 */
-  API_THCOMM_ONE      = 1, /* Un seul thread de communication                             */
-  API_THCOMM_DEFINED  = 2, /* Nombre de threads de communication paramétrable             */
-  API_THCOMM_NBPROC   = 3  /* Autant de threads de communication que de threads de calcul */
+enum API_THREAD_MODE {
+  API_THREAD_MULTIPLE      = 1,
+  API_THREAD_FUNNELED      = 2,
+  API_THREAD_COMM_ONE      = 4,
+  API_THREAD_COMM_DEFINED  = 8,
+  API_THREAD_COMM_NBPROC   = 16
 };
 
 /** Thread binding */
@@ -532,6 +545,12 @@ enum MODULES {
    BADPARAMETER_ERR   - Bad parameters given
    FILE_ERR           - Error in In/Out operations
    BAD_DEFINE_ERROR   - Error with defines during compilation
+   INTEGER_TYPE_ERR   - Error with integer types
+   IO_ERR             - Error with input/output
+   MATRIX_ERR         - Wrongly defined matrix
+   FLOAT_TYPE_ERR     - Wrong type of floating point values
+   STEP_ORDER_ERR     - Error in ordering
+   MPI_ERR            - Error with MPI calls
 */
 /* Need to conserve it MURGE compliant */
 enum ERR_NUMBERS {
@@ -550,7 +569,8 @@ enum ERR_NUMBERS {
   IO_ERR             = 12,
   MATRIX_ERR         = 13,
   FLOAT_TYPE_ERR     = 14,
-  STEP_ORDER_ERR     = 15
+  STEP_ORDER_ERR     = 15,
+  MPI_ERR            = 16
 };
 
 /** Matrix type */
@@ -561,3 +581,4 @@ enum ERR_NUMBERS {
 #define MTX_ISRHS(a) ((a)[0]!='\0')
 
 /* **************************************** */
+#endif /* not API_H */

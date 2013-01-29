@@ -12,7 +12,46 @@
 /**                                 to                     **/
 /**                                                        **/
 /************************************************************/
+#ifndef BLEND_H
+#define BLEND_H
 
-void          solverBlend(SolverMatrix *, Assembly1D *, Assembly2D *, int, int, int, BlendParam *, const Dof *dofptr);
+/*
+ * Function: solverBlend
+ *
+ * Main blend function
+ *
+ * Build the elimination graph from the symbolic partition.
+ *
+ * Build the cost matrix from the symbolic partition.
+ *
+ * Build the elimination tree from the symbolic partition.
+ *
+ * Distribute each column bloc on candidate processors.
+ *
+ * Build a new symbol matrix...
+ *
+ * Parameters:
+ *   solvmtx    - Solver matrix structure.
+ *   symbmtx    - Symbol matrix
+ *   assemb1D   -
+ *   assemb2D   -
+ *   clustnbr   - Number of MPI processes.
+ *   thrdlocnbr - Number of threads.
+ *   cudanbr    - Number of cuda devices.
+ *   clustnum   - Processor ID number.
+ *   option     - Blend parameters.
+ *   dofptr     -
+ */
+void          solverBlend(SolverMatrix * solvmtx,
+                          SymbolMatrix * symbmtx,
+                          Assembly1D   * assemb1D,
+                          Assembly2D   * assemb2D,
+                          int            clustnbr,
+                          int            thrdlocnbr,
+                          int            cudanbr,
+                          int            clusnum,
+                          BlendParam   * option,
+                          const Dof    * dofptr);
 
 
+#endif /* BLEND_H */

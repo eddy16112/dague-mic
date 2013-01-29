@@ -18,35 +18,8 @@
 /**                                                        **/
 /************************************************************/
 
+#ifndef SOLVER_H
 #define SOLVER_H
-
-#ifdef CXREF_DOC
-#include "common_pastix.h"
-#ifndef DOF_H
-#include "dof.h"
-#endif /* DOF_H */
-#ifndef SYMBOL_H
-#include "symbol.h"
-#endif /* SYMBOL_H */
-#ifndef FTGT_H
-#include "ftgt.h"
-#endif /* FTGT_H */
-#endif /* CXREF_DOC */
-
-/* #ifndef UPDOWN_H */
-/* #include "updown.h" */
-/* #endif /\* UPDOWN_H *\/ */
-
-/* #ifndef CSC_H */
-/* #include "csc.h" */
-/* #endif /\* CSH_H *\/ */
-
-#define DISTRIB_1D
-/* #define DISTRIB_2D */
-#ifndef DISTRIB_2D
-#define COMPUTE_3T
-/* #define COMPUTE_2T */
-#endif
 
 /*
 **  The type and structure definitions.
@@ -67,8 +40,8 @@ typedef struct Task_ {
   INT volatile              ftgtcnt;              /*+ Number of fan-in targets                               +*/
   INT volatile              ctrbcnt;              /*+ Total number of contributions                          +*/
   volatile BlockTarget *    btagptr;              /*+ si non local, pointeur sur la structure (NB reception) +*/
-  INT                       indnum;               /*+ For E2 (COMP_1D), index of ftgt (>0) else if local = -taskdest  
-                                                      For DIAG and E1 , index of btag (>0) if there is a 
+  INT                       indnum;               /*+ For E2 (COMP_1D), index of ftgt (>0) else if local = -taskdest
+                                                      For DIAG and E1 , index of btag (>0) if there is a
 						      local one it must be the first of the chain of local E1   +*/
   INT                       tasknext;             /*+ chainage des E1 ou E2, si fin = -1 => liberer les btagptr +*/
   INT                       taskmstr;             /*+ Master task for E1 or E2 tasks                         +*/
@@ -88,61 +61,79 @@ typedef struct Task_ {
 /*+ Solver column block structure. +*/
 
 typedef struct SolverCblk_  {
-/*  INT                       ctrbnbr; */             /*+ Number of contributions            +*/
-/*  INT                       ctrbcnt; */             /*+ Number of remaining contributions  +*/
-/*  INT                       prionum; */             /*+ Column block priority              +*/
-/*  INT                       coefnbr;              /\*+ Number of coefficients in Column block +*\/ */
+  INT                       fcolnum;              /*+ First column index                     +*/
+  INT                       lcolnum;              /*+ Last column index (inclusive)          +*/
+  INT                       bloknum;              /*+ First block in column (diagonal)       +*/
   INT                       stride;               /*+ Column block stride                    +*/
   INT			    color;		  /*+ Color of column block (PICL trace)     +*/
+#ifdef STARPU_GET_TASK_CTX
+  INT                       ctx;                  /*+ Context given to StarPU                +*/
+#endif
   INT                       procdiag;             /*+ Processor owner of diagonal block      +*/
   INT                       cblkdiag;             /*+ Column block owner of diagonal block   +*/
+  FLOAT * restrict          coeftab;              /*+ Coefficients access vector             +*/
+  FLOAT * restrict          ucoeftab;             /*+ Coefficients access vector             +*/
 } SolverCblk; 
 
 /*+ Solver block structure. +*/
 
 typedef struct SolverBlok_ {
-  INT                       coefind;              /*+ Index in coeftab +*/
+  INT                       frownum;              /*+ First row index            +*/
+  INT                       lrownum;              /*+ Last row index (inclusive) +*/
+  INT                       cblknum;              /*+ Facing column block        +*/
+  INT                       levfval;              /*+ Level-of-fill value        +*/
+  INT                       coefind;              /*+ Index in coeftab           +*/
 } SolverBlok;
 
 /*+ Solver matrix structure. +*/
 
 typedef struct SolverMatrix_ {
-  SymbolMatrix              symbmtx;              /*+ Symbolic matrix                           +*/
-  CscMatrix		    cscmtx;		  /*+ Compress Sparse Column matrix             +*/
+  INT                       baseval;              /*+ Base value for numberings                 +*/
+  INT                       nodenbr;              /*+ Number of nodes in matrix                 +*/
+  INT                       cblknbr;              /*+ Number of column blocks                   +*/
+  INT                       bloknbr;              /*+ Number of blocks                          +*/
   SolverCblk * restrict     cblktab;              /*+ Array of solver column blocks             +*/
   SolverBlok * restrict     bloktab;              /*+ Array of solver blocks                    +*/
   INT                       coefnbr;              /*+ Number of coefficients                    +*/
+
   INT                       ftgtnbr;              /*+ Number of fanintargets                    +*/
   INT                       ftgtcnt;              /*+ Number of fanintargets to receive         +*/
-  FLOAT ** restrict         coeftab;              /*+ Coefficients access vector                +*/
-  FLOAT ** restrict         ucoeftab;             /*+ Coefficients access vector                +*/
   FanInTarget * restrict    ftgttab;              /*+ Fanintarget access vector                 +*/
+
   INT                       coefmax;              /*+ Working block max size (cblk coeff 1D)    +*/
   INT                       bpftmax;              /*+ Maximum of block size for btag to receive +*/
   INT                       cpftmax;              /*+ Maximum of block size for ftgt to receive +*/
   INT                       nbftmax;              /*+ Maximum block number in ftgt              +*/
   INT                       arftmax;              /*+ Maximum block area in ftgt                +*/
+
   INT                       clustnum;             /*+ current processor number                  +*/
   INT                       clustnbr;             /*+ number of processors                      +*/
   INT                       procnbr;              /*+ Number of physical processor used         +*/
   INT                       thrdnbr;              /*+ Number of local computation threads       +*/
   INT                       bublnbr;              /*+ Number of local computation threads       +*/
   BubbleTree  * restrict    btree;                /*+ Bubbles tree                              +*/
+
   BlockTarget * restrict    btagtab;              /*+ Blocktarget access vector                 +*/
   INT                       btagnbr;              /*+ Number of Blocktargets                    +*/
   INT                       btgsnbr;              /*+ Number of Blocktargets to send            +*/
   INT                       btgrnbr;              /*+ Number of Blocktargets to recv            +*/
   BlockCoeff  * restrict    bcoftab;              /*+ BlockCoeff access vector                  +*/
   INT                       bcofnbr;
+
   INT                       indnbr;
   INT * restrict            indtab;
   Task * restrict           tasktab;              /*+ Task access vector                        +*/
   INT                       tasknbr;              /*+ Number of Tasks                           +*/
   INT **                    ttsktab;              /*+ Task access vector by thread              +*/
   INT *                     ttsknbr;              /*+ Number of tasks by thread                 +*/
+
   INT *                     proc2clust;           /*+ proc -> cluster                           +*/
   INT                       gridldim;             /*+ Dimensions of the virtual processors      +*/
   INT                       gridcdim;             /*+ grid if dense end block                   +*/
-  /* Ooc * restrict            oocstr;               /\*+ Structure used by out of core             +*\/ */
-  UpDownVector              updovct;              /*+ UpDown vector                           +*/
+  UpDownVector              updovct;              /*+ UpDown vector                             +*/
+#ifdef STARPU_GET_TASK_CTX
+  INT                       starpu_subtree_nbr;
+#endif
 } SolverMatrix;
+
+#endif /* SOLVER_H */

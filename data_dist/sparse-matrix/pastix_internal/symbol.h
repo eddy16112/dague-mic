@@ -47,6 +47,7 @@
 /**                                                        **/
 /************************************************************/
 
+#ifndef SYMBOL_H
 #define SYMBOL_H
 #define SYMBOL_VERSION              1
 
@@ -60,6 +61,9 @@ typedef struct SymbolCblk_ {
   INT                       fcolnum;              /*+ First column index               +*/
   INT                       lcolnum;              /*+ Last column index (inclusive)    +*/
   INT                       bloknum;              /*+ First block in column (diagonal) +*/
+#ifdef STARPU_GET_TASK_CTX
+  INT                       ctx;
+#endif
 } SymbolCblk;
 
 /*+ The column block structure. +*/
@@ -80,6 +84,9 @@ typedef struct SymbolMatrix_ {
   SymbolCblk * restrict     cblktab;              /*+ Array of column blocks [+1,based] +*/
   SymbolBlok * restrict     bloktab;              /*+ Array of blocks [based]           +*/
   INT                       nodenbr;              /*+ Number of nodes in matrix         +*/
+#ifdef STARPU_GET_TASK_CTX
+  INT                       starpu_subtree_nbr;
+#endif
 } SymbolMatrix;
 
 /*+ The type of cost computations. +*/
@@ -120,10 +127,6 @@ typedef struct SymbolKeep_ {
 **  The function prototypes.
 */
 
-#ifndef SYMBOL
-#define static
-#endif
-
 int  symbolInit          (SymbolMatrix * const symbptr);
 void symbolExit          (SymbolMatrix * const symbptr);
 void symbolBase          (SymbolMatrix * const symbptr, const INT baseval);
@@ -132,33 +135,33 @@ int  symbolLoad          (SymbolMatrix * const symbptr, FILE * const stream);
 int  symbolSave          (const SymbolMatrix * const symbptr, FILE * const stream);
 int  symbolCheck         (const SymbolMatrix * const symbptr);
 int  symbolDraw          (const SymbolMatrix * const symbptr, FILE * const stream);
-int  symbolDrawFunc      (const SymbolMatrix * const symbptr, 
-			  int (*) (const SymbolMatrix * const, const SymbolBlok * const, void * const, float * const), 
-			  int (*) (const SymbolMatrix * const, const SymbolBlok * const, void * const, float * const), 
+int  symbolDrawFunc      (const SymbolMatrix * const symbptr,
+			  int (*) (const SymbolMatrix * const, const SymbolBlok * const, void * const, float * const),
+			  int (*) (const SymbolMatrix * const, const SymbolBlok * const, void * const, float * const),
 			  void * const, FILE * const stream);
 void symbolDrawColor     (const INT labl, float color[]);
 #ifdef DOF_H
-int  symbolCost          (const SymbolMatrix * const symbptr, const Dof * const deofptr, 
+int  symbolCost          (const SymbolMatrix * const symbptr, const Dof * const deofptr,
 			  const SymbolCostType typeval, double * const nnzptr, double * const opcptr);
-int  symbolCosti         (const SymbolMatrix * const symbptr, const Dof * const deofptr, 
+int  symbolCosti         (const SymbolMatrix * const symbptr, const Dof * const deofptr,
 			  const SymbolCostType typeval, const INT levfval, double * const nnzptr, double * const opcptr);
 int  symbolLevf          (const SymbolMatrix * const symbptr, INT * const levfmax, INT ** const levftab);
-int  symbolTree          (const SymbolMatrix * const symbptr, const Dof * const deofptr, 
-			  INT * const leafnbr, INT * const heigmin, INT * const heigmax, 
+int  symbolTree          (const SymbolMatrix * const symbptr, const Dof * const deofptr,
+			  INT * const leafnbr, INT * const heigmin, INT * const heigmax,
 			  double * const heigavg, double * const heigdlt);
 int  symbolNonzeros      (const SymbolMatrix * const symbptr, FILE * const stream);
 #endif /* DOF_H */
 
 int  symbolKeepInit      (SymbolKeep * restrict const keepptr, const SymbolMatrix * const symbptr);
 void symbolKeepExit      (SymbolKeep * restrict const keepptr);
-void symbolKeepAdd       (SymbolKeep * restrict const keepptr, const SymbolMatrix * const symbptr, 
+void symbolKeepAdd       (SymbolKeep * restrict const keepptr, const SymbolMatrix * const symbptr,
 			  int (* funcptr) (const SymbolKeepBlok * const, void * const), void * dataptr);
-void symbolKeepDel       (SymbolKeep * restrict const keepptr, const SymbolMatrix * const symbptr, 
+void symbolKeepDel       (SymbolKeep * restrict const keepptr, const SymbolMatrix * const symbptr,
 			  int (* funcptr) (const SymbolKeepBlok * const, void * const), void * dataptr);
 int  symbolKeepCompute   (SymbolKeep * restrict const keepptr, const SymbolMatrix * const symbptr);
-int  symbolKeepHisto     (SymbolKeep * const keepptr, const SymbolMatrix * const, 
+int  symbolKeepHisto     (SymbolKeep * const keepptr, const SymbolMatrix * const,
 			  int (* funcptr) (const SymbolKeepBlok * const, void * const), void * dataptr);
 int  symbolKeepPurge     (SymbolKeep * restrict const keepptr, SymbolMatrix * restrict const symbptr);
 int  symbolKeepView      (const SymbolKeep * const keepptr, const double nnzlmax, const char * const nameptr);
 
-#undef static
+#endif /* SYMBOL_H */

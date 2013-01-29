@@ -16,11 +16,8 @@
 /**                                                        **/
 /************************************************************/
 
+#ifndef UPDOWN_H
 #define UPDOWN_H
-
-#ifdef CXREF_DOC
-#include "common_pastix.h"
-#endif /* CXREF_DOC */
 
 /*+ UpDown block structure. +*/
 
@@ -30,10 +27,10 @@ typedef struct UpDownCblk_  {
   INT *                     browcblktab;          /*+ Brow                               +*/
   INT                       browprocnbr;          /*+ Brow size                          +*/
   INT                       msgnbr;               /*+ Number of messages                 +*/
-  INT volatile              msgcnt;               /*+ Number of messages                 +*/  
+  INT volatile              msgcnt;               /*+ Number of messages                 +*/
   INT                       ctrbnbr;              /*+ Number of contributions            +*/
   INT volatile              ctrbcnt;              /*+ Number of contributions            +*/
-} UpDownCblk; 
+} UpDownCblk;
 
 
 /*+ UpDown vector structure. +*/
@@ -59,3 +56,5 @@ typedef struct UpDownVector_ {
   INT                       downmsgnbr;           /*+ Nb messages receive during down    +*/
   INT                       upmsgnbr;             /*+ Nb messages receive during up      +*/
 } UpDownVector;
+
+#endif /* UPDOWN_H */

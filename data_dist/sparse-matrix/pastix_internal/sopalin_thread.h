@@ -9,6 +9,7 @@
 #include <sys/time.h>
 #include <time.h>
 
+
 /*
   Struct: sopthread_data
 
@@ -20,25 +21,27 @@ typedef struct sopthread_data {
 } sopthread_data_t;
 
 /*
-  Function: sopalin_launch_thread
-
-  Launch all PaStiX threads on wanted functions.
-
-  Parameters:
-    procnum       - MPI process rank
-    procnbr       - Number of MPI process
-    ptr           - Pointer the the bubble structure to use (if MARCEL version)
-    calc_thrdnbr  - Number of computing threads.
-    calc_routine  - Computing function.
-    calc_data     - Parameters for computing function.
-    comm_thrdnbr  - Number of communicating threads.
-    comm_routine  - communication function.
-    comm_data     - Parameters for communication function.
-    ooc_thrdnbr   - Number of out-of-core threads.
-    ooc_routine   - Out-of-core function.
-    ooc_data      - Parameters for *ooc_routine*.
+ * Function: sopalin_launch_thread
+ *
+ * Launch all PaStiX threads on wanted functions.
+ *
+ * Parameters:
+ *   procnum       - MPI process rank
+ *   procnbr       - Number of MPI process
+ *   ptr           - Pointer the the bubble structure to use (if MARCEL version)
+ *   verbose       - Verbosity level
+ *   calc_thrdnbr  - Number of computing threads.
+ *   calc_routine  - Computing function.
+ *   calc_data     - Parameters for computing function.
+ *   comm_thrdnbr  - Number of communicating threads.
+ *   comm_routine  - communication function.
+ *   comm_data     - Parameters for communication function.
+ *   ooc_thrdnbr   - Number of out-of-core threads.
+ *   ooc_routine   - Out-of-core function.
+ *   ooc_data      - Parameters for *ooc_routine*.
  */
-void sopalin_launch_thread(INT procnum, INT procnbr, void *ptr, 
+void sopalin_launch_thread(void *sopalin_data,
+                           INT procnum, INT procnbr, void *ptr, INT verbose,
 			   INT calc_thrdnbr, void * (*calc_routine)(void *), void *calc_data,
 			   INT comm_thrdnbr, void * (*comm_routine)(void *), void *comm_data,
 			   INT ooc_thrdnbr,  void * (*ooc_routine) (void *), void *ooc_data);

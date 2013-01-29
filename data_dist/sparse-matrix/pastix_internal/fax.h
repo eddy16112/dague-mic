@@ -63,7 +63,7 @@
 
 int                         symbolCompact       (SymbolMatrix * const symbptr);
 int                         symbolFax           (SymbolMatrix * const symbptr, const INT vertnbr, const INT edgenbr, const INT baseval, void * const ngbdptr, INT ngbfrst (void * const, const INT), INT ngbnext (void * const), INT ngbdegr (void * const, const INT), const Order * const ordeptr);
-#if (defined SCOTCH_PTSCOTCH) || (defined SCOTCH_SEQSCOTCH)
+#if  (defined SCOTCH_SEQSCOTCH || defined SCOTCH_H || defined SCOTCH_PTSCOTCH || defined PTSCOTCH_H)
 int                         symbolFaxGraph      (SymbolMatrix * const symbptr, const SCOTCH_Graph * const grafptr, const Order * const ordeptr);
 #endif /* GRAPH_H */
 int                         symbolFaxGrid2C     (SymbolMatrix * const symbptr, const INT xnbr, const INT ynbr, const INT baseval, const Order * const ordeptr);
@@ -77,7 +77,7 @@ int                         symbolFaxMesh       (SymbolMatrix * const symbptr, c
 #endif /* MESH_H */
 
 int                         symbolFaxi          (SymbolMatrix * const symbptr, const INT vertnbr, const INT edgenbr, const INT baseval, void * const ngbdptr, INT ngbfrst (void * const, const INT), INT ngbnext (void * const), INT ngbdegr (void * const, const INT), const Order * const ordeptr, const INT levfmax);
-#if (defined SCOTCH_PTSCOTCH) || (defined SCOTCH_SEQSCOTCH)
+#if  (defined SCOTCH_SEQSCOTCH || defined SCOTCH_H || defined SCOTCH_PTSCOTCH || defined PTSCOTCH_H)
 int                         symbolFaxiGraph     (SymbolMatrix * const symbptr, const SCOTCH_Graph * const grafptr, const Order * const ordeptr, const INT levfmax);
 #endif /* GRAPH_H */
 int                         symbolFaxiGrid2D    (SymbolMatrix * const symbptr, const INT xnbr, const INT ynbr, const INT baseval, const Order * const ordeptr, const INT levfmax);

@@ -16,13 +16,13 @@
 
   Parameters:
     updovct - UpDownVector structure to fill-in.
-    symbmtx - Symbol matrix.
+    symbmtx - Solver matrix.
     rhs     - Right-hand-side member.
     perm    - reverse permutation tabular.
     dof      - Number of degree of freedom.
  */
 void CscUpdownRhs(UpDownVector       *updovct,
-		  const SymbolMatrix *symbmtx, 
+		  const SolverMatrix *symbmtx, 
 		  const FLOAT        *rhs, 
 		  const INT          *perm,
 		  int                 dof);
@@ -34,14 +34,14 @@ void CscUpdownRhs(UpDownVector       *updovct,
 
   Parameters:
     updovct - UpDownVector structure to fill-in.
-    symbmtx - Symbol matrix.
+    symbmtx - Solver matrix.
     rhs     - Right-hand-side member.
     invp    - reverse permutation tabular.
     g2l     - local numbers of global nodes, if not local contains -owner
     dof      - Number of degree of freedom.
  */
 void CscdUpdownRhs(UpDownVector       *updovct,
-		   const SymbolMatrix *symbmtx, 
+		   const SolverMatrix *symbmtx, 
 		   const FLOAT        *rhs, 
 		   const INT          *invp,
 		   const INT          *g2l,
@@ -55,7 +55,7 @@ void CscdUpdownRhs(UpDownVector       *updovct,
 
   Parameters:
     updovct  - UpDownVector structure containing the solution.
-    symbmtx  - Symbol matrix structure.
+    symbmtx  - Solver matrix structure.
     rhs      - Solution to fill.
     ncol     - Number of columns in local matrix.
     dof      - Number of degree of freedom.
@@ -63,7 +63,7 @@ void CscdUpdownRhs(UpDownVector       *updovct,
   
  */
 void CscRhsUpdown(const UpDownVector *updovct, 
-		  const SymbolMatrix *symbmtx, 
+		  const SolverMatrix *symbmtx, 
 		  FLOAT              *rhs, 
 		  const INT           ncol,
 		  const INT          *invp,
@@ -79,7 +79,7 @@ void CscRhsUpdown(const UpDownVector *updovct,
 
   Parameters:
     updovct  - UpDownVector structure containing the solution.
-    symbmtx  - Symbol matrix structure.
+    symbmtx  - Solver matrix structure.
     x        - Solution to fill.
     ncol     - Number of columns in local matrix.
     g2l      - local numbers of global nodes, if not local contains -owner
@@ -89,7 +89,7 @@ void CscRhsUpdown(const UpDownVector *updovct,
   
  */
 void CscdRhsUpdown(const UpDownVector *updovct, 
-		   const SymbolMatrix *symbmtx, 
+		   const SolverMatrix *symbmtx, 
 		   FLOAT              *x,
 		   const INT           ncol, 
 		   const INT          *g2l,
@@ -106,13 +106,13 @@ void CscdRhsUpdown(const UpDownVector *updovct,
   Parameters:
     cscmtx   - internal CSCd matrix.
     updovct  - UpDownVector structure to fill-in.
-    symbmtx  - Symbol matrix.
+    symbmtx  - Solver matrix.
     mode     - wanted solution API_RHS_1 or API_RHS_I.
     comm     - MPI communicator.
 */
 void Csc2updown(const CscMatrix    *cscmtx, 
 		UpDownVector       *updovct,
-		const SymbolMatrix *symbmtx, 
+		const SolverMatrix *symbmtx, 
 		int                 mode,
 		MPI_Comm            comm);
 
@@ -127,12 +127,12 @@ void Csc2updown(const CscMatrix    *cscmtx,
 
   Parameters:
     updovct - UpDownVector structure were to copy B as the first X0 used for raffinement.
-    symbmtx - Symbol matrix.
+    symbmtx - Solver matrix.
     mode    - Rule to construct X0 (API_RHS_1 : X0[i] = 1, API_RHS_I : X0[i] = i).
     comm    - MPI_Communicator.
 */
 void Csc2updown_X0(UpDownVector *updovct, 
-		   /*const*/ SymbolMatrix *symbmtx, 
+		   /*const*/ SolverMatrix *symbmtx, 
 		   int mode, 
 		   MPI_Comm comm);
 

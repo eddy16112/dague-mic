@@ -78,7 +78,7 @@ int                         orderGrid2C         (Order * const ordeptr, const IN
 int                         orderGrid3          (Order * const ordeptr, const INT xnbr, const INT ynbr, const INT znbr, const INT baseval, const INT xlim, const INT ylim, const INT zlim);
 int                         orderGrid3C         (Order * const ordeptr, const INT xnbr, const INT ynbr, const INT znbr, const INT baseval, const INT xlim, const INT ylim, const INT zlim);
 
-#if (defined SCOTCH_PTSCOTCH) || (defined SCOTCH_SEQSCOTCH)
+#if  (defined SCOTCH_SEQSCOTCH || defined SCOTCH_H || defined SCOTCH_PTSCOTCH || defined PTSCOTCH_H)
 int                         orderGraph          (Order * restrict const ordeptr, const SCOTCH_Graph * restrict const grafptr);
 int                         orderGraphList      (Order * restrict const ordeptr, const SCOTCH_Graph * restrict const grafptr, const INT listnbr, const INT * restrict const listtab);
 int                         orderGraphStrat     (Order * restrict const ordeptr, const SCOTCH_Graph * restrict const grafptr, const char * restrict const);

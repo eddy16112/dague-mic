@@ -27,7 +27,7 @@
   rowind     - Index of the elements.
   val        - values of the elements.
   forcetrans - If matrix symetric, transcsc will be the copy of the CSC_VALTAB.
-  symbmtx    - Symbol matrix
+  symbmtx    - Solver matrix
   procnum    - MPI process number.
   dof        - Number of degree of freedom
 */
@@ -42,7 +42,7 @@ void CscOrdistrib(CscMatrix          *thecsc,
 		  INT                *rowind, 
 		  FLOAT              *val, 
 		  INT                 forcetrans,
-		  const SymbolMatrix *symbmtx, 
+		  const SolverMatrix *symbmtx, 
 		  INT                 procnum, 
 		  INT                 dof);
 
@@ -102,7 +102,7 @@ void CscOrdistrib(CscMatrix          *thecsc,
   gNcol      - global number of columns.
   g2l        - local numbers of global nodes, if not local contains -owner
   forcetrans - If matrix symetric, transcsc will be the copy of the CSC_VALTAB.
-  symbmtx    - Symbol matrix
+  symbmtx    - Solver matrix
   procnum    - MPI process number.
   dof        - Number of degree of freedom
   comm       - MPI communicator.
@@ -119,7 +119,7 @@ void CscdOrdistrib(CscMatrix          *thecsc,
 		   INT                 gNcol,
 		   INT                *g2l,
 		   INT                 forcetrans,
-		   const SymbolMatrix *symbmtx, 
+		   const SolverMatrix *symbmtx, 
 		   INT                 procnum,
 		   INT                 dof,
 		   MPI_Comm            comm);

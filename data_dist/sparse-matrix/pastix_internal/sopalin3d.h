@@ -11,6 +11,12 @@
 #error "sopalin_thread.h must be included before sopalin3d.h"
 #endif
 
+#ifndef SOPALIN_DEFINE_H
+#error "sopalin_define.h must be included before sopalin3d.h"
+#endif
+
+
+
 #ifdef OOC
 typedef struct ooc_thread_ ooc_thread_t;
 typedef struct ooc_ ooc_t;
@@ -57,30 +63,29 @@ enum SOPALIN_TASK {
   Parameters for factorisation, updown and reffinement.
  */
 typedef struct SopalinParam_ {
-  double   epsilonraff;         /*+ epsilon to stop reffinement                      +*/
-  double   rberror;             /*+ ||r||/||b||                                      +*/
-  double   espilondiag;         /*+ epsilon critere for diag control                 +*/
-  FLOAT   *b;                   /*+ b vector (RHS and solution)                      +*/
-  FLOAT   *transcsc;            /*+ transpose csc                                    +*/
-  INT      itermax;             /*+ max number of iteration                          +*/
-  INT      diagchange;          /*+ number of change of diag                         +*/
-  INT      gmresim;             /*+ Krylov subspace size for GMRES                   +*/
-  INT      fakefact;            /*+ Flag indicating if we want fake factorisation    +*/
-  INT      usenocsc;            /*+ Flag indicating if we want to use the intern CSC +*/
-  int      factotype;           /*+ Type of factorization                            +*/
-  int      symmetric;           /*+ Symmetric                                        +*/
-  MPI_Comm pastix_comm;         /*+ MPI communicator                                 +*/
-  int      type_comm;           /*+ Communication mode                               +*/
-  int      nbthrdcomm;          /*+ Communication's thread number                    +*/
-  INT     *iparm;               /*+ In/Out integer parameters                        +*/
-  double  *dparm;               /*+ In/Out float parameters                          +*/
-  int     *bindtab;             /*+ Define where to bin threads                      +*/
-#ifdef THREAD_COMM
-  int      stopthrd;
-#endif
-  int      schur;               /*+ If API_YES won't compute last diag               +*/
-  INT      n;                   /*+ size of the matrix                               +*/
-  INT      gN;
+  CscMatrix *cscmtx;          /*+ Compress Sparse Column matrix                    +*/
+  double     epsilonraff;     /*+ epsilon to stop reffinement                      +*/
+  double     rberror;         /*+ ||r||/||b||                                      +*/
+  double     espilondiag;     /*+ epsilon critere for diag control                 +*/
+  FLOAT     *b;               /*+ b vector (RHS and solution)                      +*/
+  FLOAT     *transcsc;        /*+ transpose csc                                    +*/
+  INT        itermax;         /*+ max number of iteration                          +*/
+  INT        diagchange;      /*+ number of change of diag                         +*/
+  INT        gmresim;         /*+ Krylov subspace size for GMRES                   +*/
+  INT        fakefact;        /*+ Flag indicating if we want fake factorisation    +*/
+  INT        usenocsc;        /*+ Flag indicating if we want to use the intern CSC +*/
+  int        factotype;       /*+ Type of factorization                            +*/
+  int        symmetric;       /*+ Symmetric                                        +*/
+  MPI_Comm   pastix_comm;     /*+ MPI communicator                                 +*/
+  int        type_comm;       /*+ Communication mode                               +*/
+  int        nbthrdcomm;      /*+ Communication's thread number                    +*/
+  INT       *iparm;           /*+ In/Out integer parameters                        +*/
+  double    *dparm;           /*+ In/Out float parameters                          +*/
+  int       *bindtab;         /*+ Define where to bin threads                      +*/
+  int        stopthrd;        /*+ Boolean for communication thread controlling     +*/
+  int        schur;           /*+ If API_YES won't compute last diag               +*/
+  INT        n;               /*+ size of the matrix                               +*/
+  INT        gN;
 } SopalinParam;
 
 /************************************************/
@@ -128,12 +133,10 @@ typedef struct Thread_Data_ {
   MPI_Request     *send_block_requests;      /*+ sent blocks requests                                +*/
   INT             *send_block_target;        /*+ sent blocks targets                                 +*/
   MPI_Request     *send_fanin_requests;      /*+ sent fanins requests                                +*/
-#if ((defined PASTIX_UPDO_ISEND) || (defined TEST_ISEND)) && (!defined NO_MPI_TYPE)
+#if (!defined NO_MPI_TYPE)
   MPI_Datatype    *send_fanin_mpitypes;      /*+ sent fanins mpi types                               +*/
-#endif
-#if (defined PASTIX_UPDO_ISEND) && (!defined NO_MPI_TYPE)
   INT            **send_fanin_infotab;       /*+ sent fanins mpi types                               +*/
-#endif
+#endif /* not NO_MPI_TYPE */
   INT             *send_fanin_target;        /*+ sent fanins targets                                 +*/
   INT            **send_fanin_target_extra;  /*+ extra sent fanin targets                            +*/
 #ifdef TEST_IRECV
@@ -231,15 +234,11 @@ typedef struct Sopalin_Data_ {
   Queue            taskqueue;                /*+ Task queue for NOSMP version                     +*/
 #endif
   sopthread_barrier_t barrier;               /*+ Threads synchronisation barrier                  +*/
-#ifdef THREAD_COMM
   pthread_mutex_t  mutex_comm;               /*+ Mutex on communication variables                 +*/
   pthread_cond_t   cond_comm;                /*+ Condition on step_comm                           +*/
   int              step_comm;                /*+ Current step indicator                           +*/
-#ifdef PASTIX_FUNNELED
   Pastix_Allreduce_t allreduce;              /*+ Data structure for MPi_Allreduce                 +*/
   Queue             *sendqueue;              /*+ Ready to send data queue                         +*/
-#endif
-#endif /* THREAD_COMM */
 #ifdef STORAGE
   FLOAT           *grhs;                     /*+ Data storage tabular                             +*/
   volatile INT    *flagtab;                  /*+ Indicate received cblk in up step                +*/
@@ -260,6 +259,12 @@ typedef struct Sopalin_Data_ {
 #endif
 #ifdef OOC
   ooc_t           *ooc;                      /*+ Data structure needed for Out-of-core            +*/
+#endif
+#ifndef WITH_HWLOC
+#  ifdef PASTIX_GET_SCHED_AFFINITY
+  int             *allowed_cpus;             /*+ List of authorized CPUs for binding +*/
+  int             ncore_avail;               /*+ number of cores available +*/
+#  endif
 #endif
 } Sopalin_Data_t;
 
@@ -283,40 +288,125 @@ typedef struct starpu_gemm_data_ starpu_gemm_data_t;
 /************************************************/
 /*     Fonctions publiques de sopalin3d         */
 /************************************************/
+#define he_sopalin_thread PASTIX_PREFIX_F(he_sopalin_thread)
+#define sy_sopalin_thread PASTIX_PREFIX_F(sy_sopalin_thread)
+#define ge_sopalin_thread PASTIX_PREFIX_F(ge_sopalin_thread)
+
+#define po_sopalin_updo_thread PASTIX_PREFIX_F(po_sopalin_updo_thread)
+#define he_sopalin_updo_thread PASTIX_PREFIX_F(he_sopalin_updo_thread)
+#define sy_sopalin_updo_thread PASTIX_PREFIX_F(sy_sopalin_updo_thread)
+#define ge_sopalin_updo_thread PASTIX_PREFIX_F(ge_sopalin_updo_thread)
+
+#define po_sopalin_updo_gmres_thread PASTIX_PREFIX_F(po_sopalin_updo_gmres_thread)
+#define he_sopalin_updo_gmres_thread PASTIX_PREFIX_F(he_sopalin_updo_gmres_thread)
+#define sy_sopalin_updo_gmres_thread PASTIX_PREFIX_F(sy_sopalin_updo_gmres_thread)
+#define ge_sopalin_updo_gmres_thread PASTIX_PREFIX_F(ge_sopalin_updo_gmres_thread)
+
+#define po_sopalin_updo_grad_thread	PASTIX_PREFIX_F(po_sopalin_updo_grad_thread)
+#define he_sopalin_updo_grad_thread	PASTIX_PREFIX_F(he_sopalin_updo_grad_thread)
+#define sy_sopalin_updo_grad_thread	PASTIX_PREFIX_F(sy_sopalin_updo_grad_thread)
+#define ge_sopalin_updo_pivot_thread	PASTIX_PREFIX_F(ge_sopalin_updo_pivot_thread)
+
+#define po_updo_thread PASTIX_PREFIX_F(po_updo_thread)
+#define he_updo_thread PASTIX_PREFIX_F(he_updo_thread)
+#define sy_updo_thread PASTIX_PREFIX_F(sy_updo_thread)
+#define ge_updo_thread PASTIX_PREFIX_F(ge_updo_thread)
+
+#define po_gmres_thread PASTIX_PREFIX_F(po_gmres_thread)
+#define he_gmres_thread PASTIX_PREFIX_F(he_gmres_thread)
+#define sy_gmres_thread PASTIX_PREFIX_F(sy_gmres_thread)
+#define ge_gmres_thread PASTIX_PREFIX_F(ge_gmres_thread)
+
+#define po_grad_thread	PASTIX_PREFIX_F(po_grad_thread)
+#define he_grad_thread	PASTIX_PREFIX_F(he_grad_thread)
+#define sy_grad_thread	PASTIX_PREFIX_F(sy_grad_thread)
+#define ge_pivot_thread PASTIX_PREFIX_F(ge_pivot_thread)
+
 /*
   Functions: <Sopalin3d.c> functions declarations.
  */
-void  Usopalin_launch           (SolverMatrix *, SopalinParam *, INT cas);
-void  Usopalin_thread           (SolverMatrix *, SopalinParam *);
-void  Usopalin_updo_thread      (SolverMatrix *, SopalinParam *);
-void  Usopalin_updo_gmres_thread(SolverMatrix *, SopalinParam *);
-void  Usopalin_updo_grad_thread (SolverMatrix *, SopalinParam *);
-void  Usopalin_updo_pivot_thread(SolverMatrix *, SopalinParam *);
-void  Uupdo_thread              (SolverMatrix *, SopalinParam *);
-void  Upivot_thread             (SolverMatrix *, SopalinParam *);
-void  Ugmres_thread             (SolverMatrix *, SopalinParam *);
-void  Ugrad_thread              (SolverMatrix *, SopalinParam *);
+#define ge_sopalin_launch             PASTIX_PREFIX_F(ge_sopalin_launch)
+#define ge_sopalin_thread             PASTIX_PREFIX_F(ge_sopalin_thread)
+#define ge_sopalin_updo_thread        PASTIX_PREFIX_F(ge_sopalin_updo_thread)
+#define ge_sopalin_updo_gmres_thread  PASTIX_PREFIX_F(ge_sopalin_updo_gmres_thread)
+#define ge_sopalin_updo_grad_thread   PASTIX_PREFIX_F(ge_sopalin_updo_grad_thread)
+#define ge_sopalin_updo_pivot_thread  PASTIX_PREFIX_F(ge_sopalin_updo_pivot_thread)
+#define ge_updo_thread                PASTIX_PREFIX_F(ge_updo_thread)
+#define ge_pivot_thread               PASTIX_PREFIX_F(ge_pivot_thread)
+#define ge_gmres_thread               PASTIX_PREFIX_F(ge_gmres_thread)
+#define ge_grad_thread                PASTIX_PREFIX_F(ge_grad_thread)
+void    ge_sopalin_launch            (SolverMatrix *, SopalinParam *, INT cas);
+void    ge_sopalin_thread            (SolverMatrix *, SopalinParam *);
+void    ge_sopalin_updo_thread       (SolverMatrix *, SopalinParam *);
+void    ge_sopalin_updo_gmres_thread (SolverMatrix *, SopalinParam *);
+void    ge_sopalin_updo_grad_thread  (SolverMatrix *, SopalinParam *);
+void    ge_sopalin_updo_pivot_thread (SolverMatrix *, SopalinParam *);
+void    ge_updo_thread               (SolverMatrix *, SopalinParam *);
+void    ge_pivot_thread              (SolverMatrix *, SopalinParam *);
+void    ge_gmres_thread              (SolverMatrix *, SopalinParam *);
+void    ge_grad_thread               (SolverMatrix *, SopalinParam *);
 
-void  Dsopalin_launch           (SolverMatrix *, SopalinParam *, INT cas);
-void  Dsopalin_thread           (SolverMatrix *, SopalinParam *);
-void  Dsopalin_updo_thread      (SolverMatrix *, SopalinParam *);
-void  Dsopalin_updo_gmres_thread(SolverMatrix *, SopalinParam *);
-void  Dsopalin_updo_grad_thread (SolverMatrix *, SopalinParam *);
-void  Dsopalin_updo_pivot_thread(SolverMatrix *, SopalinParam *);
-void  Dupdo_thread              (SolverMatrix *, SopalinParam *);
-void  Dpivot_thread             (SolverMatrix *, SopalinParam *);
-void  Dgmres_thread             (SolverMatrix *, SopalinParam *);
-void  Dgrad_thread              (SolverMatrix *, SopalinParam *);
+#define sy_sopalin_launch             PASTIX_PREFIX_F(sy_sopalin_launch)
+#define sy_sopalin_thread             PASTIX_PREFIX_F(sy_sopalin_thread)
+#define sy_sopalin_updo_thread        PASTIX_PREFIX_F(sy_sopalin_updo_thread)
+#define sy_sopalin_updo_gmres_thread  PASTIX_PREFIX_F(sy_sopalin_updo_gmres_thread)
+#define sy_sopalin_updo_grad_thread   PASTIX_PREFIX_F(sy_sopalin_updo_grad_thread)
+#define sy_sopalin_updo_pivot_thread  PASTIX_PREFIX_F(sy_sopalin_updo_pivot_thread)
+#define sy_updo_thread                PASTIX_PREFIX_F(sy_updo_thread)
+#define sy_pivot_thread               PASTIX_PREFIX_F(sy_pivot_thread)
+#define sy_gmres_thread               PASTIX_PREFIX_F(sy_gmres_thread)
+#define sy_grad_thread                PASTIX_PREFIX_F(sy_grad_thread)
+void    sy_sopalin_launch            (SolverMatrix *, SopalinParam *, INT cas);
+void    sy_sopalin_thread            (SolverMatrix *, SopalinParam *);
+void    sy_sopalin_updo_thread       (SolverMatrix *, SopalinParam *);
+void    sy_sopalin_updo_gmres_thread (SolverMatrix *, SopalinParam *);
+void    sy_sopalin_updo_grad_thread  (SolverMatrix *, SopalinParam *);
+void    sy_sopalin_updo_pivot_thread (SolverMatrix *, SopalinParam *);
+void    sy_updo_thread               (SolverMatrix *, SopalinParam *);
+void    sy_pivot_thread              (SolverMatrix *, SopalinParam *);
+void    sy_gmres_thread              (SolverMatrix *, SopalinParam *);
+void    sy_grad_thread               (SolverMatrix *, SopalinParam *);
 
-void  Lsopalin_launch           (SolverMatrix *, SopalinParam *, INT cas);
-void  Lsopalin_thread           (SolverMatrix *, SopalinParam *);
-void  Lsopalin_updo_thread      (SolverMatrix *, SopalinParam *);
-void  Lsopalin_updo_gmres_thread(SolverMatrix *, SopalinParam *);
-void  Lsopalin_updo_grad_thread (SolverMatrix *, SopalinParam *);
-void  Lsopalin_updo_pivot_thread(SolverMatrix *, SopalinParam *);
-void  Lupdo_thread              (SolverMatrix *, SopalinParam *);
-void  Lpivot_thread             (SolverMatrix *, SopalinParam *);
-void  Lgmres_thread             (SolverMatrix *, SopalinParam *);
-void  Lgrad_thread              (SolverMatrix *, SopalinParam *);
+#define he_sopalin_launch             PASTIX_PREFIX_F(he_sopalin_launch)
+#define he_sopalin_thread             PASTIX_PREFIX_F(he_sopalin_thread)
+#define he_sopalin_updo_thread        PASTIX_PREFIX_F(he_sopalin_updo_thread)
+#define he_sopalin_updo_gmres_thread  PASTIX_PREFIX_F(he_sopalin_updo_gmres_thread)
+#define he_sopalin_updo_grad_thread   PASTIX_PREFIX_F(he_sopalin_updo_grad_thread)
+#define he_sopalin_updo_pivot_thread  PASTIX_PREFIX_F(he_sopalin_updo_pivot_thread)
+#define he_updo_thread                PASTIX_PREFIX_F(he_updo_thread)
+#define he_pivot_thread               PASTIX_PREFIX_F(he_pivot_thread)
+#define he_gmres_thread               PASTIX_PREFIX_F(he_gmres_thread)
+#define he_grad_thread                PASTIX_PREFIX_F(he_grad_thread)
+void    he_sopalin_launch            (SolverMatrix *, SopalinParam *, INT cas);
+void    he_sopalin_thread            (SolverMatrix *, SopalinParam *);
+void    he_sopalin_updo_thread       (SolverMatrix *, SopalinParam *);
+void    he_sopalin_updo_gmres_thread (SolverMatrix *, SopalinParam *);
+void    he_sopalin_updo_grad_thread  (SolverMatrix *, SopalinParam *);
+void    he_sopalin_updo_pivot_thread (SolverMatrix *, SopalinParam *);
+void    he_updo_thread               (SolverMatrix *, SopalinParam *);
+void    he_pivot_thread              (SolverMatrix *, SopalinParam *);
+void    he_gmres_thread              (SolverMatrix *, SopalinParam *);
+void    he_grad_thread               (SolverMatrix *, SopalinParam *);
+
+#define po_sopalin_launch             PASTIX_PREFIX_F(po_sopalin_launch)
+#define po_sopalin_thread             PASTIX_PREFIX_F(po_sopalin_thread)
+#define po_sopalin_updo_thread        PASTIX_PREFIX_F(po_sopalin_updo_thread)
+#define po_sopalin_updo_gmres_thread  PASTIX_PREFIX_F(po_sopalin_updo_gmres_thread)
+#define po_sopalin_updo_grad_thread   PASTIX_PREFIX_F(po_sopalin_updo_grad_thread)
+#define po_sopalin_updo_pivot_thread  PASTIX_PREFIX_F(po_sopalin_updo_pivot_thread)
+#define po_updo_thread                PASTIX_PREFIX_F(po_updo_thread)
+#define po_pivot_thread               PASTIX_PREFIX_F(po_pivot_thread)
+#define po_gmres_thread               PASTIX_PREFIX_F(po_gmres_thread)
+#define po_grad_thread                PASTIX_PREFIX_F(po_grad_thread)
+void    po_sopalin_launch            (SolverMatrix *, SopalinParam *, INT cas);
+void    po_sopalin_thread            (SolverMatrix *, SopalinParam *);
+void    po_sopalin_updo_thread       (SolverMatrix *, SopalinParam *);
+void    po_sopalin_updo_gmres_thread (SolverMatrix *, SopalinParam *);
+void    po_sopalin_updo_grad_thread  (SolverMatrix *, SopalinParam *);
+void    po_sopalin_updo_pivot_thread (SolverMatrix *, SopalinParam *);
+void    po_updo_thread               (SolverMatrix *, SopalinParam *);
+void    po_pivot_thread              (SolverMatrix *, SopalinParam *);
+void    po_gmres_thread              (SolverMatrix *, SopalinParam *);
+void    po_grad_thread               (SolverMatrix *, SopalinParam *);
 
 #endif

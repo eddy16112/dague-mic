@@ -1,14 +1,14 @@
-#define SYMB_CBLKTAB      datacode->symbmtx.cblktab
-#define SYMB_BLOKTAB      datacode->symbmtx.bloktab
-#define SYMB_CBLKNBR      datacode->symbmtx.cblknbr
-#define SYMB_BLOKNBR      datacode->symbmtx.bloknbr
-#define SYMB_NODENBR      datacode->symbmtx.nodenbr
-#define SYMB_BLOKNUM(x)   datacode->symbmtx.cblktab[x].bloknum
-#define SYMB_FCOLNUM(x)   datacode->symbmtx.cblktab[x].fcolnum
-#define SYMB_LCOLNUM(x)   datacode->symbmtx.cblktab[x].lcolnum
-#define SYMB_FROWNUM(x)   datacode->symbmtx.bloktab[x].frownum
-#define SYMB_LROWNUM(x)   datacode->symbmtx.bloktab[x].lrownum
-#define SYMB_CBLKNUM(x)   datacode->symbmtx.bloktab[x].cblknum /*<0 if remote*/
+#define SYMB_CBLKTAB      datacode->cblktab
+#define SYMB_BLOKTAB      datacode->bloktab
+#define SYMB_CBLKNBR      datacode->cblknbr
+#define SYMB_BLOKNBR      datacode->bloknbr
+#define SYMB_NODENBR      datacode->nodenbr
+#define SYMB_BLOKNUM(x)   datacode->cblktab[x].bloknum
+#define SYMB_FCOLNUM(x)   datacode->cblktab[x].fcolnum
+#define SYMB_LCOLNUM(x)   datacode->cblktab[x].lcolnum
+#define SYMB_FROWNUM(x)   datacode->bloktab[x].frownum
+#define SYMB_LROWNUM(x)   datacode->bloktab[x].lrownum
+#define SYMB_CBLKNUM(x)   datacode->bloktab[x].cblknum /*<0 if remote*/
 
 #define CBLK_BLOKNBR(x)   (SYMB_BLOKNUM(x+1) - SYMB_BLOKNUM(x))
 #define CBLK_COLNBR(x)    (SYMB_LCOLNUM(x) - SYMB_FCOLNUM(x) + 1)
@@ -29,13 +29,11 @@
    (SYMB_LROWNUM(j)<=SYMB_LROWNUM(b)))
 #endif
 
-
-
-#define SOLV_SYMBMTX      datacode->symbmtx
+/* #define SOLV_SYMBMTX      datacode->symbmtx */
 #define SOLV_CBLKTAB      datacode->cblktab
 #define SOLV_BLOKTAB      datacode->bloktab
-#define SOLV_COEFTAB(x)   datacode->coeftab[x]
-#define SOLV_UCOEFTAB(x)  datacode->ucoeftab[x]
+#define SOLV_COEFTAB(x)   datacode->cblktab[x].coeftab
+#define SOLV_UCOEFTAB(x)  datacode->cblktab[x].ucoeftab
 #define SOLV_FTGTTAB      datacode->ftgttab
 #define SOLV_PROCNUM      datacode->clustnum
 #define SOLV_PROCNBR      datacode->clustnbr
@@ -132,7 +130,7 @@
 #define TASK_TASKNEXT(x)  datacode->tasktab[x].tasknext
 #define TASK_MASTER(x)    datacode->tasktab[x].taskmstr
 #define TASK_THREADID(x)  datacode->tasktab[x].threadid
-/*#define TASK_COLOR(x)     datacode->tasktab[x].threadid*/
+#define TASK_COLOR(x)     datacode->tasktab[x].threadid
 #define TASK_PROC(x)      SOLV_PROCDIAG(TASK_CBLKNUM(x))
 #define TASK_CAND(x)      datacode->tasktab[x].cand
 
@@ -198,13 +196,11 @@
 #define PASTIX_COMM sopalin_data->sopar->pastix_comm
 
 #ifdef TEST_ISEND
-#ifdef PASTIX_FUNNELED
-#define MAX_S_REQUESTS 8096
+#  define MAX_S_REQUESTS                                                \
+  ( ( THREAD_FUNNELED_ON )?(8096):                                      \
+    (MAX(1, (8096/(SOLV_THRDNBR)))))
 #else
-#define MAX_S_REQUESTS (8096/(SOLV_THRDNBR)) /*+ 1024 ??? max of send requests +*/
-#endif
-#else
-#define MAX_S_REQUESTS 1
+#  define MAX_S_REQUESTS 1
 #endif
 
 #ifdef TEST_IRECV
@@ -212,6 +208,17 @@
 #else
 #define MAX_R_REQUESTS 1
 #endif
+
+#define THREAD_FUNNELED_ON (                                    \
+    sopalin_data->sopar->iparm[IPARM_THREAD_COMM_MODE] &        \
+    API_THREAD_FUNNELED)
+#define THREAD_FUNNELED_OFF (!THREAD_FUNNELED_ON)
+
+#define THREAD_COMM_ON  (                                       \
+    sopalin_data->sopar->iparm[IPARM_THREAD_COMM_MODE] &        \
+    ( API_THREAD_FUNNELED|API_THREAD_COMM_ONE|                   \
+      API_THREAD_COMM_DEFINED|API_THREAD_COMM_NBPROC ) )
+#define THREAD_COMM_OFF (!THREAD_COMM_ON)
 
 #define TASK_TASK2ESP( __i ) ( -((__i) + 2) )
 #define TASK_ESP2TASK( __i ) ( -((__i) + 2) )
