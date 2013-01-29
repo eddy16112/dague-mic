@@ -89,13 +89,11 @@ typedef enum COMMSTEP {
 /*
  * Defines: Communications
  *
- * THREAD_COMM   - Create one or several specific threads to receive data.
  * EXACT_TAG     - Do not use MPI_ANY_TAG
  * EXACT_THREAD  - The tag used is the receiving thread,
  *                 otherwise the task number ( limited by the number of
  *                 tag allowed by MPI)
  */
-/* #define THREAD_COMM */
 /* #define EXACT_TAG */
 #define EXACT_THREAD
 
@@ -173,13 +171,17 @@ typedef enum COMMSTEP {
 
 /* Utilisation de réception (par thread) non bloquante */
 /*#define TEST_IRECV*/
-
+#ifdef PASTIX_DYNSCHED
+#  undef TEST_IRECV
+#endif
 /* TODO : a completer */
 /*#define RECV_FANIN_OR_BLOCK*/
 
 /* Forcer la consommation des réception en attente */
 /*#define FORCE_CONSO*/
-
+#ifdef PASTIX_DYNSCHED
+#  undef FORCE_CONSO
+#endif
 /* Allocation des fanin TODO : a completer */
 #define ALLOC_FTGT
 
@@ -220,7 +222,6 @@ typedef enum COMMSTEP {
 #  undef SMP_SOPALIN
 #  undef SMP_RAFF
 #  undef TRYLOCK
-#  undef THREAD_COMM
 #  undef PASTIX_DYNSCHED
 #endif
 
@@ -230,14 +231,9 @@ typedef enum COMMSTEP {
 
 /* Suppression des options liées à MPI */
 #if (defined FORCE_NOMPI)
-#  undef THREAD_COMM
-#  undef PASTIX_FUNNELED
 #  undef PASTIX_UPDO_ISEND
 #endif
 
-#if (defined THREAD_COMM) && (defined TEST_IRECV)
-#  undef TEST_IRECV
-#endif
 
 #if (!(defined SOLVER_UPDOWN))
 #  define SOLVER_UPDOWN
@@ -250,21 +246,7 @@ typedef enum COMMSTEP {
  * en raison des flags utilisés dans les comms et du nombre de threads
  * inconnus
  */
-#if (defined PASTIX_DYNSCHED)
-#  if (!(defined THREAD_COMM)) && !(defined FORCE_NOMPI)
-#    define THREAD_COMM
-#  endif
-#endif
-
 #if (defined PASTIX_DYNSCHED) && (!(defined COMM_REORDER))
-#  define COMM_REORDER
-#endif
-
-#if (defined PASTIX_FUNNELED) && (!(defined THREAD_COMM))
-#  define THREAD_COMM
-#endif
-
-#if (defined PASTIX_FUNNELED) && (!(defined COMM_REORDER))
 #  define COMM_REORDER
 #endif
 
@@ -294,6 +276,7 @@ typedef enum COMMSTEP {
 #endif
 
 /* SMP_SOPALIN with not THREAD_COMM needs EXACT_TAG or EXACT_THREAD ??? */
+/* NEED CHECK => THREAD_COMM does not exists anymore ! */
 #if (defined SMP_SOPALIN) && (!(defined THREAD_COMM))
 #  if   (!(defined EXACT_TAG)) && (!(defined EXACT_THREAD))
 #    define EXACT_THREAD
@@ -328,13 +311,6 @@ typedef enum COMMSTEP {
 #  undef STATS_SOPALIN
 #endif
 
-#if (defined THREAD_COMM) && (defined FORCE_CONSO)
-#  ifdef PASTIX_FUNNELED
-#    undef FORCE_CONSO /* Option incompatibles */
-#  else
-#    error "FORCE_CONSO can't be activated with THREAD_COMM, it's like PASTIX_FUNNELED"
-#  endif
-#endif
 
 #if (defined TRACE_SOPALIN) && (defined PASTIX_DUMP_SOLV_COMM)
 #  error "TRACE_SOPALIN and PASTIX_DUMP_SOLV_COMM can't be both activated"
@@ -344,11 +320,8 @@ typedef enum COMMSTEP {
 #  ifdef PASTIX_ESC /* PASTIX_ESC not compatible with OOC */
 #    undef PASTIX_ESC
 #  endif
-#  ifdef THREAD_COMM
-#    undef THREAD_COMM
-#  endif
-#  ifdef PASTIX_FUNNELED
-#    undef PASTIX_FUNNELED
+#  ifdef PASTIX_DYNSCHED
+#    undef PASTIX_DYNSCHED
 #  endif
 #endif /* OOC */
 
@@ -364,11 +337,11 @@ typedef enum COMMSTEP {
 #  endif
 #endif /* OOC_FTGT */
 
-#if (defined THREAD_COMM) && (!defined PASTIX_UPDO_ISEND)
+#if (defined PASTIX_ISEND) && (!defined PASTIX_UPDO_ISEND)
 #  define PASTIX_UPDO_ISEND
 #endif
 
-#if (defined PASTIX_ISEND) && (!defined PASTIX_UPDO_ISEND)
+#if (defined PASTIX_DYNSCHED && !defined PASTIX_UPDO_ISEND)
 #  define PASTIX_UPDO_ISEND
 #endif
 
@@ -377,10 +350,45 @@ typedef enum COMMSTEP {
 #  undef STORAGE
 #endif
 
-/* On re-active storage en thread comm meme en multi-rhs */
-#if (defined THREAD_COMM) && !(defined STORAGE)
+/* On re-active storage en PASTIX_DYNSCHED qui implique thread comm meme en multi-rhs */
+#if (defined PASTIX_DYNSCHED) && !(defined STORAGE)
 #  define STORAGE
 #endif
+
+#ifdef PASTIX_THREAD_COMM
+#  undef TEST_IRECV
+#endif
+
+#ifdef PASTIX_FUNNELED
+#  ifndef PASTIX_THREAD_COMM
+#    define PASTIX_THREAD_COMM
+#  endif
+#  ifndef COMM_REORDER
+#    define COMM_REORDER
+#  endif
+#endif
+
+#ifdef PASTIX_THREAD_COMM
+#  ifndef PASTIX_UPDO_ISEND
+#    define PASTIX_UPDO_ISEND
+#  endif
+#  ifndef STORAGE
+#    define STORAGE
+#  endif
+#  ifdef FORCE_CONSO
+#    undef FORCE_CONSO
+#  endif
+#  ifdef FORCE_NOSMP
+#    error "FORCE_NOSMP is not compatible with PASTIX_THREAD_COMM nor PASTIX_FUNNELED"
+#  endif
+#  ifdef FORCE_NOMPI
+#    error "FORCE_NOMPI is not compatible with PASTIX_THREAD_COMM nor PASTIX_FUNNELED"
+#  endif
+#  ifdef OOC
+#    error "OOC is not compatible with PASTIX_THREAD_COMM nor PASTIX_FUNNELED"
+#  endif
+#endif
+
 
 /*
  * Protection des appels MPI
@@ -400,13 +408,6 @@ extern int err_mpi;
 #  define TEST_MPI(x)
 #endif
 
-/*
- * La version avec thread de comm ne fonctionne qu'avec les tags simples
- */
-#ifdef THREAD_COMM
-#  undef EXACT_TAG
-#  undef EXACT_THREAD
-#endif
 
 #ifdef USE_CSC
 /* #define CSC_SOPALIN_HACK */
@@ -420,7 +421,7 @@ extern int err_mpi;
 #  ifdef SOPALIN_LU
 #    define API_CALL(nom) PASTIX_PREFIX_F(ge_ ## nom)
 #  else
-#      define API_CALL(nom) PASTIX_PREFIX_F(po_ ## nom)
+#    define API_CALL(nom) PASTIX_PREFIX_F(po_ ## nom)
 #  endif
 #else
 #  ifdef HERMITIAN
@@ -454,7 +455,6 @@ extern int err_mpi;
 /*   Redefinition de MPI_Allreduce pour thread_funneled     */
 /************************************************************/
 
-#ifdef PASTIX_FUNNELED
 /*
  Macro: MyMPI_Allreduce
 
@@ -468,25 +468,36 @@ extern int err_mpi;
     lop       - Reduction operation.
     lcomm     - MPI communicator.
  */
-#  define MyMPI_Allreduce(lsendbuf, lrecvbuf, lcount, ldatatype, lop, lcomm)\
-  {                                                                       \
-    Pastix_Allreduce_t *allreduce = &(sopalin_data->allreduce);           \
-    allreduce->sendbuf  = lsendbuf;                                       \
-    allreduce->recvbuf  = lrecvbuf;                                       \
-    allreduce->count    = lcount;                                         \
-    allreduce->datatype = ldatatype;                                      \
-    allreduce->op       = lop;                                            \
-    /* Signal d'un reduce a faire */                                      \
-    MUTEX_LOCK(&(sopalin_data->mutex_comm));                              \
-    sopalin_data->step_comm = COMMSTEP_ALLREDUCE;                         \
-    print_debug(DBG_THCOMM, "%s:%d ALLREDUCE\n", __FILE__, __LINE__);     \
-    MUTEX_UNLOCK(&(sopalin_data->mutex_comm));                            \
-    pthread_cond_broadcast(&(sopalin_data->cond_comm));                   \
-    /* Attente de la fin du reduce */                                     \
-    MUTEX_LOCK(&(sopalin_data->mutex_comm));                              \
-    while(sopalin_data->step_comm != COMMSTEP_INIT)                       \
-      COND_WAIT(&(sopalin_data->cond_comm), &(sopalin_data->mutex_comm)); \
-    MUTEX_UNLOCK(&(sopalin_data->mutex_comm));                          \
+#define MyMPI_Allreduce(lsendbuf, lrecvbuf, lcount, ldatatype, lop, lcomm) \
+  {                                                                     \
+    if (sopalin_data->sopar->iparm[IPARM_THREAD_COMM_MODE] &            \
+        API_THREAD_FUNNELED)                                            \
+      {                                                                 \
+        Pastix_Allreduce_t *allreduce = &(sopalin_data->allreduce);     \
+        allreduce->sendbuf  = lsendbuf;                                 \
+        allreduce->recvbuf  = lrecvbuf;                                 \
+        allreduce->count    = lcount;                                   \
+        allreduce->datatype = ldatatype;                                \
+        allreduce->op       = lop;                                      \
+        /* Signal d'un reduce a faire */                                \
+        MUTEX_LOCK(&(sopalin_data->mutex_comm));                        \
+        sopalin_data->step_comm = COMMSTEP_ALLREDUCE;                   \
+        print_debug(DBG_THCOMM, "%s:%d ALLREDUCE\n",                    \
+                    __FILE__, __LINE__);                                \
+        MUTEX_UNLOCK(&(sopalin_data->mutex_comm));                      \
+        pthread_cond_broadcast(&(sopalin_data->cond_comm));             \
+        /* Attente de la fin du reduce */                               \
+        MUTEX_LOCK(&(sopalin_data->mutex_comm));                        \
+        while(sopalin_data->step_comm != COMMSTEP_INIT)                 \
+          COND_WAIT(&(sopalin_data->cond_comm),                         \
+                    &(sopalin_data->mutex_comm));                       \
+        MUTEX_UNLOCK(&(sopalin_data->mutex_comm));                      \
+      }                                                                 \
+    else                                                                \
+      {                                                                 \
+        MPI_Allreduce(lsendbuf, lrecvbuf, lcount, ldatatype, lop,       \
+                      lcomm);                                           \
+      }                                                                 \
   }
 /*
   Macro: MyMPI_Reduce
@@ -502,28 +513,34 @@ extern int err_mpi;
     lroot     - Root of the operation.
     lcomm     - MPI communicator.
  */
-#  define MyMPI_Reduce(lsendbuf, lrecvbuf, lcount, ldatatype, lop, lroot, lcomm) \
+#define MyMPI_Reduce(lsendbuf, lrecvbuf, lcount, ldatatype, lop, lroot, lcomm) \
   {                                                                     \
-    Pastix_Allreduce_t *reduce = &(sopalin_data->allreduce);            \
-    reduce->sendbuf  = lsendbuf;                                        \
-    reduce->recvbuf  = lrecvbuf;                                        \
-    reduce->count    = lcount;                                          \
-    reduce->datatype = ldatatype;                                       \
-    reduce->op       = lop;                                             \
-    /* Signal d'un reduce a faire */                                    \
-    MUTEX_LOCK(&(sopalin_data->mutex_comm));                            \
-    sopalin_data->step_comm = COMMSTEP_REDUCE;                          \
-    print_debug(DBG_THCOMM, "%s:%d REDUCE\n", __FILE__, __LINE__);      \
-    MUTEX_UNLOCK(&(sopalin_data->mutex_comm));                          \
-    pthread_cond_broadcast(&(sopalin_data->cond_comm));                 \
-    /* Attente de la fin du reduce */                                   \
-    MUTEX_LOCK(&(sopalin_data->mutex_comm));                            \
-    while(sopalin_data->step_comm != COMMSTEP_INIT)                     \
-      COND_WAIT(&(sopalin_data->cond_comm), &(sopalin_data->mutex_comm)); \
-    MUTEX_UNLOCK(&(sopalin_data->mutex_comm));                          \
+    if (sopalin_data->sopar->iparm[IPARM_THREAD_COMM_MODE] &            \
+        API_THREAD_FUNNELED)                                            \
+      {                                                                 \
+        Pastix_Allreduce_t *reduce = &(sopalin_data->allreduce);        \
+        reduce->sendbuf  = lsendbuf;                                    \
+        reduce->recvbuf  = lrecvbuf;                                    \
+        reduce->count    = lcount;                                      \
+        reduce->datatype = ldatatype;                                   \
+        reduce->op       = lop;                                         \
+        /* Signal d'un reduce a faire */                                \
+        MUTEX_LOCK(&(sopalin_data->mutex_comm));                        \
+        sopalin_data->step_comm = COMMSTEP_REDUCE;                      \
+        print_debug(DBG_THCOMM, "%s:%d REDUCE\n", __FILE__, __LINE__);  \
+        MUTEX_UNLOCK(&(sopalin_data->mutex_comm));                      \
+        pthread_cond_broadcast(&(sopalin_data->cond_comm));             \
+        /* Attente de la fin du reduce */                               \
+        MUTEX_LOCK(&(sopalin_data->mutex_comm));                        \
+        while(sopalin_data->step_comm != COMMSTEP_INIT)                 \
+          COND_WAIT(&(sopalin_data->cond_comm),                         \
+                    &(sopalin_data->mutex_comm));                       \
+        MUTEX_UNLOCK(&(sopalin_data->mutex_comm));                      \
+      }                                                                 \
+    else                                                                \
+      {                                                                 \
+        MPI_Reduce(lsendbuf, lrecvbuf, lcount, ldatatype, lop,          \
+                   lroot, lcomm);                                       \
+      }                                                                 \
   }
-#else
-#  define MyMPI_Allreduce MPI_Allreduce
-#  define MyMPI_Reduce    MPI_Reduce
-#endif
 #endif

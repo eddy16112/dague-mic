@@ -30,11 +30,11 @@ descB    [type = "sparse_vector_desc_t *"]
 B        [type = "dague_ddesc_t *" aligned=A]
 datacode [type = "SolverMatrix*" default="&(descA->pastix_data->solvmatr)" hidden=on]
 /* Number of column blocks */
-cblknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.cblknbr - 1" hidden=on]
+cblknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.cblknbr - 1" hidden=on]
 /* Number of blocks minus the last diagonal block */
-bloknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.bloknbr - 2" hidden=on]
+bloknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.bloknbr - 2" hidden=on]
 /* Number of extra diagonal blocks */
-browsize [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.bloknbr - descA->pastix_data->solvmatr.symbmtx.cblknbr - 1" hidden=on]
+browsize [type = "dague_int_t"   default="descA->pastix_data->solvmatr.bloknbr - descA->pastix_data->solvmatr.cblknbr - 1" hidden=on]
 p_work   [type = "dague_memory_pool_t *" size = "datacode->coefmax * sizeof(dague_complex64_t)"]
 
 /**************************************************

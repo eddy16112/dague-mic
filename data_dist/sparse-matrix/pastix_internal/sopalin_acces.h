@@ -130,7 +130,7 @@
 #define TASK_TASKNEXT(x)  datacode->tasktab[x].tasknext
 #define TASK_MASTER(x)    datacode->tasktab[x].taskmstr
 #define TASK_THREADID(x)  datacode->tasktab[x].threadid
-#define TASK_COLOR(x)     datacode->tasktab[x].threadid
+//#define TASK_COLOR(x)     datacode->tasktab[x].threadid
 #define TASK_PROC(x)      SOLV_PROCDIAG(TASK_CBLKNUM(x))
 #define TASK_CAND(x)      datacode->tasktab[x].cand
 

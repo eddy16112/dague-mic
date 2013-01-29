@@ -115,7 +115,11 @@
 #ifdef X_ARCHi686_mac
 #  include            <malloc/malloc.h>
 #else /* X_ARCHi686_mac */
-#  include            <malloc.h>
+#  ifdef __FreeBSD__
+#    include            <stdlib.h>
+#  else /* not __FreeBSD__ */
+#    include            <malloc.h>
+#  endif /* not __FreeBSD__ */
 #endif /* X_ARCHi686_mac */
 #include            <memory.h>
 #include            <stdio.h>
@@ -138,11 +142,11 @@
 #endif /* X_ASSERT */
 
 #ifndef MIN
-#define MIN(x,y) (((x)<(y))?(x):(y))
+#  define MIN(x,y) (((x)<(y))?(x):(y))
 #endif
 
 #ifndef MAX
-#define MAX(x,y) (((x)<(y))?(y):(x))
+#  define MAX(x,y) (((x)<(y))?(y):(x))
 #endif
 
 /*
@@ -311,7 +315,7 @@
 
 #define INTVALMAX     ((INT) (((UINT) 1 << (INTSIZEBITS - 1)) - 1))
 
-/* #include "redefine_functions.h" */
+#include "redefine_functions.h"
 
 #define MEMORY_WRITE(mem) ( ((mem) < 1<<10) ?                           \
                             ( (double)(mem) ) :                         \
@@ -760,6 +764,108 @@ void qsort2SmallIntAsc(void ** const pbase,
 #define OUT_CLOSEFILEINDIR(file) fclose(file);
 
 #define PASTIX_MASK_ISTRUE(var, mask) (var == (var | mask))
+/*
+ * macro: CHECK_MPI
+ *
+ * Perform MPI call, check for error, print an error message
+ * and call MPI_Abort.
+ *
+ */
+#ifdef FORCE_NOMPI
+#  define CHECK_MPI(call) call
+#  define CHECK_THREAD_LEVEL(THREAD_MODE) do {  \
+    THREAD_MODE = THREAD_MODE;                  \
+  } while (0)
+#else /* not FORCE_NOMPI */
+#  define CHECK_MPI(call) do {                                          \
+    int error_code;                                                     \
+    error_code = call;                                                  \
+    if (error_code != MPI_SUCCESS) {                                    \
+                                                                        \
+      char error_string[MPI_MAX_ERROR_STRING];                          \
+      int length_of_error_string, error_class;                          \
+      int my_rank = -1;                                                 \
+                                                                        \
+      MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);                          \
+      MPI_Error_class(error_code, &error_class);                        \
+      MPI_Error_string(error_class, error_string,                       \
+                       &length_of_error_string);                        \
+      fprintf(stderr, "%3d: %s\n", my_rank, error_string);              \
+      MPI_Error_string(error_code, error_string,                        \
+                       &length_of_error_string);                        \
+      fprintf(stderr, "%3d: %s\n", my_rank, error_string);              \
+      MPI_Abort(MPI_COMM_WORLD, MPI_ERR);                               \
+    }                                                                   \
+  } while(0)
 
+#  ifdef FORCE_NOSMP
+#  define CHECK_THREAD_LEVEL(THREAD_MODE) do {  \
+    THREAD_MODE = THREAD_MODE;                  \
+  } while (0)
+#  else  /* not FORCE_NOSMP */
+#    define CHECK_THREAD_LEVEL(THREAD_MODE)                             \
+  do {                                                                  \
+    int      provided;                                                  \
+                                                                        \
+    CHECK_MPI(MPI_Query_thread(&provided));                             \
+    if (THREAD_MODE == API_THREAD_FUNNELED)                              \
+      {                                                                 \
+        switch(provided) {                                              \
+        case MPI_THREAD_SINGLE:                                         \
+          errorPrint("This run only supports MPI_THREAD_SINGLE\n"       \
+                     "  either use -DFORCE_NOSMP,\n"                    \
+                     "  change your MPI Library\n"                      \
+                     "  or check that MPI_Init_thread"                  \
+                     " is correctly called\n");                         \
+          MPI_Abort(MPI_COMM_WORLD, MPI_ERR);                           \
+          break;                                                        \
+        case MPI_THREAD_FUNNELED:                                       \
+        case MPI_THREAD_SERIALIZED:                                     \
+        case MPI_THREAD_MULTIPLE:                                       \
+          break;                                                        \
+        default:                                                        \
+          errorPrint("provided thread level support is unknown");       \
+          MPI_Abort(MPI_COMM_WORLD, MPI_ERR);                           \
+          break;                                                        \
+        }                                                               \
+      }                                                                 \
+    else                                                                \
+      {                                                                 \
+        switch(provided) {                                              \
+        case MPI_THREAD_SINGLE:                                         \
+          errorPrint("This run only supports MPI_THREAD_SINGLE\n"       \
+                     "  either use -DFORCE_NOSMP,\n"                    \
+                     "  change your MPI Library\n"                      \
+                     "  or check that MPI_Init_thread"                  \
+                     " is correctly called\n");                         \
+          MPI_Abort(MPI_COMM_WORLD, MPI_ERR);                           \
+          break;                                                        \
+        case MPI_THREAD_FUNNELED:                                       \
+          errorPrint("This run only supports MPI_THREAD_FUNNELED\n"     \
+                     "  either use API_THREAD_FUNNELED,\n"              \
+                     "  change your MPI Library\n"                      \
+                     "  or check that MPI_Init_thread"                  \
+                     " is correctly called\n");                         \
+          MPI_Abort(MPI_COMM_WORLD, MPI_ERR);                           \
+          break;                                                        \
+        case MPI_THREAD_SERIALIZED:                                     \
+          errorPrint("This run only supports MPI_THREAD_SERIALIZED\n"   \
+                     "  either use API_THREAD_FUNNELED,\n"                \
+                     "  change your MPI Library\n"                      \
+                     "  or check that MPI_Init_thread"                  \
+                     " is correctly called\n");                         \
+          MPI_Abort(MPI_COMM_WORLD, MPI_ERR);                           \
+          break;                                                        \
+        case MPI_THREAD_MULTIPLE:                                       \
+          break;                                                        \
+        default:                                                        \
+          errorPrint("provided thread level support is unknown");       \
+          MPI_Abort(MPI_COMM_WORLD, MPI_ERR);                           \
+          break;                                                        \
+        }                                                               \
+      }                                                                 \
+  } while(0)
+#  endif /* not FORCE_NOSMP */
+#endif /* not FORCE_NOMPI */
 
 #endif /* COMMON_PASTIX_H */

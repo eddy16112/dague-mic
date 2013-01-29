@@ -90,6 +90,7 @@ subs = {
     ('s_pastix', 'd_pastix', 'c_pastix', 'z_pastix'),
     ('S_pastix', 'D_pastix', 'C_pastix', 'Z_pastix'),
     ('S_Csc',    'D_Csc',    'C_Csc',    'Z_Csc'   ),
+    ('S_ge_Csc', 'D_ge_Csc', 'C_ge_Csc', 'Z_ge_Csc'),
     ('S_Build',  'D_Build',  'C_Build',  'Z_Build' ),
     ('sytra1','sytra1','hetra1','hetra1'),
     ('strdv', 'dtrdv', 'ctrdv', 'ztrdv'),

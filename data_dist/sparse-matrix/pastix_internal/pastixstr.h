@@ -13,6 +13,8 @@
 
    Structure used to store datas for a step by step execution.
 */
+struct pastix_data_t;
+typedef struct pastix_data_t pastix_data_t;
 
 struct pastix_data_t {
   SolverMatrix     solvmatr;         /*+ Matrix informations                                                 +*/

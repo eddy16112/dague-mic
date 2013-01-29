@@ -19,6 +19,7 @@ extern "C" %{
 #define PRECISION_z
 
 void sparse_matrix_zcsc2cblk(const SolverMatrix *solvmatr,
+                             const CscMatrix    *cscmtx,
                              dague_complex64_t  *transcsc,
                              dague_int_t         itercblk);
 
@@ -29,7 +30,7 @@ void sparse_matrix_zcsc2cblk(const SolverMatrix *solvmatr,
 descA    [type = "sparse_matrix_desc_t *"]
 A        [type = "dague_ddesc_t *"]
 datacode [type = "SolverMatrix*" default="&(descA->pastix_data->solvmatr)" hidden=on]
-cblknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.cblknbr-1" hidden=on]
+cblknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.cblknbr-1" hidden=on]
 
 /**************************************************
  *                CSC2CBLK                        *
@@ -48,7 +49,9 @@ RW A <- A(0, k)
 
 BODY
       DRYRUN(
-             sparse_matrix_zcsc2cblk( datacode, (dague_complex64_t*)(descA->pastix_data->sopar.transcsc), k);
+             sparse_matrix_zcsc2cblk( datacode,
+                                      &(descA->pastix_data->cscmtx),
+                                      (dague_complex64_t*)(descA->pastix_data->sopar.transcsc), k);
 	     );
       printlog(
                "thread %d zcsc2cblk( %d )\n",

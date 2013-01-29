@@ -66,7 +66,7 @@ void *sparse_vector_data_of(struct dague_ddesc *mat, ... )
     va_start(ap, mat);
     cblknum = va_arg(ap, unsigned int);
     va_end(ap);
-    bloknum = spmtx->pastix_data->solvmatr.symbmtx.cblktab[cblknum].bloknum;
+    bloknum = spmtx->pastix_data->solvmatr.cblktab[cblknum].bloknum;
 
     char *ptr = (char*)(spmtx->pastix_data->solvmatr.updovct.sm2xtab);
 
@@ -84,7 +84,7 @@ uint32_t sparse_vector_data_key(struct dague_ddesc *mat, ... )
     va_start(ap, mat);
     cblknum = va_arg(ap, unsigned int);
     va_end(ap);
-    bloknum = spmtx->pastix_data->solvmatr.symbmtx.cblktab[cblknum].bloknum;
+    bloknum = spmtx->pastix_data->solvmatr.cblktab[cblknum].bloknum;
 
     return (uint32_t)bloknum;
 }
@@ -97,14 +97,14 @@ int sparse_vector_key_to_string(struct dague_ddesc *mat, uint32_t datakey, char 
     int res;
     
     first   = 0;
-    last    = spmtx->pastix_data->solvmatr.symbmtx.cblknbr;
+    last    = spmtx->pastix_data->solvmatr.cblknbr;
     middle  = (last+first) / 2;
     bloknum = (dague_int_t)datakey;
     cblknum = -1;
 
     while( last - first > 0 ) {
-        if ( bloknum >= spmtx->pastix_data->solvmatr.symbmtx.cblktab[middle].bloknum ) {
-            if ( bloknum < spmtx->pastix_data->solvmatr.symbmtx.cblktab[middle+1].bloknum ) {
+        if ( bloknum >= spmtx->pastix_data->solvmatr.cblktab[middle].bloknum ) {
+            if ( bloknum < spmtx->pastix_data->solvmatr.cblktab[middle+1].bloknum ) {
                 cblknum = middle;
                 break;
             }

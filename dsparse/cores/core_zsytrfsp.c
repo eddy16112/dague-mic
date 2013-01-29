@@ -45,15 +45,15 @@ int CORE_zgemdm(int transA, int transB,
                 PLASMA_Complex64_t *D, int incD,
                 PLASMA_Complex64_t *WORK, int LWORK);
 
-/* 
+/*
    Function: FactorizationLDLT
-   
+
    Factorisation LDLt BLAS2 3 terms
-   this subroutine factors the diagonal block 
+   this subroutine factors the diagonal block
 
   > A = LDL^T
 
-  Parameters: 
+  Parameters:
      A       - Matrix to factorize
      n       - Size of A
      stride  - Stide between 2 columns of the matrix
@@ -61,10 +61,10 @@ int CORE_zgemdm(int transA, int transB,
      criteria - Pivoting threshold.
 
 */
-static void core_zsytf2sp(dague_int_t  n, 
-                          dague_complex64_t * A, 
-                          dague_int_t  stride, 
-                          dague_int_t *nbpivot, 
+static void core_zsytf2sp(dague_int_t  n,
+                          dague_complex64_t * A,
+                          dague_int_t  stride,
+                          dague_int_t *nbpivot,
                           double criteria )
 {
     dague_int_t k;
@@ -79,14 +79,14 @@ static void core_zsytf2sp(dague_int_t  n,
         }
 
         tmp1 = tmp+1; // element just below diagonal
-        
+
         alpha = 1. / (*tmp); // scaling with the diagonal to compute L((k+1):n,k)
         cblas_zscal(n-k-1, CBLAS_SADDR( alpha ), tmp1, 1 );
 
         alpha = -(*tmp);
 
         /* TODO: replace by SYR but [cz]syr exists only in LAPACK */
-        LAPACKE_zsyr_work(LAPACK_COL_MAJOR, 'l', n-k-1, 
+        LAPACKE_zsyr_work(LAPACK_COL_MAJOR, 'l', n-k-1,
                           alpha, tmp1,        1,
                                  tmp1+stride, stride);
     }
@@ -97,11 +97,11 @@ static void core_zsytf2sp(dague_int_t  n,
 
   Computes the block LDL^T factorisation of the
   matrix A.
-  this subroutine factors the diagonal supernode 
+  this subroutine factors the diagonal supernode
 
   > A = LDL^T
 
-  Parameters: 
+  Parameters:
      A       - Matrix to factorize
      n       - Size of A
      stride  - Stide between 2 columns of the matrix
@@ -110,10 +110,10 @@ static void core_zsytf2sp(dague_int_t  n,
 
 */
 
-static void core_zsytrfsp(dague_int_t  n, 
-                          dague_complex64_t * A, 
-                          dague_int_t  stride, 
-                          dague_int_t *nbpivot, 
+static void core_zsytrfsp(dague_int_t  n,
+                          dague_complex64_t * A,
+                          dague_int_t  stride,
+                          dague_int_t *nbpivot,
                           double       criteria,
                           dague_complex64_t *work)
 {
@@ -121,27 +121,27 @@ static void core_zsytrfsp(dague_int_t  n,
     dague_complex64_t *tmp,*tmp1,*tmp2;
     dague_complex64_t alpha;
 
-	/* diagonal supernode is divided into MAXSIZEOFBLOCK-by-MAXSIZEOFBLOCKS blocks */
+        /* diagonal supernode is divided into MAXSIZEOFBLOCK-by-MAXSIZEOFBLOCKS blocks */
     blocknbr = (dague_int_t) ceil( (double)n/(double)MAXSIZEOFBLOCKS );
 
     for (k=0; k<blocknbr; k++) {
-      
+
         blocksize = min(MAXSIZEOFBLOCKS, n-k*MAXSIZEOFBLOCKS);
         tmp  = A+(k*MAXSIZEOFBLOCKS)*(stride+1); /* Lk,k     */
         tmp1 = tmp  + blocksize;                 /* Lk+1,k   */
         tmp2 = tmp1 + blocksize * stride;        /* Lk+1,k+1 */
-        
+
         /* Factorize the diagonal block A(k,k) (input A in tmp, output L,D in tmp */
         core_zsytf2sp(blocksize, tmp, stride, nbpivot, criteria);
-        
+
         if ((k*MAXSIZEOFBLOCKS+blocksize) < n) {
-            
+
             matrixsize = n-(k*MAXSIZEOFBLOCKS+blocksize);
-            
+
             /* Compute the column L(k+1:n,k) = (L(k,k)D(k,k))^{-1}A(k+1:n,k)    */
             /* 1) Compute A(k+1:n,k) = A(k+1:n,k)L(k,k)^{-T} = D(k,k)L(k+1:n,k) */
-			/* input: L(k,k) in tmp, A(k+1:n,k) in tmp1   */
-			/* output: A(k+1:n,k) in tmp1                 */
+                        /* input: L(k,k) in tmp, A(k+1:n,k) in tmp1   */
+                        /* output: A(k+1:n,k) in tmp1                 */
             cblas_ztrsm(CblasColMajor,
                         CblasRight, CblasLower,
                         CblasTrans, CblasUnit,
@@ -152,15 +152,15 @@ static void core_zsytrfsp(dague_int_t  n,
             /* Compute L(k+1:n,k) = A(k+1:n,k)D(k,k)^{-1}     */
             for(col = 0; col < blocksize; col++) {
                 /* copy L(k+1+col:n,k+col)*D(k+col,k+col) into work(:,col) */
-                cblas_zcopy(matrixsize, tmp1+col*stride,     1, 
+                cblas_zcopy(matrixsize, tmp1+col*stride,     1,
                                         work+col*matrixsize, 1);
 
-				/* compute L(k+1+col:n,k+col) = A(k+1+col:n,k+col)D(k+col,k+col)^{-1} */
+                                /* compute L(k+1+col:n,k+col) = A(k+1+col:n,k+col)D(k+col,k+col)^{-1} */
                 alpha = 1. / *(tmp + col*(stride+1));
-                cblas_zscal(matrixsize, CBLAS_SADDR(alpha), 
+                cblas_zscal(matrixsize, CBLAS_SADDR(alpha),
                             tmp1+col*stride, 1);
             }
-            
+
             /* Update A(k+1:n,k+1:n) = A(k+1:n,k+1:n) - (L(k+1:n,k)*D(k,k))*L(k+1:n,k)^T */
             cblas_zgemm(CblasColMajor,
                         CblasNoTrans, CblasTrans,
@@ -168,18 +168,18 @@ static void core_zsytrfsp(dague_int_t  n,
                         CBLAS_SADDR(mzone), work, matrixsize,
                                             tmp1, stride,
                         CBLAS_SADDR(zone),  tmp2, stride);
-	}
+        }
     }
 }
 
 
 /*
- * Factorization of diagonal block 
+ * Factorization of diagonal block
  * entry point from DAGue: to factor c-th supernodal column
  */
 void core_zsytrfsp1d(dague_complex64_t *L,
                      dague_complex64_t *work,
-                     SolverMatrix *datacode, 
+                     SolverMatrix *datacode,
                      dague_int_t c,
                      double criteria)
 {
@@ -205,11 +205,11 @@ void core_zsytrfsp1d(dague_complex64_t *L,
     dimb = stride - dima;
 
     /* if there are off-diagonal supernodes in the column */
-    if ( fblknum+1 < lblknum ) 
+    if ( fblknum+1 < lblknum )
     {
         /* the first off-diagonal block in column block address */
         fL = L + SOLV_COEFIND(fblknum+1);
-        
+
         /* Three terms version, no need to keep L and L*D */
         cblas_ztrsm(CblasColMajor,
                     CblasRight, CblasLower,
@@ -217,7 +217,7 @@ void core_zsytrfsp1d(dague_complex64_t *L,
                     dimb, dima,
                     CBLAS_SADDR(zone), L,  stride,
                                        fL, stride);
-        
+
         for (dague_int_t k=0; k<dima; k++)
         {
           dague_complex64_t alpha;
@@ -228,7 +228,7 @@ void core_zsytrfsp1d(dague_complex64_t *L,
 }
 
 
-// sparse_matrix_get_lcblknum( descA, (dague_int_t)k ), 
+// sparse_matrix_get_lcblknum( descA, (dague_int_t)k ),
 void core_zsytrfsp1d_gemm(dague_int_t cblknum,        //
                           dague_int_t bloknum,
                           dague_int_t fcblknum,
@@ -253,51 +253,51 @@ void core_zsytrfsp1d_gemm(dague_int_t cblknum,        //
 
     dimi = stride - indblok;
     dimj = SYMB_LROWNUM(bloknum) - SYMB_FROWNUM(bloknum) + 1;
-    dima = SYMB_LCOLNUM(cblknum) - SYMB_FCOLNUM(cblknum) + 1;  
+    dima = SYMB_LCOLNUM(cblknum) - SYMB_FCOLNUM(cblknum) + 1;
 
     /* Matrix A = Aik */
     Aik = L + indblok;
 
     /* Compute the contribution             *
-	 * work1 = A(i:n,k) * D(k,k) * A(i,k)^T */
-    CORE_zgemdm( PlasmaNoTrans, PlasmaTrans, 
+         * work1 = A(i:n,k) * D(k,k) * A(i,k)^T */
+    CORE_zgemdm( PlasmaNoTrans, PlasmaTrans,
                  dimi, dimj, dima,
-                 1.,  Aik,   stride, 
+                 1.,  Aik,   stride,
                       Aik,   stride,
                  0.,  work1, dimi,
-                      L,     stride+1, 
+                      L,     stride+1,
                       work2, ldw );
-  
+
     /*
      * Add contribution to facing cblk  *
-	 * A(i,i+1:n) += work1              */
+         * A(i,i+1:n) += work1              */
     b = SYMB_BLOKNUM( fcblknum );
     stridefc = SOLV_STRIDE(fcblknum);
     C = C + (SYMB_FROWNUM(bloknum) - SYMB_FCOLNUM(fcblknum)) * stridefc;
-        
+
     /* for all following blocks in block column */
     for (j=bloknum; j<lblknum; j++) {
         frownum = SYMB_FROWNUM(j);
 
         /* Find facing bloknum */
 #ifdef NAPA_SOPALIN /* ILU(k) */
-        while (!(((SYMB_FROWNUM(j)>=SYMB_FROWNUM(b)) && 
+        while (!(((SYMB_FROWNUM(j)>=SYMB_FROWNUM(b)) &&
                   (SYMB_LROWNUM(j)<=SYMB_LROWNUM(b))) ||
-                 ((SYMB_FROWNUM(j)<=SYMB_FROWNUM(b)) && 
+                 ((SYMB_FROWNUM(j)<=SYMB_FROWNUM(b)) &&
                   (SYMB_LROWNUM(j)>=SYMB_LROWNUM(b))) ||
-                 ((SYMB_FROWNUM(j)<=SYMB_FROWNUM(b)) && 
+                 ((SYMB_FROWNUM(j)<=SYMB_FROWNUM(b)) &&
                   (SYMB_LROWNUM(j)>=SYMB_FROWNUM(b))) ||
-                 ((SYMB_FROWNUM(j)<=SYMB_LROWNUM(b)) && 
+                 ((SYMB_FROWNUM(j)<=SYMB_LROWNUM(b)) &&
                   (SYMB_LROWNUM(j)>=SYMB_LROWNUM(b)))))
 #else
-        while (!((SYMB_FROWNUM(j)>=SYMB_FROWNUM(b)) && 
+        while (!((SYMB_FROWNUM(j)>=SYMB_FROWNUM(b)) &&
                  (SYMB_LROWNUM(j)<=SYMB_LROWNUM(b))))
 #endif
             {
                 b++;
                 assert( b < SYMB_BLOKNUM( fcblknum+1 ) );
             }
-        
+
 
         Aij = C + SOLV_COEFIND(b) + frownum - SYMB_FROWNUM(b);
         dimb = SYMB_LROWNUM(j) - frownum + 1;

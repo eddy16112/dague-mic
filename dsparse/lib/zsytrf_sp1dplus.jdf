@@ -26,8 +26,8 @@ extern "C" %{
 descA    [type = "sparse_matrix_desc_t *"]
 A        [type = "dague_ddesc_t *"]
 datacode [type = "SolverMatrix*" default="&(descA->pastix_data->solvmatr)" hidden=on]
-cblknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.cblknbr - 1" hidden=on] /* index of last diagonal block */
-bloknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.symbmtx.bloknbr - 2" hidden=on] /* index of last block (gemm is called on diagonal, but nothing is done), -2 to avoid last diagonal block */
+cblknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.cblknbr - 1" hidden=on] /* index of last diagonal block */
+bloknbr  [type = "dague_int_t"   default="descA->pastix_data->solvmatr.bloknbr - 2" hidden=on] /* index of last block (gemm is called on diagonal, but nothing is done), -2 to avoid last diagonal block */
 p_work1  [type = "dague_memory_pool_t *" size = "datacode->coefmax * sizeof(dague_complex64_t)"]
 p_work2  [type = "dague_memory_pool_t *" size = "datacode->coefmax * sizeof(dague_complex64_t)"]
 
