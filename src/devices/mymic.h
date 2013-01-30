@@ -100,7 +100,7 @@ static inline int micHostAlloc(mic_mem_t *mic_mem_host, size_t size)
 	
 }
 
-static inline int micInit()
+int micInit()
 {
 	int conn_port, req_port, conn, tries;
 	struct scif_portID portID;

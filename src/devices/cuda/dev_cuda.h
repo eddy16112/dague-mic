@@ -84,10 +84,24 @@ typedef struct _gpu_device {
     gpu_malloc_t *memory;
 } gpu_device_t;
 
+typedef struct __dague_mic_exec_stream {
+    struct __dague_gpu_context **tasks;
+    int *events;
+    int mic_stream;
+    int32_t max_events;  /* number of potential events, and tasks */
+    int32_t executed;    /* number of executed tasks */
+    int32_t start, end;  /* circular buffer management start and end positions */
+    dague_list_t *fifo_pending;
+#if defined(DAGUE_PROF_TRACE)
+    int prof_event_track_enable;
+    int prof_event_key_start, prof_event_key_end;
+#endif  /* defined(PROFILING) */
+} dague_mic_exec_stream_t;
+
 typedef struct _mic_device {
 	dague_device_t super;
 //    uint8_t cuda_index;
-//    uint8_t max_exec_streams;
+    uint8_t max_exec_streams;
     int16_t peer_access_mask;  /**< A bit set to 1 represent the capability of
                                 *   the device to access directly the memory of
                                 *   the index of the set bit device.
@@ -95,9 +109,9 @@ typedef struct _mic_device {
 //    CUcontext  ctx;
 //    CUmodule   hcuModule;
 //    CUfunction hcuFunction;
-//    dague_gpu_exec_stream_t* exec_stream;
-    dague_list_t* gpu_mem_lru;
-    dague_list_t* gpu_mem_owned_lru;
+    dague_mic_exec_stream_t* exec_stream;
+    dague_list_t gpu_mem_lru;
+    dague_list_t gpu_mem_owned_lru;
     volatile uint32_t mutex;
     dague_list_t pending;
     gpu_malloc_t *memory;
@@ -169,6 +183,10 @@ int progress_stream( gpu_device_t* gpu_device,
                      advance_task_function_t progress_fct,
                      dague_gpu_context_t* task,
                      dague_gpu_context_t** out_task );
+
+
+/** the followings are mic functions, will removed to other files after testing work. */
+//int dague_mic_init(dague_context_t *dague_context); 
 
 #endif /* defined(HAVE_CUDA) */
 

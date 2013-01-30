@@ -1061,6 +1061,7 @@ void dump_GPU_state(gpu_device_t* gpu_device)
     printf("\n\n");
 }
 
+/**                MIC functions, will be move to other files later after testing */
 static int dague_mic_host_memory_register(dague_device_t* device, void* ptr, size_t length)
 {
     mic_device_t* gpu_device = (mic_device_t*)device;
@@ -1079,6 +1080,211 @@ static int dague_mic_host_memory_register(dague_device_t* device, void* ptr, siz
     } while( NULL == ctx );
 */    
     return DAGUE_SUCCESS;
+}
+
+static int dague_mic_init(dague_context_t *dague_context)
+{
+    int show_caps_index, show_caps = 0;
+    int use_cuda_index, use_cuda;
+    int cuda_mask_index, cuda_mask;
+    int cuda_output_index, cuda_verbosity;
+    int ndevices, i, j, k;
+    CUresult status;
+    int isdouble = 0;
+	int rc;
+
+    use_cuda_index = dague_mca_param_reg_int_name("device_cuda", "enabled",
+                                                  "The number of CUDA device to enable for the next PaRSEC context",
+                                                  false, false, 0, &use_cuda);
+    cuda_mask_index = dague_mca_param_reg_int_name("device_cuda", "mask",
+                                                   "The bitwise mask of CUDA devices to be enabled (default all)",
+                                                   false, false, 0xffffffff, &cuda_mask);
+    cuda_output_index = dague_mca_param_reg_int_name("device_cuda", "verbose",
+                                                     "Set the verbosity level of the CUDA device (negative value turns all output off, higher is less verbose)\n",
+                                                     false, false, -1, &cuda_verbosity);
+    if( 0 == use_cuda ) {
+        return -1;  /* Nothing to do around here */
+    }
+
+    if( cuda_verbosity >= 0 ) {
+        dague_cuda_output_stream = dague_output_open(NULL);
+        dague_output_set_verbosity(dague_cuda_output_stream, cuda_verbosity);
+    }
+
+    rc = micInit();
+    if (rc != MIC_SUCCESS) {
+		return -1;
+	}
+
+    ndevices = 1;
+
+    if( ndevices < use_cuda ) {
+        if( 0 < use_cuda_index )
+            dague_mca_param_set_int(use_cuda_index, ndevices);
+    }
+    /* Update the number of GPU for the upper layer */
+    use_cuda = ndevices;
+    if( 0 == ndevices ) {
+        return -1;
+    }
+    show_caps_index = dague_mca_param_find("device", NULL, "show_capabilities");
+    if(0 < show_caps_index) {
+        dague_mca_param_lookup_int(show_caps_index, &show_caps);
+    }
+#if defined(DAGUE_PROF_TRACE)
+    dague_profiling_add_dictionary_keyword( "movein", "fill:#33FF33",
+                                            0, NULL,
+                                            &dague_cuda_movein_key_start, &dague_cuda_movein_key_end);
+    dague_profiling_add_dictionary_keyword( "moveout", "fill:#ffff66",
+                                            0, NULL,
+                                            &dague_cuda_moveout_key_start, &dague_cuda_moveout_key_end);
+    dague_profiling_add_dictionary_keyword( "cuda", "fill:#66ff66",
+                                            0, NULL,
+                                            &dague_cuda_own_GPU_key_start, &dague_cuda_own_GPU_key_end);
+#endif  /* defined(PROFILING) */
+
+    for( i = 0; i < ndevices; i++ ) {
+#if CUDA_VERSION >= 3020
+        size_t total_mem;
+#else
+        unsigned int total_mem;
+#endif  /* CUDA_VERSION >= 3020 */
+        mic_device_t* mic_device;
+     //   CUdevprop devProps;
+        char szName[256];
+
+
+        mic_device = (mic_device_t*)calloc(1, sizeof(mic_device_t));
+        OBJ_CONSTRUCT(mic_device, dague_list_item_t);
+        mic_device->super.name = strdup(szName);
+
+        mic_device->max_exec_streams = 3;
+        mic_device->exec_stream =
+            (dague_mic_exec_stream_t*)malloc(mic_device->max_exec_streams
+                                             * sizeof(dague_mic_exec_stream_t));
+        for( j = 0; j < mic_device->max_exec_streams; j++ ) {
+            cudaError_t cudastatus;
+            dague_mic_exec_stream_t* exec_stream = &(mic_device->exec_stream[j]);
+
+            /* Allocate the stream */
+            exec_stream->mic_stream = 0; // just test, not real stream
+            exec_stream->max_events   = DAGUE_MAX_EVENTS_PER_STREAM;
+            exec_stream->executed     = 0;
+            exec_stream->start        = 0;
+            exec_stream->end          = 0;
+            exec_stream->fifo_pending = (dague_list_t*)OBJ_NEW(dague_list_t);
+            OBJ_CONSTRUCT(exec_stream->fifo_pending, dague_list_t);
+            exec_stream->tasks  = (dague_gpu_context_t**)malloc(exec_stream->max_events
+                                                                * sizeof(dague_gpu_context_t*));
+           // exec_stream->events = (CUevent*)malloc(exec_stream->max_events * sizeof(CUevent));
+			exec_stream->events = NULL; // just for test;
+            /* and the corresponding events */
+            for( k = 0; k < exec_stream->max_events; k++ ) {
+                exec_stream->events[k] = NULL;
+                exec_stream->tasks[k]  = NULL;
+/*
+#if CUDA_VERSION >= 3020
+                status = cuEventCreate(&(exec_stream->events[k]), CU_EVENT_DISABLE_TIMING);
+#else
+                status = cuEventCreate(&(exec_stream->events[k]), CU_EVENT_DEFAULT);
+#endif  /* CUDA_VERSION >= 3020 */
+  /*              DAGUE_CUDA_CHECK_ERROR( "(INIT) cuEventCreate ", (cudaError_t)status,
+                                        {break;} );*/
+            }
+#if defined(DAGUE_PROF_TRACE)
+            exec_stream->prof_event_track_enable = dague_cuda_trackable_events & DAGUE_PROFILE_CUDA_TRACK_EXEC;
+            exec_stream->prof_event_key_start    = -1;
+            exec_stream->prof_event_key_end      = -1;
+#endif  /* defined(DAGUE_PROF_TRACE) */
+        }
+
+  //      mic_device->cuda_index                 = (uint8_t)i;
+        mic_device->super.type                 = DAGUE_DEV_CUDA;  // TODO: this one should be replaced later. 
+        mic_device->super.executed_tasks       = 0;
+        mic_device->super.transferred_data_in  = 0;
+        mic_device->super.transferred_data_out = 0;
+        mic_device->super.required_data_in     = 0;
+        mic_device->super.required_data_out    = 0;
+
+        mic_device->super.device_fini              = dague_cuda_device_fini;
+        mic_device->super.device_memory_register   = dague_mic_host_memory_register;
+        mic_device->super.device_memory_unregister = dague_cuda_memory_unregister;
+        mic_device->super.device_handle_register   = dague_cuda_handle_register;
+        mic_device->super.device_handle_unregister = dague_cuda_handle_unregister;
+
+        /**
+         * TODO: Find a better ay to evaluate the performance of the current GPU.
+         * device_weight[i+1] = ((float)devProps.maxThreadsPerBlock * (float)devProps.clockRate) * 2;
+         * device_weight[i+1] *= (concurrency == 1 ? 2 : 1);
+         */
+        mic_device->super.device_dweight = gpu_speeds[1][1];
+        mic_device->super.device_sweight = gpu_speeds[0][1];
+
+        /* Initialize internal lists */
+        OBJ_CONSTRUCT(&mic_device->gpu_mem_lru,       dague_list_t);
+        OBJ_CONSTRUCT(&mic_device->gpu_mem_owned_lru, dague_list_t);
+        OBJ_CONSTRUCT(&mic_device->pending,           dague_list_t);
+
+#if defined(DAGUE_PROF_TRACE)
+        mic_device->super.profiling = dague_profiling_thread_init( 2*1024*1024, "GPU %d.0", i );
+        /**
+         * Reconfigure the stream 0 and 1 for input and outputs.
+         */
+        mic_device->exec_stream[0].prof_event_track_enable = dague_cuda_trackable_events & DAGUE_PROFILE_CUDA_TRACK_DATA_IN;
+        mic_device->exec_stream[0].prof_event_key_start    = dague_cuda_movein_key_start;
+        mic_device->exec_stream[0].prof_event_key_end      = dague_cuda_movein_key_end;
+
+        mic_device->exec_stream[1].prof_event_track_enable = dague_cuda_trackable_events & DAGUE_PROFILE_CUDA_TRACK_DATA_OUT;
+        mic_device->exec_stream[1].prof_event_key_start    = dague_cuda_moveout_key_start;
+        mic_device->exec_stream[1].prof_event_key_end      = dague_cuda_moveout_key_end;
+#endif  /* defined(PROFILING) */
+        dague_devices_add(dague_context, &(mic_device->super));
+    }
+
+/* TODO: the following does not work */
+#if defined(DAGUE_HAVE_PEER_DEVICE_MEMORY_ACCESS)
+    for( i = 0; i < ndevices; i++ ) {
+        gpu_device_t *source_gpu, *target_gpu;
+        CUdevice source, target;
+        int canAccessPeer;
+
+        if( NULL == (source_gpu = (gpu_device_t*)dague_devices_get(i)) ) continue;
+        /* Skip all non CUDA devices */
+        if( DAGUE_DEV_CUDA != source_gpu->super.type ) continue;
+
+        source_gpu->peer_access_mask = 0;
+        status = cuDeviceGet( &source, source_gpu->cuda_index );
+        DAGUE_CUDA_CHECK_ERROR( "No peer memory access: cuDeviceGet ", status, {continue;} );
+        status = cuCtxPushCurrent( source_gpu->ctx );
+        DAGUE_CUDA_CHECK_ERROR( "(dague_gpu_init) cuCtxPushCurrent ", status,
+                                {continue;} );
+
+        for( j = 0; j < ndevices; j++ ) {
+            if( (NULL == (target_gpu = (gpu_device_t*)dague_devices_get(j))) || (i == j) ) continue;
+            /* Skip all non CUDA devices */
+            if( DAGUE_DEV_CUDA != target_gpu->super.type ) continue;
+
+            status = cuDeviceGet( &target, target_gpu->cuda_index );
+            DAGUE_CUDA_CHECK_ERROR( "No peer memory access: cuDeviceGet ", status, {continue;} );
+
+            /* Communication mask */
+            status = cuDeviceCanAccessPeer( &canAccessPeer, source, target );
+            DAGUE_CUDA_CHECK_ERROR( "cuDeviceCanAccessPeer ", status,
+                                    {continue;} );
+            if( 1 == canAccessPeer ) {
+                status = cuCtxEnablePeerAccess( target_gpu->ctx, 0 );
+                DAGUE_CUDA_CHECK_ERROR( "cuCtxEnablePeerAccess ", status,
+                                        {continue;} );
+                source_gpu->peer_access_mask |= (int16_t)(1 << target_gpu->cuda_index);
+            }
+        }
+        status = cuCtxPopCurrent(NULL);
+        DAGUE_CUDA_CHECK_ERROR( "(dague_gpu_init) cuCtxPopCurrent ", status,
+                                {continue;} );
+    }
+#endif
+
+    return 0;
 }
 
 #endif /* HAVE_CUDA */
