@@ -114,7 +114,7 @@ gpu_kernel_push_zgemm( gpu_device_t            *gpu_device,
     }
 
     if( 0 != move_data_count ) { /* Try to reserve enough room for all data */
-        sizeloc[0] = args->sizeA;
+        sizeloc[0] = args-> sizeA;
         sizeloc[1] = args->sizeB;
         sizeloc[2] = args->sizeC;
 

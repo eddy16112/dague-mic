@@ -37,7 +37,8 @@ static inline void *gpu_malloc(gpu_malloc_t *gdata, int nb_units);
 static inline void  gpu_free(  gpu_malloc_t *gdata, void *ptr);
 
 static inline gpu_malloc_t *mic_malloc_init(int max_segment, size_t unit_size);
-//static inline void *mic_malloc(gpu_malloc_t *gdata, int nb_units);
+static inline void *mic_malloc(gpu_malloc_t *gdata, int nb_units);
+static inline void  mic_free(  gpu_malloc_t *gdata, void *ptr);
 
 static inline void gpu_malloc_error(const char *msg)
 {
@@ -199,6 +200,53 @@ static inline gpu_malloc_t *mic_malloc_init(int _max_segment, size_t _unit_size)
     gdata->allocated_segments->next->next        = NULL;
 
     return gdata;
+}
+
+static inline void *mic_malloc(gpu_malloc_t *gdata, int nb_units)
+{
+    segment_t *s, *n;
+    
+    for(s = gdata->allocated_segments; s->next != NULL; s = s->next) {
+        if ( s->nb_free > nb_units ) {
+            assert(nb_units > 0);
+            
+            n = gdata->free_segments;
+            gdata->free_segments = gdata->free_segments->next;
+            
+            n->start_index = s->start_index + s->nb_units;
+            n->nb_units = nb_units;
+            n->nb_free = s->nb_free - n->nb_units;
+            n->next = s->next;
+            s->nb_free = 0;
+            s->next = n;
+            return (void*)(((mic_mem_t *)gdata->base)->addr + (n->start_index * gdata->unit_size));
+        }
+    }
+    
+    return NULL;
+}
+
+static inline void mic_free(gpu_malloc_t *gdata, void *add)
+{
+    segment_t *s, *p;
+    int tid;
+    
+    p   = gdata->allocated_segments;
+    tid = ((char*)add - ((mic_mem_t *)gdata->base)->addr) / gdata->unit_size;
+    
+    for(s = gdata->allocated_segments->next; s->next != NULL; s = s->next) {
+        if ( s->start_index == tid ) {
+            p->next = s->next;
+            p->nb_free += s->nb_units + s->nb_free;
+            
+            s->next = gdata->free_segments;
+            gdata->free_segments = s;
+            
+            return;
+        }
+        p = s;
+    }
+    gpu_malloc_error("address to free not allocated\n");
 }
 
 #endif /* _GPU_MALLOC_H_ */

@@ -13,8 +13,10 @@
 #define MIC_SUCCESS			1
 #define MIC_ERROR			0
 
+#define PAGE_SIZE       0x1000
+
 typedef struct mic_mem_struct {
-	void *addr;
+	char *addr;
 	off_t offset;
 	size_t actual_nbyte;
 }mic_mem_t;
@@ -22,10 +24,12 @@ typedef struct mic_mem_struct {
 static inline int micMalloc(mic_mem_t *mic_mem_dev, size_t size);
 static inline int mic_send_sync(scif_epd_t epd, void *msg, int len);
 static inline int mic_recv_sync(scif_epd_t epd, void *msg, int len);
+static inline int micHostAlloc(mic_mem_t *mic_mem_host, size_t size);
+static inline int micInit();
 static scif_epd_t epd;
 
 
-int micMalloc(mic_mem_t *mic_mem_dev, size_t size)
+static inline int micMalloc(mic_mem_t *mic_mem_dev, size_t size)
 {
 	int command = MALLOC_MEM; 
 	if (mic_send_sync(epd, &command, sizeof(command)) == MIC_ERROR) { 
@@ -46,7 +50,7 @@ int micMalloc(mic_mem_t *mic_mem_dev, size_t size)
 	return MIC_SUCCESS;
 }
 
-int mic_send_sync(scif_epd_t epd, void *msg, int len) {
+static inline int mic_send_sync(scif_epd_t epd, void *msg, int len) {
 	int err;
 	if ((err = scif_send(epd, msg, len, 1)) <= 0) {
 		err = errno;
@@ -57,7 +61,7 @@ int mic_send_sync(scif_epd_t epd, void *msg, int len) {
 	return MIC_SUCCESS;
 }
 
-int mic_recv_sync(scif_epd_t epd, void *msg, int len) {
+static inline int mic_recv_sync(scif_epd_t epd, void *msg, int len) {
 	int err;
 	if ((err = scif_recv(epd, msg, len, 1)) <= 0) {
 		err = errno;
@@ -65,6 +69,77 @@ int mic_recv_sync(scif_epd_t epd, void *msg, int len) {
 		fflush(stdout);
 		return MIC_ERROR;
 	}
+	return MIC_SUCCESS;
+}
+
+static inline int micHostAlloc(mic_mem_t *mic_mem_host, size_t size)
+{
+	void *pHost;
+	off_t offset, suggested_offset;
+    
+	//make size multiple of PAGE_SIZE
+  	if (size % PAGE_SIZE != 0) {
+    	size = ((size / PAGE_SIZE) + 1) * PAGE_SIZE;
+  	}
+	posix_memalign(&pHost, PAGE_SIZE, size);
+	if (pHost == NULL) {
+		return MIC_ERROR;
+	}
+	suggested_offset = 0x0;
+	if((offset = scif_register(epd, pHost, size, suggested_offset,
+                               SCIF_PROT_READ | SCIF_PROT_WRITE, 0)) < 0) {
+    	printf("scif_register failed with err %d\n", errno);
+    	fflush(stdout);
+    	return MIC_ERROR;
+  	}
+	mic_mem_host->addr = pHost;
+	mic_mem_host->offset = offset;
+	mic_mem_host->actual_nbyte = size;
+	printf("malloc host:%p offset 0x%lx nbyte %lu\n", mic_mem_host->addr, mic_mem_host->offset, mic_mem_host->actual_nbyte);
+	return MIC_SUCCESS;
+	
+}
+
+static inline int micInit()
+{
+	int conn_port, req_port, conn, tries;
+	struct scif_portID portID;
+    
+	req_port = 2049;
+	portID.node = 1;
+    portID.port = 2050;
+    
+	printf("Client is trying to connect MIC server ...\n");
+    
+	/* create a end point, return a descriptor */
+	if ((epd = scif_open()) < 0) {
+		printf("scif_open failed with error %d\n", (int)epd);
+		return MIC_ERROR;
+	}
+    
+	/* bind port */
+	if ((conn_port = scif_bind(epd, req_port)) < 0) {
+		printf("scif_bind failed with error %d\n", conn_port);
+		return MIC_ERROR;
+	}
+	printf("Bind to port %d success\n", conn_port);
+    
+	tries = 5;
+	conn = scif_connect(epd, &portID);
+	while (conn < 0) {
+		if ((errno == ECONNREFUSED) && (tries > 0)) {
+			printf("Connection to node %d failed : trial %d\n", portID.node, tries);
+			tries--;
+			sleep(1);
+		}
+		else {
+			printf("Connection failed with error %d\n", errno);
+			return MIC_ERROR;
+		}
+		conn = scif_connect(epd, &portID);
+	}
+	printf("Conection established, connect to node %d success\n", portID.node);
+    
 	return MIC_SUCCESS;
 }
 

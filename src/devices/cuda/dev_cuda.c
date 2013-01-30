@@ -12,8 +12,8 @@
 #if defined(HAVE_CUDA)
 #include "dague.h"
 #include "data.h"
-#include <dague/devices/cuda/dev_cuda.h>
-#include <dague/devices/device_malloc.h>
+#include "dague/devices/cuda/dev_cuda.h"
+#include "dague/devices/device_malloc.h"
 #include "profiling.h"
 #include "execution_unit.h"
 #include "arena.h"
@@ -1018,6 +1018,26 @@ void dump_GPU_state(gpu_device_t* gpu_device)
                             });
     };
     printf("\n\n");
+}
+
+static int dague_mic_host_memory_register(dague_device_t* device, void* ptr, size_t length)
+{
+    mic_device_t* gpu_device = (mic_device_t*)device;
+    mic_mem_t *mem_host = (mic_mem_t *)malloc(sizeof(mic_mem_t));
+    if (micHostAlloc(mem_host, length) == MIC_ERROR) {
+        return DAGUE_ERROR;
+    }
+    ptr = mem_host;
+//    CUresult status;
+//    CUcontext ctx;
+    
+    /* Atomically get the GPU context */
+/*    do {
+        ctx = gpu_device->ctx;
+        dague_atomic_cas( &(gpu_device->ctx), ctx, NULL );
+    } while( NULL == ctx );
+*/    
+    return DAGUE_SUCCESS;
 }
 
 #endif /* HAVE_CUDA */

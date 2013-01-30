@@ -11,6 +11,7 @@
 #include "dague_internal.h"
 #include <dague/class/dague_object.h>
 #include <dague/devices/device.h>
+#include "dague/devices/mymic.h"
 
 #if defined(HAVE_CUDA)
 #include "list_item.h"
@@ -100,6 +101,7 @@ typedef struct _mic_device {
     volatile uint32_t mutex;
     dague_list_t pending;
     gpu_malloc_t *memory;
+    scif_epd_t epd;
 } mic_device_t;
 
 #define DAGUE_CUDA_CHECK_ERROR( STR, ERROR, CODE )                      \
