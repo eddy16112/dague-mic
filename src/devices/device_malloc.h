@@ -29,6 +29,7 @@ typedef struct gpu_malloc_s {
     segment_t *free_segments;        /* List of available segment */
     size_t     unit_size;            /* Nasic Unit                */
     int        max_segment;          /* Maximum number of segment */
+	off_t	   offset;				 /* only use for MIC		  */
 } gpu_malloc_t;
 
 static inline gpu_malloc_t *gpu_malloc_init(int max_segment, size_t unit_size);
@@ -167,19 +168,22 @@ static inline gpu_malloc_t *mic_malloc_init(int _max_segment, size_t _unit_size)
     gpu_malloc_t *gdata = (gpu_malloc_t*)malloc( sizeof(gpu_malloc_t) );
     segment_t *s;
     int i, rc;
+	mic_mem_t *mic_mem_dev = (mic_mem_t *)malloc(sizeof(mic_mem_t));
 
-    gdata->base               = (char *)malloc(sizeof(mic_mem_t));;
+    gdata->base               = NULL;
     gdata->allocated_segments = NULL;
     gdata->free_segments      = NULL;
     gdata->unit_size          = _unit_size;
     gdata->max_segment        = _max_segment+2;
 
-	rc = micMalloc((mic_mem_t *)gdata->base, (_max_segment * gdata->unit_size));
-    if( (cudaSuccess != rc) || (NULL == ((mic_mem_t *)gdata->base)->addr) ) {
+	rc = micMalloc(mic_mem_dev, (_max_segment * gdata->unit_size));
+    if( (cudaSuccess != rc) || (NULL == mic_mem_dev->addr) ) {
         gpu_malloc_error("unable to allocate backend memory\n");
         free(gdata);
         return NULL;
     }
+	gdata->base = mic_mem_dev->addr;
+	gdata->offset = mic_mem_dev->offset;
 
     for(i = 0 ; i < _max_segment; i++) {
         s = (segment_t*)malloc(sizeof(segment_t));
@@ -219,7 +223,7 @@ static inline void *mic_malloc(gpu_malloc_t *gdata, int nb_units)
             n->next = s->next;
             s->nb_free = 0;
             s->next = n;
-            return (void*)(((mic_mem_t *)gdata->base)->addr + (n->start_index * gdata->unit_size));
+            return (void*)(gdata->base + (n->start_index * gdata->unit_size));
         }
     }
     
@@ -232,7 +236,7 @@ static inline void mic_free(gpu_malloc_t *gdata, void *add)
     int tid;
     
     p   = gdata->allocated_segments;
-    tid = ((char*)add - ((mic_mem_t *)gdata->base)->addr) / gdata->unit_size;
+    tid = ((char*)add - gdata->base) / gdata->unit_size;
     
     for(s = gdata->allocated_segments->next; s->next != NULL; s = s->next) {
         if ( s->start_index == tid ) {

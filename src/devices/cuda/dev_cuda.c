@@ -1324,19 +1324,123 @@ static int dague_mic_data_stage_in( mic_device_t* mic_device,
         /* Push data into the GPU */
 		char *mic_base, *mic_now;
 		size_t diff;
-		mic_base = ((mic_mem_t *)(mic_device->memory->base))->addr;
+		mic_base = mic_device->memory->base;
 		mic_now = (char *)gpu_elem->device_private;
 		diff = mic_now - mic_base;
 		
   //      status = (cudaError_t)cuMemcpyHtoDAsync( (CUdeviceptr)gpu_elem->device_private,
     //                                             in_elem->device_private, length, stream );
-		micMemcpyAsync((void *)in_elem->device_private, ((mic_mem_t *)(mic_device->memory->base))->offset+diff, original->nb_elts, micMemcpyHostToDevice);
+		micMemcpyAsync((void *)in_elem->device_private, mic_device->memory->offset+diff, original->nb_elts, micMemcpyHostToDevice);
    
         mic_device->super.transferred_data_in += original->nb_elts;
         /* TODO: take ownership of the data */
         return 1;
     }
     /* TODO: data keeps the same coherence flags as before */
+    return 0;
+}
+
+int dague_mic_data_reserve_device_space( mic_device_t* mic_device,
+                                         dague_execution_context_t *this_task,
+                                         int  move_data_count )
+{
+    dague_gpu_data_copy_t* temp_loc[MAX_PARAM_COUNT], *gpu_elem, *lru_gpu_elem;
+    dague_data_t* master;
+    int eltsize = 0, i, j;
+    (void)eltsize;
+
+    /**
+     * Parse all the input and output flows of data and ensure all have
+     * corresponding data on the GPU available.
+     */
+    for( i = 0;  NULL != this_task->data[i].data; i++ ) {
+        temp_loc[i] = NULL;
+
+        master = this_task->data[i].data->original;
+        gpu_elem = dague_data_get_copy(master, mic_device->super.device_index);
+        /* There is already a copy on the device */
+        if( NULL != gpu_elem ) continue;
+
+#if !defined(DAGUE_GPU_CUDA_ALLOC_PER_TILE)
+        gpu_elem = OBJ_NEW(dague_data_copy_t);
+
+        eltsize = master->nb_elts;
+        eltsize = (eltsize + GPU_MALLOC_UNIT_SIZE - 1) / GPU_MALLOC_UNIT_SIZE;
+
+    malloc_data:
+        gpu_elem->device_private = mic_malloc( mic_device->memory, eltsize );
+        if( NULL == gpu_elem->device_private ) {
+#endif
+
+        find_another_data:
+            lru_gpu_elem = (dague_gpu_data_copy_t*)dague_ulist_fifo_pop(&mic_device->gpu_mem_lru);
+            if( NULL == lru_gpu_elem ) {
+                /* Make sure all remaining temporary locations are set to NULL */
+                for( ;  NULL != this_task->data[i].data; temp_loc[i++] = NULL );
+                break;  /* Go and cleanup */
+            }
+            DAGUE_LIST_ITEM_SINGLETON(lru_gpu_elem);
+
+            /* If there are pending readers, let the gpu_elem loose. This is a weak coordination
+             * protocol between here and the dague_gpu_data_stage_in, where the readers don't necessarily
+             * always remove the data from the LRU.
+             */
+            if( 0 != lru_gpu_elem->readers ) {
+                goto find_another_data;
+            }
+            /* Make sure the new GPU element is clean and ready to be used */
+            assert( master != lru_gpu_elem->original );
+#if !defined(DAGUE_GPU_CUDA_ALLOC_PER_TILE)
+            assert(NULL != lru_gpu_elem->original);
+#endif
+            if( master != lru_gpu_elem->original ) {
+                if( NULL != lru_gpu_elem->original ) {
+                    dague_data_t* oldmaster = lru_gpu_elem->original;
+                    /* Let's check we're not trying to steal one of our own data */
+                    for( j = 0; NULL != this_task->data[j].data; j++ ) {
+                        if( this_task->data[j].data->original == oldmaster ) {
+                            temp_loc[j] = lru_gpu_elem;
+                            goto find_another_data;
+                        }
+                    }
+
+                    dague_data_copy_detach(oldmaster, lru_gpu_elem, mic_device->super.device_index);
+                    DAGUE_OUTPUT_VERBOSE((3, dague_cuda_output_stream,
+                                          "GPU:\tRepurpose copy %p to mirror block %p (in task %s:i) instead of %p\n",
+                                          lru_gpu_elem, master, this_task->function->name, i, oldmaster));
+
+#if !defined(DAGUE_GPU_CUDA_ALLOC_PER_TILE)
+                    mic_free( mic_device->memory, (void*)(lru_gpu_elem->gpu_mem_ptr) );
+                    free(lru_gpu_elem);
+                    goto malloc_data;
+#endif
+                }
+            }
+            gpu_elem = lru_gpu_elem;
+
+#if !defined(DAGUE_GPU_CUDA_ALLOC_PER_TILE)
+        }
+#endif
+        assert( 0 == gpu_elem->readers );
+        gpu_elem->coherency_state = DATA_COHERENCY_INVALID;
+        gpu_elem->version = 0;
+        dague_data_copy_attach(master, gpu_elem, mic_device->super.device_index);
+        move_data_count--;
+        temp_loc[i] = gpu_elem;
+        dague_ulist_fifo_push(&mic_device->gpu_mem_lru, (dague_list_item_t*)gpu_elem);
+    }
+    if( 0 != move_data_count ) {
+        WARNING(("GPU:\tRequest space on GPU failed for %d out of %d data\n",
+                 move_data_count, this_task->function->nb_parameters));
+        /* We can't find enough room on the GPU. Insert the tiles in the begining of
+         * the LRU (in order to be reused asap) and return without scheduling the task.
+         */
+        for( i = 0; NULL != this_task->data[i].data; i++ ) {
+            if( NULL == temp_loc[i] ) continue;
+            dague_ulist_lifo_push(&mic_device->gpu_mem_lru, (dague_list_item_t*)temp_loc[i]);
+        }
+        return -2;
+    }
     return 0;
 }
 
