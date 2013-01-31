@@ -1301,26 +1301,26 @@ static int dague_mic_data_stage_in( mic_device_t* mic_device,
                              int stream )
 {
     dague_data_copy_t* in_elem = task_data->data;
-    dague_data_t* master = in_elem->original;
-    dague_gpu_data_copy_t* gpu_elem = master->device_copies[mic_device->super.device_index];
+    dague_data_t* original = in_elem->original;
+    dague_gpu_data_copy_t* gpu_elem = original->device_copies[mic_device->super.device_index];
     int transfer_required = 0;
 
     /* If the data will be accessed in write mode, remove it from any lists
      * until the task is completed.
      */
     if( ACCESS_WRITE & type ) {
-        dague_list_item_ring_chop((dague_list_item_t*)in_elem);
-        DAGUE_LIST_ITEM_SINGLETON(in_elem);
+        dague_list_item_ring_chop((dague_list_item_t*)gpu_elem);
+        DAGUE_LIST_ITEM_SINGLETON(gpu_elem);
     }
 
-    transfer_required = dague_data_copy_ownership_to_device(master, mic_device->super.device_index, (uint8_t)type);
-    mic_device->super.required_data_in += length;
+    transfer_required = dague_data_copy_ownership_to_device(original, mic_device->super.device_index, (uint8_t)type);
+    mic_device->super.required_data_in += original->nb_elts;
     if( transfer_required ) {
         int status;
 
         DAGUE_OUTPUT_VERBOSE((5, dague_cuda_output_stream,
                               "GPU:\tMove data %x (%p:%p) to GPU\n",
-                              master->key, in_elem->device_private, (void*)gpu_elem->device_private));
+                              original->key, in_elem->device_private, (void*)gpu_elem->device_private));
         /* Push data into the GPU */
 		char *mic_base, *mic_now;
 		size_t diff;
@@ -1330,9 +1330,9 @@ static int dague_mic_data_stage_in( mic_device_t* mic_device,
 		
   //      status = (cudaError_t)cuMemcpyHtoDAsync( (CUdeviceptr)gpu_elem->device_private,
     //                                             in_elem->device_private, length, stream );
-		micMemcpyAsync((void *)in_elem->device_private, ((mic_mem_t *)(mic_device->memory->base))->offset+diff, length, micMemcpyHostToDevice);
+		micMemcpyAsync((void *)in_elem->device_private, ((mic_mem_t *)(mic_device->memory->base))->offset+diff, original->nb_elts, micMemcpyHostToDevice);
    
-        mic_device->super.transferred_data_in += length;
+        mic_device->super.transferred_data_in += original->nb_elts;
         /* TODO: take ownership of the data */
         return 1;
     }
