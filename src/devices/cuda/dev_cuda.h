@@ -86,7 +86,7 @@ typedef struct _gpu_device {
 
 typedef struct __dague_mic_exec_stream {
     struct __dague_gpu_context **tasks;
-    int *events;
+    mic_mem_t *events;
     int mic_stream;
     int32_t max_events;  /* number of potential events, and tasks */
     int32_t executed;    /* number of executed tasks */
@@ -100,7 +100,7 @@ typedef struct __dague_mic_exec_stream {
 
 typedef struct _mic_device {
 	dague_device_t super;
-//    uint8_t cuda_index;
+    uint8_t mic_index;
     uint8_t max_exec_streams;
     int16_t peer_access_mask;  /**< A bit set to 1 represent the capability of
                                 *   the device to access directly the memory of
@@ -187,6 +187,10 @@ int progress_stream( gpu_device_t* gpu_device,
 static int dague_mic_init(dague_context_t *dague_context); 
 static int dague_mic_data_stage_in( mic_device_t* mic_device, int32_t type, dague_data_pair_t* task_data, int stream );
 int dague_mic_data_reserve_device_space( mic_device_t* mic_device, dague_execution_context_t *this_task, int move_data_count );
+int dague_mic_data_register( dague_context_t *dague_context,
+                             dague_ddesc_t   *data,
+                             int              nbelem, /* Could be a function of the dague_desc_t */
+                             size_t           eltsize );
 int progress_stream_mic( mic_device_t* mic_device,
                      dague_mic_exec_stream_t* mic_stream,
                      advance_task_function_t progress_fct,

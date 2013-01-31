@@ -1115,7 +1115,7 @@ static int dague_mic_init(dague_context_t *dague_context)
 		return -1;
 	}
 
-    ndevices = 1;
+    micDeviceGetCount(&ndevices);
 
     if( ndevices < use_cuda ) {
         if( 0 < use_cuda_index )
@@ -1176,10 +1176,10 @@ static int dague_mic_init(dague_context_t *dague_context)
             exec_stream->tasks  = (dague_gpu_context_t**)malloc(exec_stream->max_events
                                                                 * sizeof(dague_gpu_context_t*));
            // exec_stream->events = (CUevent*)malloc(exec_stream->max_events * sizeof(CUevent));
-			exec_stream->events = NULL; // just for test;
+			micInitEventQueue(exec_stream->events, 10);
             /* and the corresponding events */
             for( k = 0; k < exec_stream->max_events; k++ ) {
-                exec_stream->events[k] = NULL;
+             //   exec_stream->events[k] = NULL;
                 exec_stream->tasks[k]  = NULL;
 /*
 #if CUDA_VERSION >= 3020
@@ -1197,7 +1197,7 @@ static int dague_mic_init(dague_context_t *dague_context)
 #endif  /* defined(DAGUE_PROF_TRACE) */
         }
 
-  //      mic_device->cuda_index                 = (uint8_t)i;
+        mic_device->mic_index                 = (uint8_t)i;
         mic_device->super.type                 = DAGUE_DEV_CUDA;  // TODO: this one should be replaced later. 
         mic_device->super.executed_tasks       = 0;
         mic_device->super.transferred_data_in  = 0;
@@ -1443,6 +1443,114 @@ int dague_mic_data_reserve_device_space( mic_device_t* mic_device,
     return 0;
 }
 
+int dague_mic_data_register( dague_context_t *dague_context,
+                             dague_ddesc_t   *data,
+                             int              nbelem, /* Could be a function of the dague_desc_t */
+                             size_t           eltsize )
+{
+    mic_device_t* mic_device;
+    CUresult status;
+    int i;
+    (void)eltsize;
+
+    for(i = 0; i < dague_nb_devices; i++) {
+        size_t how_much_we_allocate;
+
+        size_t total_mem, free_mem, initial_free_mem;
+
+        uint32_t mem_elem_per_gpu = 0;
+
+        if( NULL == (mic_device = (mic_device_t*)dague_devices_get(i)) ) continue;
+        /* Skip all non CUDA devices */
+        if( DAGUE_DEV_CUDA != mic_device->super.type ) continue;
+
+      /*  status = cuCtxPushCurrent( gpu_device->ctx );
+        DAGUE_CUDA_CHECK_ERROR( "(dague_gpu_data_register) cuCtxPushCurrent ", status,
+                                {continue;} );*/
+
+        /**
+         * It appears that CUDA allocate the memory in chunks of 1MB,
+         * so we need to adapt to this.
+         */
+        micMemGetInfo( &initial_free_mem, &total_mem );
+		
+        free_mem = initial_free_mem;
+        /* We allocate 9/10 of the available memory */
+        how_much_we_allocate = (9 * initial_free_mem) / 10;
+
+/* TODO:PER TILE IS NOT USED HERE */
+#if !defined(DAGUE_GPU_CUDA_ALLOC_PER_TILE)
+        /*
+         * We allocate a bunch of tiles that will be used
+         * during the computations
+         */
+        while( (free_mem > eltsize )
+               && (initial_free_mem - how_much_we_allocate)
+               && !(mem_elem_per_gpu > (uint32_t)(nbelem/2*3)) ) {
+            dague_gpu_data_copy_t* gpu_elem;
+            CUdeviceptr device_ptr;
+            cudaError_t cuda_status;
+#if 0
+            /* Enable to stress the GPU memory subsystem and the coherence protocol */
+            if( mem_elem_per_gpu > 10 )
+                break;
+#endif
+            gpu_elem = OBJ_NEW(dague_data_copy_t);
+
+            cuda_status = (cudaError_t)cuMemAlloc( &device_ptr, eltsize);
+            DAGUE_CUDA_CHECK_ERROR( "cuMemAlloc ", cuda_status,
+                                    ({
+#if CUDA_VERSION < 3020
+                                        unsigned int _free_mem, _total_mem;
+#else
+                                        size_t _free_mem, _total_mem;
+#endif  /* CUDA_VERSION < 3020 */
+                                        cuMemGetInfo( &_free_mem, &_total_mem );
+                                        WARNING(("Per context: free mem %zu total mem %zu\n",
+                                                 _free_mem, _total_mem));
+                                        free( gpu_elem );
+                                        break;
+                                     }) );
+            gpu_elem->device_private = (void*)(long)device_ptr;    //TODO: PROBLEM HERE
+            gpu_elem->device_index = gpu_device->super.device_index;
+            mem_elem_per_gpu++;
+            dague_ulist_fifo_push( &gpu_device->gpu_mem_lru, (dague_list_item_t*)gpu_elem );
+            cuMemGetInfo( &free_mem, &total_mem );
+        }
+        if( 0 == mem_elem_per_gpu ) {
+            WARNING(("GPU:\tRank %d Cannot allocate memory on GPU %d. Skip it!\n",
+                     dague_context->my_rank, i));
+            continue;
+        }
+        DAGUE_OUTPUT_VERBOSE((3, dague_cuda_output_stream,
+                              "GPU:\tAllocate %u tiles on the GPU memory\n", mem_elem_per_gpu ));
+#else
+        if( NULL == mic_device->memory ) {
+            /*
+             * We allocate all the memory on the GPU and we use our memory management
+             */
+            mem_elem_per_gpu = (how_much_we_allocate + GPU_MALLOC_UNIT_SIZE - 1 ) / GPU_MALLOC_UNIT_SIZE ;
+            mic_device->memory = gpu_malloc_init( mem_elem_per_gpu, GPU_MALLOC_UNIT_SIZE );
+
+            if( mic_device->memory == NULL ) {
+                WARNING(("GPU:\tRank %d Cannot allocate memory on GPU %d. Skip it!\n",
+                         dague_context->my_rank, i));
+                continue;
+            }
+            DAGUE_OUTPUT_VERBOSE((3, dague_cuda_output_stream,
+                                  "GPU:\tAllocate %u segment of size %d on the GPU memory\n",
+                                  mem_elem_per_gpu, GPU_MALLOC_UNIT_SIZE ));
+        }
+#endif
+
+       /* status = cuCtxPopCurrent(NULL);
+        DAGUE_CUDA_CHECK_ERROR( "(INIT) cuCtxPopCurrent ", status,
+                                {continue;} );*/
+    }
+
+    return 0;
+}
+
 int progress_stream_mic( mic_device_t* mic_device,
                     dague_mic_exec_stream_t* exec_stream,
                     advance_task_function_t progress_fct,
@@ -1450,7 +1558,95 @@ int progress_stream_mic( mic_device_t* mic_device,
                     dague_gpu_context_t** out_task )
 {
     int saved_rc = 0, rc;
+    *out_task = NULL;
 
+    if( NULL != task ) {
+        DAGUE_FIFO_PUSH(exec_stream->fifo_pending, (dague_list_item_t*)task);
+        task = NULL;
+    }
+ grab_a_task:
+    if( NULL == exec_stream->tasks[exec_stream->start] ) {
+        /* get the best task */
+        task = (dague_gpu_context_t*)dague_ulist_fifo_pop(exec_stream->fifo_pending);
+    }
+    if( NULL == task ) {
+        /* No more room on the event list or no tasks. Keep moving */
+        goto check_completion;
+    }
+    DAGUE_LIST_ITEM_SINGLETON((dague_list_item_t*)task);
+
+    assert( NULL == exec_stream->tasks[exec_stream->start] );
+    /**
+     * In case the task is succesfully progressed, the corresponding profiling
+     * event is triggered.
+     */
+    rc = progress_fct( mic_device, task, exec_stream );
+    if( 0 > rc ) {
+        if( -1 == rc ) return -1;  /* Critical issue */
+        assert(0); // want to debug this. It happens too often
+        /* No more room on the GPU. Push the task back on the queue and check the completion queue. */
+        DAGUE_FIFO_PUSH(exec_stream->fifo_pending, (dague_list_item_t*)task);
+        DAGUE_OUTPUT_VERBOSE((2, dague_cuda_output_stream,
+                              "GPU: Reschedule %s(task %p) priority %d: no room available on the GPU for data\n",
+                              task->ec->function->name, (void*)task->ec, task->ec->priority ));
+        saved_rc = rc;  /* keep the info for the upper layer */
+    } else {
+        /**
+         * Do not skip the cuda event generation. The problem is that some of the inputs
+         * might be in the pipe of being transferred to the GPU. If we activate this task
+         * too early, it might get executed before the data is available on the GPU.
+         * Obviously, this lead to incorrect results.
+         */
+    //    rc = cuEventRecord( exec_stream->events[exec_stream->start], exec_stream->cuda_stream );
+        exec_stream->tasks[exec_stream->start] = task;
+        exec_stream->start = (exec_stream->start + 1) % exec_stream->max_events;
+        DAGUE_OUTPUT_VERBOSE((3, dague_cuda_output_stream,
+                              "GPU: Submitted %s(task %p) priority %d\n",
+                              task->ec->function->name, (void*)task->ec, task->ec->priority ));
+    }
+    task = NULL;
+
+ check_completion:
+    if( (NULL == *out_task) && (NULL != exec_stream->tasks[exec_stream->end]) ) {
+  //      rc = cuEventQuery(exec_stream->events[exec_stream->end]);
+        if( CUDA_SUCCESS == rc ) {
+            /* Save the task for the next step */
+            task = *out_task = exec_stream->tasks[exec_stream->end];
+            DAGUE_OUTPUT_VERBOSE((3, dague_cuda_output_stream,
+                                  "GPU: Complete %s(task %p)\n", task->ec->function->name, (void*)task ));
+            exec_stream->tasks[exec_stream->end] = NULL;
+            exec_stream->end = (exec_stream->end + 1) % exec_stream->max_events;
+            DAGUE_TASK_PROF_TRACE_IF(exec_stream->prof_event_track_enable,
+                                     mic_device->super.profiling,
+                                     (-1 == exec_stream->prof_event_key_end ?
+                                      DAGUE_PROF_FUNC_KEY_END(task->ec->dague_handle,
+                                                              task->ec->function->function_id) :
+                                      exec_stream->prof_event_key_end),
+                                     task->ec);
+            task = NULL;  /* Try to schedule another task */
+            goto grab_a_task;
+        }
+        if( CUDA_ERROR_NOT_READY != rc ) {
+            DAGUE_CUDA_CHECK_ERROR( "cuEventQuery ", rc,
+                                    {return -1;} );
+        }
+#if 0
+        else {
+            static cudaEvent_t ev = NULL;
+            static double first = 0.0;
+            static double last = 0.0;
+            double new = MPI_Wtime();
+            if(exec_stream->events[exec_stream->end] != ev) {
+                first = new;
+                ev = exec_stream->events[exec_stream->end];
+                printf("%p : %f\tNEW\tsince last poll (on the prev. event)\n", ev, first - last);
+            } else {
+                printf("%p : %f\tsame\tsince last poll (on the same event)\tTOTAL: %f\n", ev, new - last, new - first);
+            }
+            last = new;
+        }
+#endif
+    }
     return saved_rc;
 }
 

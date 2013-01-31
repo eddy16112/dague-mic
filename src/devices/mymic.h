@@ -34,6 +34,10 @@ static inline int mic_recv_sync(scif_epd_t epd, void *msg, int len);
 static inline int micHostAlloc(mic_mem_t *mic_mem_host, size_t size);
 static inline int micInit();
 static inline int micMemcpyAsync(void* host_addr, off_t roffset, size_t length, enum micMemcpyKind kind);
+static inline int micDeviceGetCount(int * count);
+static inline int micMemGetInfo(size_t *free_mem, size_t *total_mem );
+static inline int micInitEventQueue(mic_mem_t * event_queue, int size);
+static inline int micEventRecord(mic_mem_t *event_queue, int event_no, int stream);
 static scif_epd_t epd;
 
 
@@ -185,6 +189,50 @@ static inline int micMemcpyAsync(void* host_addr, off_t roffset, size_t length, 
 	//	printf("get value %f\n", value[79]);
 	}
 
+	return MIC_SUCCESS;
+}
+
+static inline int micMemGetInfo(size_t *free_mem, size_t *total_mem )
+{
+	*free_mem = sizeof(double)*4096*1024*64;
+	*total_mem = sizeof(double)*4096*1024*64;
+	return MIC_SUCCESS;
+}
+
+static inline int micDeviceGetCount(int * count)
+{
+	*count = 1;
+	return MIC_SUCCESS;
+}
+
+static inline int micInitEventQueue(mic_mem_t *event_queue, int size)
+{
+	int i, rc, *value;
+	event_queue = (mic_mem_t *)malloc(sizeof(mic_mem_t));
+	rc = micHostAlloc(event_queue, size);
+	if (rc == MIC_ERROR) {
+		return MIC_ERROR;
+	}
+	value = (int *)event_queue->addr;
+	for (i = 0; i < size; i++) {
+		value[i] = 0;
+	}
+	return MIC_SUCCESS;
+}
+
+static inline int micEventRecord(mic_mem_t *event_queue, int event_no, int stream)
+{
+	int i = 1, rc, v;
+	if (i) {    // for memcpy only, but I dont know how to check the task type now.
+		off_t base_offset, now_offset;
+		base_offset = event_queue->offset;
+		size_t diff = sizeof(int)*event_no;
+		now_offset = base_offset + diff;
+		v = 1;
+		rc = scif_fence_signal (epd, now_offset, v, 0, 0, SCIF_FENCE_INIT_SELF | SCIF_SIGNAL_LOCAL);
+		 
+	} else {    // for compute
+	}
 	return MIC_SUCCESS;
 }
 
