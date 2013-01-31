@@ -186,6 +186,11 @@ int progress_stream( gpu_device_t* gpu_device,
 /** the followings are mic functions, will removed to other files after testing work. */
 static int dague_mic_init(dague_context_t *dague_context); 
 static int dague_mic_data_stage_in( mic_device_t* mic_device, int32_t type, dague_data_pair_t* task_data, size_t length, int stream );
+int progress_stream_mic( mic_device_t* mic_device,
+                    dague_mic_exec_stream_t* mic_stream,
+                    advance_task_function_t progress_fct,
+                    dague_gpu_context_t* task,
+                    dague_gpu_context_t** out_task );
 
 #endif /* defined(HAVE_CUDA) */
 

@@ -1340,4 +1340,15 @@ static int dague_mic_data_stage_in( mic_device_t* mic_device,
     return 0;
 }
 
+int progress_stream_mic( mic_device_t* mic_device,
+                    dague_mic_exec_stream_t* exec_stream,
+                    advance_task_function_t progress_fct,
+                    dague_gpu_context_t* task,
+                    dague_gpu_context_t** out_task )
+{
+    int saved_rc = 0, rc;
+
+    return saved_rc;
+}
+
 #endif /* HAVE_CUDA */

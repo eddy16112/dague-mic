@@ -69,6 +69,27 @@ typedef struct dague_zgemm_args_s {
     dague_ddesc_t *ddescA, *ddescB, *ddescC;
 } dague_zgemm_args_t;
 
+
+/** mic functions */
+static inline
+int mic_kernel_push_zgemm( mic_device_t* mic_device,
+                          dague_gpu_context_t* this_task,
+                          dague_mic_exec_stream_t* mic_stream);
+
+static inline
+int mic_kernel_submit_zgemm( mic_device_t* mic_device,
+                            dague_gpu_context_t* this_task,
+                            dague_mic_exec_stream_t* mic_stream);
+
+static inline
+int mic_kernel_pop_zgemm( gpu_device_t* gpu_device,
+                         dague_gpu_context_t* this_task,
+                         dague_mic_exec_stream_t* mic_stream);
+
+static inline
+int mic_kernel_epilog_zgemm( mic_device_t* mic_device,
+                             dague_gpu_context_t* this_task );
+
 #include <dague/devices/cuda/cuda_scheduling.h>
 
 /**
@@ -396,4 +417,37 @@ int gpu_zgemm( dague_execution_unit_t* eu_context,
     gpu_task->ddescC   = (dague_ddesc_t*)descC;
 
     return gpu_kernel_scheduler_zgemm( eu_context, (dague_gpu_context_t*)gpu_task, dev_index );
+}
+
+
+/** mic functions */
+static inline int
+mic_kernel_push_zgemm( mic_device_t            *mic_device,
+                      dague_gpu_context_t     *gpu_task,
+                      dague_mic_exec_stream_t *mic_stream)
+{
+    return 0;
+}
+
+static inline int
+mic_kernel_submit_zgemm( mic_device_t        *mic_device,
+                        dague_gpu_context_t *gpu_task,
+                        dague_mic_exec_stream_t* mic_stream )
+{
+    return 0;
+}
+
+static inline int
+mic_kernel_epilog_zgemm( mic_device_t        *mic_device,
+                        dague_gpu_context_t *gpu_task )
+{
+    return 0;
+}
+
+static inline int
+mic_kernel_pop_zgemm( mic_device_t        *mic_device,
+                     dague_gpu_context_t *gpu_task,
+                     dague_mic_exec_stream_t* mic_stream)
+{
+    return 0;
 }
