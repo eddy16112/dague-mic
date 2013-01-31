@@ -18,11 +18,13 @@
 #include "execution_unit.h"
 #include "arena.h"
 #include "dague/utils/output.h"
+#include "dague/devices/mymic.h"
 
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 #include <errno.h>
 #include <dlfcn.h>
+
 
 #if defined(DAGUE_PROF_TRACE)
 /* Accepted values are: DAGUE_PROFILE_CUDA_TRACK_DATA_IN | DAGUE_PROFILE_CUDA_TRACK_DATA_OUT |
@@ -1284,6 +1286,60 @@ static int dague_mic_init(dague_context_t *dague_context)
     }
 #endif
 
+    return 0;
+}
+
+/**
+ * If the most current version of the data is not yet available on the GPU memory
+ * schedule a transfer.
+ * Returns:
+ *    0: The most recent version of the data is already available on the GPU
+ *    1: A copy has been scheduled on the corresponding stream
+ *   -1: A copy cannot be issued due to CUDA.
+ */
+static int dague_mic_data_stage_in( mic_device_t* mic_device,
+                             int32_t type,
+                             dague_data_pair_t* task_data,
+                             size_t length,
+                             int stream )
+{
+    dague_data_copy_t* in_elem = task_data->data;
+    dague_data_t* master = in_elem->original;
+    dague_gpu_data_copy_t* gpu_elem = master->device_copies[mic_device->super.device_index];
+    int transfer_required = 0;
+
+    /* If the data will be accessed in write mode, remove it from any lists
+     * until the task is completed.
+     */
+    if( ACCESS_WRITE & type ) {
+        dague_list_item_ring_chop((dague_list_item_t*)in_elem);
+        DAGUE_LIST_ITEM_SINGLETON(in_elem);
+    }
+
+    transfer_required = dague_data_copy_ownership_to_device(master, mic_device->super.device_index, (uint8_t)type);
+    mic_device->super.required_data_in += length;
+    if( transfer_required ) {
+        int status;
+
+        DAGUE_OUTPUT_VERBOSE((5, dague_cuda_output_stream,
+                              "GPU:\tMove data %x (%p:%p) to GPU\n",
+                              master->key, in_elem->device_private, (void*)gpu_elem->device_private));
+        /* Push data into the GPU */
+		char *mic_base, *mic_now;
+		size_t diff;
+		mic_base = ((mic_mem_t *)(mic_device->memory->base))->addr;
+		mic_now = (char *)gpu_elem->device_private;
+		diff = mic_now - mic_base;
+		
+  //      status = (cudaError_t)cuMemcpyHtoDAsync( (CUdeviceptr)gpu_elem->device_private,
+    //                                             in_elem->device_private, length, stream );
+		micMemcpyAsync((void *)in_elem->device_private, ((mic_mem_t *)(mic_device->memory->base))->offset+diff, length, micMemcpyHostToDevice);
+   
+        mic_device->super.transferred_data_in += length;
+        /* TODO: take ownership of the data */
+        return 1;
+    }
+    /* TODO: data keeps the same coherence flags as before */
     return 0;
 }
 

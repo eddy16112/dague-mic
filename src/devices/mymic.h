@@ -15,6 +15,13 @@
 
 #define PAGE_SIZE       0x1000
 
+enum micMemcpyKind {
+	micMemcpyHostToHost,
+	micMemcpyHostToDevice,
+	micMemcpyDeviceToHost,
+	micMemcpyDeviceToDevice
+};
+
 typedef struct mic_mem_struct {
 	char *addr;
 	off_t offset;
@@ -26,6 +33,7 @@ static inline int mic_send_sync(scif_epd_t epd, void *msg, int len);
 static inline int mic_recv_sync(scif_epd_t epd, void *msg, int len);
 static inline int micHostAlloc(mic_mem_t *mic_mem_host, size_t size);
 static inline int micInit();
+static inline int micMemcpyAsync(void* host_addr, off_t roffset, size_t length, enum micMemcpyKind kind);
 static scif_epd_t epd;
 
 
@@ -100,7 +108,7 @@ static inline int micHostAlloc(mic_mem_t *mic_mem_host, size_t size)
 	
 }
 
-int micInit()
+static inline int micInit()
 {
 	int conn_port, req_port, conn, tries;
 	struct scif_portID portID;
@@ -140,6 +148,43 @@ int micInit()
 	}
 	printf("Conection established, connect to node %d success\n", portID.node);
     
+	return MIC_SUCCESS;
+}
+
+static inline int micMemcpyAsync(void* host_addr, off_t roffset, size_t length, enum micMemcpyKind kind)
+{
+	int err = 0;
+	double *value;
+	//printf("src size %lu, dst size %lu\n", src->actual_nbyte, dst->actual_nbyte);
+
+	if (kind == micMemcpyHostToDevice) {
+//		printf("set value %f, diff %lu\n", value[512], diff);
+		if ((err = scif_vwriteto(epd,
+					host_addr, /* local RAS offset */
+					length,
+					roffset, /* remote RAS offset */
+					0))) {
+
+			printf("scif_writeto failed with err %d\n", errno);
+			return MIC_ERROR;
+		
+		}
+		
+	} else if (kind == micMemcpyDeviceToHost) {
+	//	printf("before get value %f\n", value[4000000]);
+		if ((err = scif_vreadfrom(epd,
+					host_addr, /* local RAS offset */
+					length,
+					roffset, /* remote RAS offset */
+					0))) {
+
+			printf("scif_writeto failed with err %d\n", errno);
+			return MIC_ERROR;
+		}
+	//	sleep(5);
+	//	printf("get value %f\n", value[79]);
+	}
+
 	return MIC_SUCCESS;
 }
 

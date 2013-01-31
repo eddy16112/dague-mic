@@ -11,7 +11,7 @@
 #include "dague_internal.h"
 #include <dague/class/dague_object.h>
 #include <dague/devices/device.h>
-#include "dague/devices/mymic.h"
+#include <dague/devices/mymic.h>
 
 #if defined(HAVE_CUDA)
 #include "list_item.h"
@@ -186,7 +186,8 @@ int progress_stream( gpu_device_t* gpu_device,
 
 
 /** the followings are mic functions, will removed to other files after testing work. */
-//int dague_mic_init(dague_context_t *dague_context); 
+static int dague_mic_init(dague_context_t *dague_context); 
+static int dague_mic_data_stage_in( mic_device_t* mic_device, int32_t type, dague_data_pair_t* task_data, size_t length, int stream );
 
 #endif /* defined(HAVE_CUDA) */
 
