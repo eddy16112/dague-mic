@@ -1297,7 +1297,6 @@ static int dague_mic_init(dague_context_t *dague_context)
 static int dague_mic_data_stage_in( mic_device_t* mic_device,
                              int32_t type,
                              dague_data_pair_t* task_data,
-                             size_t length,
                              int stream )
 {
     dague_data_copy_t* in_elem = task_data->data;

@@ -185,7 +185,7 @@ int progress_stream( gpu_device_t* gpu_device,
 
 /** the followings are mic functions, will removed to other files after testing work. */
 static int dague_mic_init(dague_context_t *dague_context); 
-static int dague_mic_data_stage_in( mic_device_t* mic_device, int32_t type, dague_data_pair_t* task_data, size_t length, int stream );
+static int dague_mic_data_stage_in( mic_device_t* mic_device, int32_t type, dague_data_pair_t* task_data, int stream );
 int dague_mic_data_reserve_device_space( mic_device_t* mic_device, dague_execution_context_t *this_task, int move_data_count );
 int progress_stream_mic( mic_device_t* mic_device,
                      dague_mic_exec_stream_t* mic_stream,

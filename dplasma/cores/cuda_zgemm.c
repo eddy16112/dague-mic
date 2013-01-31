@@ -426,7 +426,78 @@ mic_kernel_push_zgemm( mic_device_t            *mic_device,
                       dague_gpu_context_t     *gpu_task,
                       dague_mic_exec_stream_t *mic_stream)
 {
-    return 0;
+    int i, ret, move_data_count = 0;
+    dague_execution_context_t *this_task = gpu_task->ec;
+    dague_zgemm_args_t        *args = (dague_zgemm_args_t*)gpu_task;
+    dague_data_t              *data;
+    dague_data_copy_t         *local;
+
+    for( i = 0; i < this_task->function->nb_parameters; i++ ) {
+        if( !(this_task->function->in[0]->access_type & ACCESS_READ) )
+            continue;
+
+        data = this_task->data[i].data->original;
+        if( NULL == (local = dague_data_get_copy(data, mic_device->super.device_index)) ) {
+            move_data_count++;
+        } else {
+            /**
+             * In case the data copy I got is not on my local device, swap the
+             * reference with the most recent version on the local device. Otherwise,
+             * use the original copy. This allow copy-on-write to work seamlesly.
+             */
+            if( this_task->data[i].data->device_index != mic_device->super.device_index ) {
+                /* Attach the GPU copy to the task */
+                this_task->data[i].data = local;
+            }
+        }
+    }
+
+    if( 0 != move_data_count ) { /* Try to reserve enough room for all data */
+        ret = dague_mic_data_reserve_device_space( mic_device,
+                                                   this_task,
+                                                   move_data_count );
+        if( ret < 0 ) {
+            goto release_and_return_error;
+        }
+    }
+
+    assert( NULL != dague_data_copy_get_ptr(this_task->data[0].data) );
+    assert( NULL != dague_data_copy_get_ptr(this_task->data[1].data) );
+    assert( NULL != dague_data_copy_get_ptr(this_task->data[2].data) );
+
+    DAGUE_TASK_PROF_TRACE_IF(mic_stream->prof_event_track_enable,
+                             mic_device->super.profiling,
+                             (-1 == mic_stream->prof_event_key_start ?
+                              DAGUE_PROF_FUNC_KEY_START(this_task->dague_handle,
+                                                        this_task->function->function_id) :
+                              mic_stream->prof_event_key_start),
+                             this_task);
+
+    DEBUG3(("GPU[%1d]:\tIN  Data of %s(%d, %d) on GPU\n",
+            this_task->function->in[0]->name, args->Am, args->An));
+    ret = dague_mic_data_stage_in( mic_device, this_task->function->in[0]->access_type,
+                                   &(this_task->data[0]), mic_stream->mic_stream );
+    if( ret < 0 ) {
+        goto release_and_return_error;
+    }
+
+    DEBUG3(("GPU:\tIN  Data of %s(%d, %d) on GPU\n",
+            this_task->function->in[1]->name, args->Bm, args->Bn));
+    ret = dague_mic_data_stage_in( mic_device, this_task->function->in[1]->access_type,
+                                   &(this_task->data[1]), mic_stream->mic_stream );
+    if( ret < 0 ) {
+        goto release_and_return_error;
+    }
+
+    DEBUG3(("GPU:\tIN  Data of %s(%d, %d) on GPU\n",
+            this_task->function->in[2]->name, args->Cm, args->Cn));
+    ret = dague_mic_data_stage_in( mic_device, this_task->function->in[2]->access_type,
+                                   &(this_task->data[2]), mic_stream->mic_stream );
+    if( ret < 0 ) {
+        goto release_and_return_error;
+    }
+  release_and_return_error:
+    return ret;
 }
 
 static inline int
@@ -441,6 +512,28 @@ static inline int
 mic_kernel_epilog_zgemm( mic_device_t        *mic_device,
                         dague_gpu_context_t *gpu_task )
 {
+    dague_execution_context_t *this_task = gpu_task->ec;
+    dague_zgemm_args_t        *args = (dague_zgemm_args_t*)gpu_task;
+    dague_gpu_data_copy_t     *gpu_copy;
+    dague_data_t              *original;
+    int i;
+
+    for( i = 0; i < this_task->function->nb_parameters; i++ ) {
+        if( !(this_task->function->in[i]->access_type & ACCESS_WRITE) ) continue;
+
+        gpu_copy = this_task->data[i].data;
+        assert( DATA_COHERENCY_OWNED == gpu_copy->coherency_state );
+        gpu_copy->coherency_state = DATA_COHERENCY_SHARED;
+        original = gpu_copy->original;
+        original->version = gpu_copy->version;
+        original->owner_device = -1;
+
+        if( args->pushout ) {  /* n == (k  + 1) */
+            dague_ulist_fifo_push(&mic_device->gpu_mem_lru, (dague_list_item_t*)gpu_copy);
+        } else {
+            dague_ulist_fifo_push(&mic_device->gpu_mem_owned_lru, (dague_list_item_t*)gpu_copy);
+        }
+    }
     return 0;
 }
 
@@ -449,5 +542,70 @@ mic_kernel_pop_zgemm( mic_device_t        *mic_device,
                      dague_gpu_context_t *gpu_task,
                      dague_mic_exec_stream_t* mic_stream)
 {
-    return 0;
+    dague_execution_context_t *this_task = gpu_task->ec;
+    dague_zgemm_args_t        *args = (dague_zgemm_args_t*)gpu_task;
+    dague_gpu_data_copy_t     *gpu_copy = NULL;
+    dague_data_t              *original;
+    int return_code = 0, how_many = 0, i;
+    cudaError_t status;
+
+    for( i = 0; NULL != this_task->function->in[i]; i++ ) {
+        gpu_copy = this_task->data[i].data;
+        original = gpu_copy->original;
+        if( this_task->function->in[i]->access_type & ACCESS_READ ) {
+            gpu_copy->readers--; assert(gpu_copy->readers >= 0);
+            if( (0 == gpu_copy->readers) &&
+                !(this_task->function->in[i]->access_type & ACCESS_WRITE) ) {
+                dague_list_item_ring_chop((dague_list_item_t*)gpu_copy);
+                DAGUE_LIST_ITEM_SINGLETON(gpu_copy); /* TODO: singleton instead? */
+                dague_ulist_fifo_push(&mic_device->gpu_mem_lru, (dague_list_item_t*)gpu_copy);
+            }
+        }
+        if( this_task->function->in[i]->access_type & ACCESS_WRITE ) {
+            assert( gpu_copy == dague_data_get_copy(gpu_copy->original, mic_device->super.device_index) );
+            /* Stage the transfer of the data back to main memory */
+            mic_device->super.required_data_out += original->nb_elts;
+            assert( ((dague_list_item_t*)gpu_copy)->list_next == (dague_list_item_t*)gpu_copy );
+            assert( ((dague_list_item_t*)gpu_copy)->list_prev == (dague_list_item_t*)gpu_copy );
+
+            if( args->pushout ) {  /* n == (k + 1) */
+                DEBUG3(("GPU:\tOUT Data of %s key %d\n", 
+                        this_task->function->in[i]->name, this_task->data[i].data->original->key));
+                DAGUE_TASK_PROF_TRACE_IF(mic_stream->prof_event_track_enable,
+                                         mic_device->super.profiling,
+                                         (-1 == mic_stream->prof_event_key_start ?
+                                          DAGUE_PROF_FUNC_KEY_START(this_task->dague_handle,
+                                                                    this_task->function->function_id) :
+                                          mic_stream->prof_event_key_start),
+                                         this_task);
+                /* TODO: Move the data back into main memory, but not always on the first device (!) */
+                original = gpu_copy->original;
+/*
+                status = (cudaError_t)cuMemcpyDtoHAsync( original->device_copies[0]->device_private,
+                                                         (CUdeviceptr)gpu_copy->device_private,
+                                                         original->nb_elts, gpu_stream->cuda_stream );
+                DAGUE_CUDA_CHECK_ERROR( "cuMemcpyDtoHAsync from device ", status,
+                                        { WARNING(("data %s <<%p>> -> <<%p>>\n", this_task->function->in[i]->name,
+                                                   gpu_copy->device_private, original->device_copies[0]->device_private));
+                                            return_code = -2;
+                                            goto release_and_return_error;} );*/
+				char *mic_base, *mic_now;
+				size_t diff;
+				int rc;
+				mic_base = mic_device->memory->base;
+				mic_now = gpu_copy->device_private;
+				diff = mic_now - mic_base;
+				rc = micMemcpyAsync(original->device_copies[0]->device_private, mic_device->memory->offset+diff, original->nb_elts, micMemcpyDeviceToHost);
+				if (rc != MIC_SUCCESS) {
+					return_code = -2;
+                    goto release_and_return_error;
+				}
+                mic_device->super.transferred_data_out += original->nb_elts; /* TODO: not hardcoded, use datatype size */
+                how_many++;
+            }
+        }
+    }
+
+  release_and_return_error:
+    return (return_code < 0 ? return_code : how_many);
 }
