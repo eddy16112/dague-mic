@@ -191,7 +191,7 @@ int dague_mic_data_register( dague_context_t *dague_context,
                              dague_ddesc_t   *data,
                              int              nbelem, /* Could be a function of the dague_desc_t */
                              size_t           eltsize );
-int progress_stream_mic( mic_device_t* mic_device,
+static int progress_stream_mic( mic_device_t* mic_device,
                      dague_mic_exec_stream_t* mic_stream,
                      advance_task_function_t progress_fct,
                      dague_gpu_context_t* task,

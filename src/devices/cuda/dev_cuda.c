@@ -1176,7 +1176,8 @@ static int dague_mic_init(dague_context_t *dague_context)
             exec_stream->tasks  = (dague_gpu_context_t**)malloc(exec_stream->max_events
                                                                 * sizeof(dague_gpu_context_t*));
            // exec_stream->events = (CUevent*)malloc(exec_stream->max_events * sizeof(CUevent));
-			micInitEventQueue(exec_stream->events, 10);
+			exec_stream->events = NULL;
+			exec_stream->events = micInitEventQueue(10);
             /* and the corresponding events */
             for( k = 0; k < exec_stream->max_events; k++ ) {
              //   exec_stream->events[k] = NULL;
@@ -1551,7 +1552,7 @@ int dague_mic_data_register( dague_context_t *dague_context,
     return 0;
 }
 
-int progress_stream_mic( mic_device_t* mic_device,
+static int progress_stream_mic( mic_device_t* mic_device,
                     dague_mic_exec_stream_t* exec_stream,
                     advance_task_function_t progress_fct,
                     dague_gpu_context_t* task,
@@ -1598,6 +1599,7 @@ int progress_stream_mic( mic_device_t* mic_device,
          * Obviously, this lead to incorrect results.
          */
     //    rc = cuEventRecord( exec_stream->events[exec_stream->start], exec_stream->cuda_stream );
+		rc = micEventRecord(exec_stream->events, exec_stream->start, exec_stream->mic_stream);
         exec_stream->tasks[exec_stream->start] = task;
         exec_stream->start = (exec_stream->start + 1) % exec_stream->max_events;
         DAGUE_OUTPUT_VERBOSE((3, dague_cuda_output_stream,
@@ -1609,7 +1611,9 @@ int progress_stream_mic( mic_device_t* mic_device,
  check_completion:
     if( (NULL == *out_task) && (NULL != exec_stream->tasks[exec_stream->end]) ) {
   //      rc = cuEventQuery(exec_stream->events[exec_stream->end]);
-        if( CUDA_SUCCESS == rc ) {
+		rc = micEventQuery(exec_stream->events, exec_stream->end);
+     //   if( CUDA_SUCCESS == rc ) {
+		if( MIC_SUCCESS == rc ) {
             /* Save the task for the next step */
             task = *out_task = exec_stream->tasks[exec_stream->end];
             DAGUE_OUTPUT_VERBOSE((3, dague_cuda_output_stream,
