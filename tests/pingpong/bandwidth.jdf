@@ -3,10 +3,12 @@ extern "C" %{
 #include <data_distribution.h>
 #include <data.h>
 #include <stdarg.h>
+#include <dague/utils/mca_param.h>
 
 #include <assert.h>
 
 #include "bandwidth.h"
+#include "pingpong_gpu.h"
 
 typedef struct {
     dague_ddesc_t  super;
@@ -236,6 +238,7 @@ CTL  C -> C SYNC(t+1)
 ; (t * (NT-1)) + f
 
 BODY [type = CUDA]
+	pingpong_cuda(context, this_task, T);
     printf("PONG(%d, %d) -> CUDA\n", t, f);
 END
 
@@ -255,6 +258,15 @@ int main(int argc, char *argv[])
 
     world = 1;
     rank = 0;
+
+#if defined(HAVE_CUDA)
+	char *param = dague_mca_param_env_var("device_cuda_enabled");
+	char value[128];
+	int ngpu = 1;
+	snprintf(value, 128, "%d", ngpu);
+	setenv(param, value, 1);
+	free(param);
+#endif
 
     cores = 1;
     dague = dague_init(cores, &argc, &argv);
