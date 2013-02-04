@@ -1,5 +1,7 @@
 cmake_minimum_required (VERSION 2.8)
-project (DAGUE C CXX Fortran)
+project (DAGUE NONE)
+
+enable_language(C)
 
 include(CMakeDependentOption)
 
@@ -149,23 +151,28 @@ include (CheckIncludeFiles)
 #
 
 IF( BUILD_TOOLS )
+  enable_language(CXX)
   # Check for compiler tools
   find_package(BISON)
   find_package(FLEX)
+  set(HAVE_RECENT_LEX 0)
 ENDIF( BUILD_TOOLS )
 
-# Fortran tricks
-STRING(REGEX MATCH ".*ifort$" _match_ifort ${CMAKE_Fortran_COMPILER})
-IF (_match_ifort)
-     MESSAGE(STATUS "Add -nofor_main to the Fortran linker.")
-     SET(LOCAL_FORTRAN_LINK_FLAGS "${LOCAL_FORTRAN_LINK_FLAGS} -nofor_main")
-ENDIF (_match_ifort)
+enable_language(Fortran OPTIONAL)
+if(CMAKE_Fortran_COMPILER_WORKS)
+  # Fortran tricks
+  STRING(REGEX MATCH ".*ifort$" _match_ifort ${CMAKE_Fortran_COMPILER})
+  IF (_match_ifort)
+    MESSAGE(STATUS "Add -nofor_main to the Fortran linker.")
+    SET(LOCAL_FORTRAN_LINK_FLAGS "${LOCAL_FORTRAN_LINK_FLAGS} -nofor_main")
+  ENDIF (_match_ifort)
 
-STRING(REGEX MATCH ".*ftn$" _match_ftn ${CMAKE_Fortran_COMPILER})
-IF (_match_ftn)
+  STRING(REGEX MATCH ".*ftn$" _match_ftn ${CMAKE_Fortran_COMPILER})
+  IF (_match_ftn)
     MESSAGE(STATUS "Add -Mnomain to the Fortran linker.")
     SET(LOCAL_FORTRAN_LINK_FLAGS "${LOCAL_FORTRAN_LINK_FLAGS} -Mnomain -Bstatic")
-ENDIF (_match_ftn)
+  ENDIF (_match_ftn)
+endif(CMAKE_Fortran_COMPILER_WORKS)
 
 STRING(REGEX MATCH ".*xlc$" _match_xlc ${CMAKE_C_COMPILER})
 IF (_match_xlc)
@@ -177,19 +184,21 @@ IF (_match_xlc AND BUILD_64bits)
      SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -q64")
 ENDIF (_match_xlc AND BUILD_64bits)
 
-STRING(REGEX MATCH ".*xlf$" _match_xlf ${CMAKE_Fortran_COMPILER})
-IF (_match_xlf)
-     MESSAGE(ERROR "Please use the thread-safe version of the xlf compiler (xlf_r)")
-ENDIF (_match_xlf)
-STRING(REGEX MATCH ".*xlf_r$" _match_xlf ${CMAKE_Fortran_COMPILER})
-IF (_match_xlf)
-  SET(arch_flags "-q32")
-  IF(BUILD_64bits)
-     SET(arch_flags "-q64")
-  ENDIF(BUILD_64bits)
-  MESSAGE(STATUS "Add ${arch_flags} and -nofor_main to the Fortran linker.")
-  SET(LOCAL_FORTRAN_LINK_FLAGS "${LOCAL_FORTRAN_LINK_FLAGS} ${arch_flags} -nofor_main")
-ENDIF (_match_xlf)
+if(CMAKE_Fortran_COMPILER_WORKS)
+  STRING(REGEX MATCH ".*xlf$" _match_xlf ${CMAKE_Fortran_COMPILER})
+  IF (_match_xlf)
+    MESSAGE(ERROR "Please use the thread-safe version of the xlf compiler (xlf_r)")
+  ENDIF (_match_xlf)
+  STRING(REGEX MATCH ".*xlf_r$" _match_xlf ${CMAKE_Fortran_COMPILER})
+  IF (_match_xlf)
+    SET(arch_flags "-q32")
+    IF(BUILD_64bits)
+      SET(arch_flags "-q64")
+    ENDIF(BUILD_64bits)
+    MESSAGE(STATUS "Add ${arch_flags} and -nofor_main to the Fortran linker.")
+    SET(LOCAL_FORTRAN_LINK_FLAGS "${LOCAL_FORTRAN_LINK_FLAGS} ${arch_flags} -nofor_main")
+  ENDIF (_match_xlf)
+endif(CMAKE_Fortran_COMPILER_WORKS)
 
 # check for the CPU we build for
 MESSAGE(STATUS "Building for target ${CMAKE_SYSTEM_PROCESSOR}")
@@ -277,9 +286,13 @@ CHECK_C_COMPILER_FLAG( "-Wextra" HAVE_WEXTRA )
 IF( HAVE_WEXTRA )
     SET( C_WFLAGS "${C_WFLAGS} -Wextra" )
 ENDIF( HAVE_WEXTRA )
+#
 # flags for the overly verbose icc
-CHECK_C_COMPILER_FLAG( "-wd424" HAVE_WD )
-IF( HAVE_WD )
+#
+STRING(REGEX MATCH ".*icc$" _match_icc ${CMAKE_C_COMPILER})
+if(_match_icc)
+  CHECK_C_COMPILER_FLAG( "-wd424" HAVE_WD )
+  IF( HAVE_WD )
     # 424: checks for duplicate ";"
     # 981: every volatile triggers a "unspecified evaluation order", obnoxious
     #      but might be useful for some debugging sessions. 
@@ -287,7 +300,8 @@ IF( HAVE_WD )
     #       files
     # 1572: cuda compares floats with 0.0f. 
     SET( C_WFLAGS "${C_WFLAGS} -wd424 -wd981 -wd1419 -wd1572" )
-ENDIF( HAVE_WD )
+  ENDIF( HAVE_WD )
+endif(_match_icc)
 CHECK_C_COMPILER_FLAG( "-g3" HAVE_G3 )
 IF( HAVE_G3 )
     SET( CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g3 ${C_WFLAGS}" )
@@ -403,7 +417,7 @@ IF( BUILD_DAGUE )
   endif (MPI_FOUND)
 
   if( DAGUE_GPU_WITH_CUDA )
-    find_package(CUDA)
+    find_package(CUDA QUIET)
     set(HAVE_CUDA ${CUDA_FOUND})
     if (CUDA_FOUND)
       if(CUDA_VERSION VERSION_LESS "3.0")
@@ -411,7 +425,7 @@ IF( BUILD_DAGUE )
       endif(CUDA_VERSION VERSION_LESS "3.0")
       set(CUDA_BUILD_EMULATION OFF)
       include_directories(${CUDA_INCLUDE_DIRS})
-      #list(APPEND EXTRA_LIBS ${CUDA_LIBRARIES} )
+      list(APPEND EXTRA_LIBS ${CUDA_LIBRARIES} )
       set(saved_include "${CMAKE_REQUIRED_INCLUDES}")
       set(saved_libs "${CMAKE_REQUIRED_LIBRARIES}")
       set(CMAKE_REQUIRED_INCLUDES  "${CMAKE_REQUIRED_INCLUDES};${CUDA_INCLUDE_DIRS}")
@@ -470,6 +484,22 @@ endif(NOT DAGUE_COMPILE_INPLACE)
 add_definitions(-DHAVE_CONFIG_H)
 
 #
+# Check if indent is available on the system.
+#
+set(HAVE_INDENT 0)
+FIND_PROGRAM(INDENT_EXECUTABLE indent DOC "path to the indent executable")
+MARK_AS_ADVANCED(INDENT_EXECUTABLE)
+# K&R (not supported on Mac), so we settle for less
+# -nbad -bap -bbo -nbc -br -brs -c33 -cd33 -ncdb -ce -ci4 -cli0
+# -cp33 -cs -d0 -di1 -nfc1 -nfca -hnl -i4 -ip0 -l75 -lp -npcs
+# -nprs -npsl -saf -sai -saw -nsc -nsob -nss
+SET(INDENT_OPTIONS "-nbad -bap -nbc -br -brs -c33 -cd33 -ncdb -ce -ci4 -cli0 -d0 -di1 -nfc1 -i4 -ip0 -l75 -lp -npcs -npsl -nsc -nsob")
+MARK_AS_ADVANCED(INDENT_OPTIONS)
+if(INDENT_EXECUTABLE)
+  set(HAVE_INDENT 1)
+endif(INDENT_EXECUTABLE)
+
+#
 # First go for the tools.
 #
 set(daguepp_EXE "NOT-DEFINED")
@@ -491,7 +521,12 @@ add_subdirectory(data_dist)
 #
 
 IF( BUILD_DPLASMA )
-  add_subdirectory(dplasma)
+  if(CMAKE_Fortran_COMPILER_WORKS)
+    add_subdirectory(dplasma)
+  else(CMAKE_Fortran_COMPILER_WORKS)
+    message(STATUS "DPLASMA support disabled due to lack of Fortran compiler")
+    set(BUILD_DPLASMA OFF)
+  endif(CMAKE_Fortran_COMPILER_WORKS)
 ENDIF ( BUILD_DPLASMA )
 IF( BUILD_TESTING AND BUILD_DAGUE )
   add_subdirectory(tests)
