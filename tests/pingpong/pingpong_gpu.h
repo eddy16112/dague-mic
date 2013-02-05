@@ -8,17 +8,20 @@
 #include <dague/devices/device_malloc.h>
 #include <fifo.h>
 #include "scheduling.h"
+//#include <dague/devices/cuda/cuda_scheduling.h>
+
+#define KERNEL_NAME zgemm
 
 typedef struct dague_pingpong_args_s {
     dague_gpu_context_t super;
     int pushout;
 
-    dague_ddesc_t *ddescA;
+    dague_data_copy_t *ddescA;
 } dague_pingpong_args_t;
 
 int pingpong_cuda(dague_execution_unit_t* eu_context,
                	  dague_execution_context_t* this_task,
-				  dague_ddesc_t * descA);
+				  dague_data_copy_t * descA);
 
 dague_hook_return_t gpu_pingpong_scheduler( dague_execution_unit_t *eu_context,
                      dague_gpu_context_t    *this_task,
@@ -38,12 +41,13 @@ int gpu_pingpong_epilog( gpu_device_t        *gpu_device,
 
 int pingpong_cuda(dague_execution_unit_t* eu_context,
                	  dague_execution_context_t* this_task,
-				  dague_ddesc_t * descA)
+				  dague_data_copy_t * descA)
 {
 	int i, data_index = 0;
 	dague_pingpong_args_t *gpu_task;
     dague_handle_t* handle = this_task->dague_handle;
 	
+	printf("I am in pingpong_cuda, nb %d\n", this_task->function->nb_parameters);
 	 /* Step one: which write enabled data we will look at */
     for( i = 0; i < this_task->function->nb_parameters; i++ ) {
         if( this_task->function->in[i]->access_type & ACCESS_WRITE ) {
@@ -56,10 +60,11 @@ int pingpong_cuda(dague_execution_unit_t* eu_context,
 	OBJ_CONSTRUCT(gpu_task, dague_list_item_t);
     gpu_task->super.ec = this_task;
     gpu_task->pushout  = 1;
-	gpu_task->ddescA   = (dague_ddesc_t*)descA;
+	gpu_task->ddescA = (dague_data_copy_t *)descA;
+	printf("before scheduler i=%d\n", i);
 	return gpu_pingpong_scheduler( eu_context, (dague_gpu_context_t*)gpu_task, 1 );
+//	return gpu_kernel_scheduler_zgemm( eu_context, (dague_gpu_context_t*)gpu_task, 1 );
 
-	return 1;
 }
 
 dague_hook_return_t gpu_pingpong_scheduler( dague_execution_unit_t *eu_context,

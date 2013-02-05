@@ -7,7 +7,7 @@
 #ifndef _MYMIC_H_
 #define _MYMIC_H_
 
-#include <scif.h>
+#include "scif.h"
 
 #define MALLOC_MEM			100
 #define MIC_SUCCESS			1
