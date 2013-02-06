@@ -1,4 +1,6 @@
 extern "C" %{
+#define HAVE_MIC
+
 #include <dague.h>
 #include <data_distribution.h>
 #include <data.h>
@@ -242,7 +244,7 @@ t = 0 .. NT-1
 CTL C -> C PING(t, 0 .. NF-1)
       <- (t > 0) ? C PONG(t-1, 0 .. NF-1)
 BODY
-    /*printf("SYNC(%d)\n", t);*/
+    printf("SYNC(%d)\n", t);
 END
 
 PING(t, f)
@@ -259,7 +261,7 @@ CTL  C <- C SYNC(t)
 ; (t * (NT-1)) + f
 
 BODY
-
+	printf("PING(%d, %d)\n", t, f);
 END
 
 PONG(t, f)
@@ -276,6 +278,7 @@ CTL  C -> C SYNC(t+1)
 ; (t * (NT-1)) + f
 
 BODY [type = CUDA]
+	printf("PONG CUDA(%d, %d)\n", t, f);
     return bandwidth_cuda(context, this_task, gT);
 END
 
@@ -301,7 +304,7 @@ int main(int argc, char *argv[])
 
     loops = 10;
     frags = 1;
-    size = 1024;
+    size = 40960;
 
     for( i = 1; i < argc; i++ ) {
         if(0 == strcmp(argv[i], "-n")) {
@@ -340,7 +343,7 @@ int main(int argc, char *argv[])
     dague_gpu_data_register(dague, ddescA, frags, size*sizeof(uint8_t));
 #endif
 
-    for(i = 0; i < 10; i++) {
+    for(i = 0; i < loops; i++) {
         bw_test = bandwidth_new(ddescA, loops, frags, size, world);
 
         gettimeofday(&tstart, NULL);
