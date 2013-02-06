@@ -229,6 +229,7 @@ int dague_data_copy_ownership_to_device(dague_data_t* data,
     transfer_required = transfer_required || (data->version > copy->version);
     if( transfer_required )
         copy->version = data->version;
+
     return transfer_required;
 }
 

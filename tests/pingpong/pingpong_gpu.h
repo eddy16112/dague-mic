@@ -38,10 +38,14 @@ int gpu_pingpong_pop( gpu_device_t        *gpu_device,
 int gpu_pingpong_epilog( gpu_device_t        *gpu_device,
                          dague_gpu_context_t *gpu_task );
 
+int gpu_pingpong_submit( gpu_device_t        *gpu_device,
+                         dague_gpu_context_t *gpu_task,
+                         dague_gpu_exec_stream_t* gpu_stream );
+
 
 int pingpong_cuda(dague_execution_unit_t* eu_context,
                	  dague_execution_context_t* this_task,
-				  dague_data_copy_t * descA)
+				  dague_data_copy_t * A)
 {
 	int i, data_index = 0;
 	dague_pingpong_args_t *gpu_task;
@@ -60,7 +64,7 @@ int pingpong_cuda(dague_execution_unit_t* eu_context,
 	OBJ_CONSTRUCT(gpu_task, dague_list_item_t);
     gpu_task->super.ec = this_task;
     gpu_task->pushout  = 1;
-	gpu_task->ddescA = (dague_data_copy_t *)descA;
+	gpu_task->ddescA = A;
 	printf("before scheduler i=%d\n", i);
 	return gpu_pingpong_scheduler( eu_context, (dague_gpu_context_t*)gpu_task, 1 );
 //	return gpu_kernel_scheduler_zgemm( eu_context, (dague_gpu_context_t*)gpu_task, 1 );
@@ -110,6 +114,7 @@ check_in_deps:
                 dague_snprintf_execution_context(tmp, MAX_TASK_STRLEN, this_task->ec),
                 this_task->ec->priority ));
     }
+	printf("progress pingpong push\n");
     rc = progress_stream( gpu_device,
                          &(gpu_device->exec_stream[0]),
                          gpu_pingpong_push,
@@ -120,7 +125,22 @@ check_in_deps:
     }
     this_task = next_task;
     
-   
+    /* Stage-in completed for this Task: it is ready to be executed */
+    exec_stream = (exec_stream + 1) % (gpu_device->max_exec_streams - 2);  /* Choose an exec_stream */
+    if( NULL != this_task ) {
+        DEBUG2(( "GPU[%1d]:\tExecute %s priority %d\n", gpu_device->cuda_index,
+                dague_snprintf_execution_context(tmp, MAX_TASK_STRLEN, this_task->ec),
+                this_task->ec->priority ));
+    }
+    rc = progress_stream( gpu_device,
+                         &(gpu_device->exec_stream[2+exec_stream]),
+                         gpu_pingpong_submit,
+                         this_task, &next_task );
+    if( rc < 0 ) {
+        if( -1 == rc )
+            goto disable_gpu;
+    }
+    this_task = next_task;
     
     /* This task has completed its execution: we have to check if we schedule DtoN */
     if( NULL != this_task ) {
@@ -168,7 +188,7 @@ complete_task:
     DAGUE_LIST_ITEM_SINGLETON(this_task);
     gpu_pingpong_epilog( gpu_device, this_task );
     __dague_complete_execution( eu_context, this_task->ec );
-  //  dague_device_load[gpu_device->super.device_index] -= dague_device_sweight[gpu_device->super.device_index];
+    dague_device_load[gpu_device->super.device_index] -= dague_device_sweight[gpu_device->super.device_index];
     gpu_device->super.executed_tasks++;
     free( this_task );
     rc = dague_atomic_dec_32b( &(gpu_device->mutex) );
@@ -207,8 +227,10 @@ int gpu_pingpong_push( gpu_device_t            *gpu_device,
     dague_data_t              *data;
     dague_data_copy_t         *local;
 
+	printf("I am in push\n");
     for( i = 0; i < this_task->function->nb_parameters; i++ ) {
-        if( !(this_task->function->in[0]->access_type & ACCESS_READ) )
+        if( (NULL == this_task->function->in[i]) ||
+            !(this_task->function->in[i]->access_type & ACCESS_READ) )
             continue;
 
         data = this_task->data[i].data->original;
@@ -263,15 +285,17 @@ int gpu_pingpong_pop( gpu_device_t        *gpu_device,
                       dague_gpu_exec_stream_t* gpu_stream)
 {
     dague_execution_context_t *this_task = gpu_task->ec;
-    dague_pingpong_args_t        *args = (dague_pingpong_args_t*)gpu_task;
+    dague_pingpong_args_t     *args = (dague_pingpong_args_t*)gpu_task;
     dague_gpu_data_copy_t     *gpu_copy = NULL;
     dague_data_t              *original;
     int return_code = 0, how_many = 0, i;
     cudaError_t status;
 
-    for( i = 0; NULL != this_task->function->in[i]; i++ ) {
-        gpu_copy = this_task->data[i].data;
-        original = gpu_copy->original;
+    for( i = 0; i < this_task->function->nb_parameters; i++ ) {
+        if(NULL == this_task->function->in[i]) continue;
+
+        original = this_task->data[i].data->original;
+        gpu_copy = dague_data_get_copy(original, gpu_device->super.device_index);
         if( this_task->function->in[i]->access_type & ACCESS_READ ) {
             gpu_copy->readers--; assert(gpu_copy->readers >= 0);
             if( (0 == gpu_copy->readers) &&
@@ -328,12 +352,13 @@ int gpu_pingpong_epilog( gpu_device_t        *gpu_device,
     int i;
 
     for( i = 0; i < this_task->function->nb_parameters; i++ ) {
+        if(NULL == this_task->function->in[i]) continue;
         if( !(this_task->function->in[i]->access_type & ACCESS_WRITE) ) continue;
 
-        gpu_copy = this_task->data[i].data;
+        original = this_task->data[i].data->original;
+        gpu_copy = dague_data_get_copy(original, gpu_device->super.device_index);
         assert( DATA_COHERENCY_OWNED == gpu_copy->coherency_state );
         gpu_copy->coherency_state = DATA_COHERENCY_SHARED;
-        original = gpu_copy->original;
         original->version = gpu_copy->version;
         original->owner_device = -1;
 
@@ -344,6 +369,13 @@ int gpu_pingpong_epilog( gpu_device_t        *gpu_device,
         }
     }
     return 0;
+}
+
+int gpu_pingpong_submit( gpu_device_t        *gpu_device,
+                         dague_gpu_context_t *gpu_task,
+                         dague_gpu_exec_stream_t* gpu_stream )
+{
+	return 0;
 }
 
 #endif /* _pingpong_gpu_h_ */

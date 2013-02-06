@@ -757,6 +757,7 @@ int dague_gpu_data_reserve_device_space( gpu_device_t* gpu_device,
      * Parse all the input and output flows of data and ensure all have
      * corresponding data on the GPU available.
      */
+    /* TODO: Check that CTL is handled correctly */
     for( i = 0;  NULL != this_task->data[i].data; i++ ) {
         temp_loc[i] = NULL;
 

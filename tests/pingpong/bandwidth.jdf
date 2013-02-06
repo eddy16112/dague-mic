@@ -313,12 +313,13 @@ int main(int argc, char *argv[])
     
     bw_test = bandwidth_New(ddescA, loops, frags, world);
 	printf("create bw_test\n");
-    dague_enqueue(dague, bw_test);
-	printf("dague enqueued\n");
-
 #if defined(HAVE_CUDA)
 	dague_gpu_data_register(dague, ddescA, frags, size*sizeof(uint8_t));
 #endif
+    dague_enqueue(dague, bw_test);
+	printf("dague enqueued\n");
+
+
 
     dague_progress(dague);
 

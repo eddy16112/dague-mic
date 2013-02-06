@@ -155,7 +155,7 @@ data_repo_lookup_entry_and_create(dague_execution_unit_t *eu, data_repo_t *repo,
     n->retained = 1; /* Until we update the usage limit */
 
     dague_atomic_lock(&repo->heads[h].lock);
-    n->data_repo_next_entry = (volatile dague_list_item_t *)repo->heads[h].first_entry;
+    n->data_repo_next_entry = (dague_list_item_t *)repo->heads[h].first_entry;
     repo->heads[h].first_entry = n;
     repo->heads[h].size++;
     DAGUE_STAT_INCREASE(mem_hashtable, sizeof(data_repo_entry_t)+(repo->nbdata-1)*sizeof(dague_arena_chunk_t*) + STAT_MALLOC_OVERHEAD);

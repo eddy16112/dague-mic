@@ -14,20 +14,20 @@
 
 typedef struct dague_list_item_s {
     dague_object_t  super;
-    volatile struct dague_list_item_s* list_next;
+    struct dague_list_item_s* list_next;
     /**
      * This field is __very__ special and should be handled with extreme
      * care. It is used to avoid the ABA problem when atomic operations
      * are in use. It can deal with 2^DAGUE_LIFO_ALIGNMENT_BITS pops,
      * before running into the ABA. In all other cases, it is used to
-     * separate the two volatile members of the struct to avoid
+     * separate the two linking members of the struct to avoid
      * cacheline false sharing
      */
     uint64_t keeper_of_the_seven_keys;
-    volatile struct dague_list_item_s* list_prev;
+    struct dague_list_item_s* list_prev;
 #if defined(DAGUE_DEBUG_ENABLE)
-    volatile int32_t refcount;
-    volatile void* belong_to;
+    int32_t refcount;
+    void* belong_to;
 #endif  /* defined(DAGUE_DEBUG_ENABLE) */
 } dague_list_item_t;
 
@@ -103,7 +103,7 @@ static inline dague_list_item_t*
 dague_list_item_ring_merge( dague_list_item_t* ring1,
                             dague_list_item_t* ring2 )
 {
-    volatile dague_list_item_t *tmp;
+    dague_list_item_t *tmp;
 #if defined(DAGUE_DEBUG_ENABLE)
     assert( (void*)0xdeadbeef != ring1->list_next );
     assert( (void*)0xdeadbeef != ring1->list_prev );
