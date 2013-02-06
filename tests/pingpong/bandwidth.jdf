@@ -2,13 +2,16 @@ extern "C" %{
 #include <dague.h>
 #include <data_distribution.h>
 #include <data.h>
-#include <stdarg.h>
 #include <dague/utils/mca_param.h>
+#include <arena.h>
 
 #include <assert.h>
+#include <stdarg.h>
+#include <sys/time.h>
 
 #include "bandwidth.h"
-#include "pingpong_gpu.h"
+
+#include "tests/pingpong/pingpong_gpu.h"
 
 typedef struct {
     dague_ddesc_t  super;
@@ -178,13 +181,15 @@ void free_data(dague_ddesc_t *d)
 }
 
 /**
- * @param [IN] A    the data, already distributed and allocated
- * @param [IN] size size of each local data element
- * @param [IN] nb   number of iterations
+ * @param [IN] A     the data, already distributed and allocated
+ * @param [IN] loops the number of iteration
+ * @param [IN] frags the number of fragments per iterations
+ * @param [IN] size  size of each local data element
+ * @param [IN] ws    the size of the group (1 by now)
  *
  * @return the dague object to schedule.
  */
-dague_handle_t *bandwidth_New(dague_ddesc_t *A, int loops, int frags, int ws)
+dague_handle_t *bandwidth_new(dague_ddesc_t *A, int loops, int frags, int size, int ws)
 {
     dague_bandwidth_handle_t *o = NULL;
     
@@ -193,10 +198,25 @@ dague_handle_t *bandwidth_New(dague_ddesc_t *A, int loops, int frags, int ws)
                         "  (instead of %d) and 1 frag (instead of %d)\n", loops, frags);
         return NULL;
     }
+    if(size > ((my_datatype_t*)A)->size) {
+        fprintf(stderr, "The size (%d) must be smaller than the declared size of the data in the array (%d)\n",
+                size, ((my_datatype_t*)A)->size);
+        return NULL;
+    }
 
     o = dague_bandwidth_new(A, loops, frags, ws);
 
+    dague_arena_construct(((dague_bandwidth_handle_t*)o)->arenas[DAGUE_bandwidth_DEFAULT_ARENA],
+                          size*sizeof(uint8_t), DAGUE_ARENA_ALIGNMENT_SSE, NULL);
+
     return (dague_handle_t*)o;
+}
+
+void bandwidth_destroy(dague_handle_t* handle)
+{
+    dague_bandwidth_handle_t * bw_handle = (dague_bandwidth_handle_t*)handle;
+    bw_handle->arenas[DAGUE_bandwidth_DEFAULT_ARENA] = NULL;
+    DAGUE_INTERNAL_HANDLE_DESTRUCT(bw_handle);
 }
 
 /**
@@ -222,7 +242,7 @@ t = 0 .. NT-1
 CTL C -> C PING(t, 0 .. NF-1)
       <- (t > 0) ? C PONG(t-1, 0 .. NF-1)
 BODY
-    printf("SYNC(%d)\n", t);
+    /*printf("SYNC(%d)\n", t);*/
 END
 
 PING(t, f)
@@ -239,7 +259,7 @@ CTL  C <- C SYNC(t)
 ; (t * (NT-1)) + f
 
 BODY
-    printf("PING(%d, %d)\n", t, f);
+
 END
 
 PONG(t, f)
@@ -256,8 +276,7 @@ CTL  C -> C SYNC(t+1)
 ; (t * (NT-1)) + f
 
 BODY [type = CUDA]
-	pingpong_cuda(context, this_task, gT);
-    printf("PONG(%d, %d) -> CUDA\n", t, f);
+    return bandwidth_cuda(context, this_task, gT);
 END
 
 BODY
@@ -269,26 +288,16 @@ extern "C" %{
 int main(int argc, char *argv[])
 {
     dague_context_t* dague;
-    int rank, world, cores;
+    int rank, world, cores, ngpus = 0;
     int i, size, loops, frags;
     dague_ddesc_t *ddescA;
     dague_handle_t *bw_test;
+    struct timeval tstart, tend;
+    double t, bw;
 
     world = 1;
     rank = 0;
-
-#if defined(HAVE_CUDA)
-	char *param = dague_mca_param_env_var("device_cuda_enabled");
-	char value[128];
-	int ngpu = 1;
-	snprintf(value, 128, "%d", ngpu);
-	setenv(param, value, 1);
-	free(param);
-#endif
-
     cores = 1;
-    dague = dague_init(cores, &argc, &argv);
-	printf("dague init\n");
 
     loops = 10;
     frags = 1;
@@ -304,24 +313,48 @@ int main(int argc, char *argv[])
         if(0 == strcmp(argv[i], "-l")) {
             size = atoi(argv[i+1]); i++;
         }
+        /* GPU management */
+        if(0 == strcmp(argv[i], "-g")) {
+            ngpus = atoi(argv[i+1]); i++;
+        }
     }
-
     ddescA = create_and_distribute_data(rank, world, frags, size);
-	printf("dague create data\n");
     dague_ddesc_set_key(ddescA, "A");
-	printf("dague set key\n");
-    
-    bw_test = bandwidth_New(ddescA, loops, frags, world);
-	printf("create bw_test\n");
+
 #if defined(HAVE_CUDA)
-	dague_gpu_data_register(dague, ddescA, frags, size*sizeof(uint8_t));
+    /* if the use of GPUs is specified on the command line updated the environment
+     * prior to the runtime initialization.
+     */
+    if(ngpus > 0) {
+        char *param, value[128];
+        param = dague_mca_param_env_var("device_cuda_enabled");
+        snprintf(value, 128, "%d", ngpus);
+        setenv(param, value, 1);
+        free(param);
+    }
 #endif
-    dague_enqueue(dague, bw_test);
-	printf("dague enqueued\n");
 
+    dague = dague_init(cores, &argc, &argv);
 
+#if defined(HAVE_CUDA)
+    dague_gpu_data_register(dague, ddescA, frags, size*sizeof(uint8_t));
+#endif
 
-    dague_progress(dague);
+    for(i = 0; i < 10; i++) {
+        bw_test = bandwidth_new(ddescA, loops, frags, size, world);
+
+        gettimeofday(&tstart, NULL);
+        dague_enqueue(dague, bw_test);
+        dague_progress(dague);
+        gettimeofday(&tend, NULL);
+
+        t = (tend.tv_sec - tstart.tv_sec) * 1000000.0 + (tend.tv_usec - tstart.tv_usec);
+        assert(t > 0.0);
+        bw = ((double)loops * (double)frags * (double)size) / t * ((1000.0 * 1000.0) / (1024.0 * 1024.0));
+        printf("[%d, %d, %d, %08.4g] %4.8g MB/s\n", loops, frags, size, t / 1000000.0, bw);
+
+        bandwidth_destroy(bw_test);
+    }
 
 #if defined(DAGUE_PROF_TRACE)
     {

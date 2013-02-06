@@ -36,12 +36,13 @@
 #define gpu_kernel_scheduler GENERATE_NAME( gpu_kernel_scheduler, KERNEL_NAME )
 
 /** mic */
+/*
 #define mic_kernel_push      GENERATE_NAME( mic_kernel_push     , KERNEL_NAME )
 #define mic_kernel_submit    GENERATE_NAME( mic_kernel_submit   , KERNEL_NAME )
 #define mic_kernel_pop       GENERATE_NAME( mic_kernel_pop      , KERNEL_NAME )
 #define mic_kernel_epilog    GENERATE_NAME( mic_kernel_epilog   , KERNEL_NAME )
 #define mic_kernel_profile   GENERATE_NAME( mic_kernel_profile  , KERNEL_NAME )
-#define mic_kernel_scheduler GENERATE_NAME( mic_kernel_scheduler, KERNEL_NAME )
+#define mic_kernel_scheduler GENERATE_NAME( mic_kernel_scheduler, KERNEL_NAME )*/
 
 /**
  * Try to execute a kernel on a GPU.
