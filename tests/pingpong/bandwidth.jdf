@@ -261,7 +261,7 @@ CTL  C <- C SYNC(t)
 ; (t * (NT-1)) + f
 
 BODY
-	printf("PING(%d, %d)\n", t, f);
+    printf("PING(%d, %d)\n", t, f);
 END
 
 PONG(t, f)
@@ -278,7 +278,7 @@ CTL  C -> C SYNC(t+1)
 ; (t * (NT-1)) + f
 
 BODY [type = CUDA]
-	printf("PONG CUDA(%d, %d)\n", t, f);
+    printf("PONG CUDA(%d, %d)\n", t, f);
     return bandwidth_cuda(context, this_task, gT);
 END
 
@@ -338,9 +338,12 @@ int main(int argc, char *argv[])
 #endif
 
     dague = dague_init(cores, &argc, &argv);
+	printf("dague init finish\n");
 
 #if defined(HAVE_CUDA)
-    dague_gpu_data_register(dague, ddescA, frags, size*sizeof(uint8_t));
+    //dague_gpu_data_register(dague, ddescA, frags, size*sizeof(uint8_t));
+	dague_mic_data_register(dague, ddescA, frags, size*sizeof(uint8_t));
+	printf("I finish MIC DATA REGISTER\n");
 #endif
 
     for(i = 0; i < loops; i++) {
@@ -348,7 +351,8 @@ int main(int argc, char *argv[])
 
         gettimeofday(&tstart, NULL);
         dague_enqueue(dague, bw_test);
-        dague_progress(dague);
+		printf("before progress dague\n");        
+		dague_progress(dague);
         gettimeofday(&tend, NULL);
 
         t = (tend.tv_sec - tstart.tv_sec) * 1000000.0 + (tend.tv_usec - tstart.tv_usec);

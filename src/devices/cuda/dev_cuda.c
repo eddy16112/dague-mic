@@ -1072,7 +1072,7 @@ static int dague_mic_host_memory_register(dague_device_t* device, void* ptr, siz
     if (micHostAlloc(mem_host, length) == MIC_ERROR) {
         return DAGUE_ERROR;
     }
-    ptr = mem_host;
+    ptr = mem_host->addr;
 //    CUresult status;
 //    CUcontext ctx;
     
@@ -1085,7 +1085,12 @@ static int dague_mic_host_memory_register(dague_device_t* device, void* ptr, siz
     return DAGUE_SUCCESS;
 }
 
-static int dague_mic_init(dague_context_t *dague_context)
+static int dague_mic_memory_unregister(dague_device_t* device, void* ptr)
+{
+    return DAGUE_SUCCESS;
+}
+
+int dague_mic_init(dague_context_t *dague_context)
 {
     int show_caps_index, show_caps = 0;
     int use_cuda_index, use_cuda;
@@ -1212,8 +1217,8 @@ static int dague_mic_init(dague_context_t *dague_context)
 
         mic_device->super.device_fini              = dague_cuda_device_fini;
         mic_device->super.device_memory_register   = dague_mic_host_memory_register;
-        mic_device->super.device_memory_unregister = dague_cuda_memory_unregister;
-        mic_device->super.device_handle_register   = dague_cuda_handle_register;
+        mic_device->super.device_memory_unregister = dague_mic_memory_unregister;
+        mic_device->super.device_handle_register   = dague_mic_handle_register;
         mic_device->super.device_handle_unregister = dague_cuda_handle_unregister;
 
         /**
@@ -1244,6 +1249,7 @@ static int dague_mic_init(dague_context_t *dague_context)
 #endif  /* defined(PROFILING) */
         dague_devices_add(dague_context, &(mic_device->super));
     }
+	printf("I finish init mic\n");
 
 /* TODO: the following does not work */
 #if defined(DAGUE_HAVE_PEER_DEVICE_MEMORY_ACCESS)
@@ -1299,7 +1305,7 @@ static int dague_mic_init(dague_context_t *dague_context)
  *    1: A copy has been scheduled on the corresponding stream
  *   -1: A copy cannot be issued due to CUDA.
  */
-static int dague_mic_data_stage_in( mic_device_t* mic_device,
+int dague_mic_data_stage_in( mic_device_t* mic_device,
                              int32_t type,
                              dague_data_pair_t* task_data,
                              int stream )
@@ -1457,6 +1463,7 @@ int dague_mic_data_register( dague_context_t *dague_context,
     CUresult status;
     int i;
     (void)eltsize;
+	printf("I am in mic_data_register\n");
 
     for(i = 0; i < dague_nb_devices; i++) {
         size_t how_much_we_allocate;
@@ -1535,7 +1542,7 @@ int dague_mic_data_register( dague_context_t *dague_context,
              * We allocate all the memory on the GPU and we use our memory management
              */
             mem_elem_per_gpu = (how_much_we_allocate + GPU_MALLOC_UNIT_SIZE - 1 ) / GPU_MALLOC_UNIT_SIZE ;
-            mic_device->memory = gpu_malloc_init( mem_elem_per_gpu, GPU_MALLOC_UNIT_SIZE );
+            mic_device->memory = mic_malloc_init( mem_elem_per_gpu, GPU_MALLOC_UNIT_SIZE );
 
             if( mic_device->memory == NULL ) {
                 WARNING(("GPU:\tRank %d Cannot allocate memory on GPU %d. Skip it!\n",
@@ -1556,9 +1563,9 @@ int dague_mic_data_register( dague_context_t *dague_context,
     return 0;
 }
 
-static int progress_stream_mic( mic_device_t* mic_device,
+int progress_stream_mic( mic_device_t* mic_device,
                     dague_mic_exec_stream_t* exec_stream,
-                    advance_task_function_t progress_fct,
+                    mic_advance_task_function_t progress_fct,
                     dague_gpu_context_t* task,
                     dague_gpu_context_t** out_task )
 {
@@ -1657,5 +1664,48 @@ static int progress_stream_mic( mic_device_t* mic_device,
     }
     return saved_rc;
 }
+
+static int
+dague_mic_handle_register(dague_device_t* device, dague_handle_t* handle)
+{
+    mic_device_t* mic_device = (mic_device_t*)device;
+    uint32_t i, dev_mask = 0x0;
+
+    /**
+     * Let's suppose it is not our job to detect if a particular body can
+     * run or not. We will need to add some properties that will allow the
+     * user to write the code to assess this.
+     */
+    assert(DAGUE_DEV_CUDA == device->type);
+    for( i = 0; i < handle->nb_functions; i++ ) {
+        const dague_function_t* function = handle->functions_array[i];
+        __dague_chore_t* chores = (__dague_chore_t*)function->incarnations;
+        for( uint32_t j = 0; NULL != chores[j].hook; j++ ) {
+            dev_mask |= (1 << chores[j].type);
+        }
+        if(dev_mask & (1 << device->type)) {  /* find the function */
+            void* devf = mic_solve_handle_dependencies(mic_device, function->name);
+            /* TODO: Ugly code to be removed ASAP */
+            if( NULL == cuda_gemm_functions ) {
+                cuda_gemm_functions = (void**)calloc(100, sizeof(void*));
+            }
+            cuda_gemm_functions[mic_device->mic_index] = devf;
+            /* TODO: Ugly code to be removed ASAP */
+        }
+    }
+    /* Not a single chore supports this device, there is no reason to check anything further */
+    if(!(dev_mask & (1 << device->type))) {
+        handle->devices_mask &= ~(device->device_index);
+    }
+
+    return DAGUE_SUCCESS;
+}
+
+void* mic_solve_handle_dependencies(mic_device_t* mic_device,
+                                     const char* fname)
+{
+    return NULL;
+}
+
 
 #endif /* HAVE_CUDA */

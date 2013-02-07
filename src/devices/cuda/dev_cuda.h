@@ -184,18 +184,25 @@ int progress_stream( gpu_device_t* gpu_device,
 
 
 /** the followings are mic functions, will removed to other files after testing work. */
-static int dague_mic_init(dague_context_t *dague_context); 
-static int dague_mic_data_stage_in( mic_device_t* mic_device, int32_t type, dague_data_pair_t* task_data, int stream );
+int dague_mic_init(dague_context_t *dague_context); 
+int dague_mic_data_stage_in( mic_device_t* mic_device, int32_t type, dague_data_pair_t* task_data, int stream );
 int dague_mic_data_reserve_device_space( mic_device_t* mic_device, dague_execution_context_t *this_task, int move_data_count );
 int dague_mic_data_register( dague_context_t *dague_context,
                              dague_ddesc_t   *data,
                              int              nbelem, /* Could be a function of the dague_desc_t */
                              size_t           eltsize );
-static int progress_stream_mic( mic_device_t* mic_device,
+typedef int (*mic_advance_task_function_t)(mic_device_t* mic_device,
+                                       dague_gpu_context_t* task,
+                                       dague_mic_exec_stream_t* mic_stream);
+int progress_stream_mic( mic_device_t* mic_device,
                      dague_mic_exec_stream_t* mic_stream,
-                     advance_task_function_t progress_fct,
+                     mic_advance_task_function_t progress_fct,
                      dague_gpu_context_t* task,
                      dague_gpu_context_t** out_task );
+
+void* mic_solve_handle_dependencies(mic_device_t* mic_device,
+                                     const char* fname);
+static int dague_mic_handle_register(dague_device_t* device, dague_handle_t* handle);
 
 #endif /* defined(HAVE_CUDA) */
 

@@ -233,7 +233,8 @@ int dague_devices_select(dague_context_t* context)
 {
     (void)context;
 #if defined(HAVE_CUDA)
-    return dague_gpu_init(context);
+ //   return dague_gpu_init(context);
+	return dague_mic_init(context);
 #else
     return DAGUE_SUCCESS;
 #endif  /* defined(HAVE_CUDA) */

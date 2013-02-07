@@ -27,7 +27,7 @@ typedef struct mic_mem_struct {
 	off_t offset;
 	size_t actual_nbyte;
 }mic_mem_t;
-
+/*
 static inline int micMalloc(mic_mem_t *mic_mem_dev, size_t size);
 static inline int mic_send_sync(scif_epd_t epd, void *msg, int len);
 static inline int mic_recv_sync(scif_epd_t epd, void *msg, int len);
@@ -38,29 +38,38 @@ static inline int micDeviceGetCount(int * count);
 static inline int micMemGetInfo(size_t *free_mem, size_t *total_mem );
 static inline mic_mem_t * micInitEventQueue(int size);
 static inline int micEventRecord(mic_mem_t *event_queue, int event_no, int stream);
-static inline int micEventQuery(mic_mem_t *event_queue, int event_no);
-static scif_epd_t epd;
+static inline int micEventQuery(mic_mem_t *event_queue, int event_no);*/
+ scif_epd_t epd;
 
-
-static inline int micMalloc(mic_mem_t *mic_mem_dev, size_t size)
+static void check_error_code(int err)
 {
-	int command = MALLOC_MEM; 
-	if (mic_send_sync(epd, &command, sizeof(command)) == MIC_ERROR) { 
-		return MIC_ERROR;
-	}
-	//make size multiple of PAGE_SIZE                                                                             
-  /*	if (size % PAGE_SIZE != 0) {
-    	size = ((size / PAGE_SIZE) + 1) * PAGE_SIZE;
-  	}*/
-	if (mic_send_sync(epd, &size, sizeof(size)) == MIC_ERROR) { 
-		return MIC_ERROR;
-	}
-	printf("%lu\n", size);
-	if (mic_recv_sync(epd, mic_mem_dev, sizeof(mic_mem_t)) == MIC_ERROR) { 
-		return MIC_ERROR;
-	}
-	printf("malloc addr after recv:%p offset 0x%lx nbyte %lu\n", mic_mem_dev->addr, mic_mem_dev->offset, mic_mem_dev->actual_nbyte);
-	return MIC_SUCCESS;
+	if (err == EADDRINUSE) {
+    	printf ("EADDRINUSE\n");
+    } else if (err == EAGAIN) {
+        printf ("EAGAIN\n");
+    } else if (err == EBADF) {
+        printf("EBADF\n");
+    } else if (err == EFAULT) {
+        printf("EFAULT\n");
+    } else if (err == EINVAL) {
+        printf("EINVAL\n");
+    } else if (err == ENOMEM) {
+        printf("ENOMEM\n");
+    } else if (err == ENOTCONN) {
+        printf("ENOTCONN\n");
+	} else if (err == ENODEV) {
+		printf("ENODEV\n");\
+	} else if (err == ECONNRESET) {
+		printf("ECONNRESET\n"); 
+	} else if (err == ENOTCONN) {
+		printf("ENOTCONN\n");
+	} else if (err == ENOTTY) {
+		printf("ENOTTY\n"); 
+	} else if (err == ENXIO) {
+		printf("ENXIO\n"); 
+	} else {
+        printf("UNKNOWN\n");
+    }
 }
 
 static inline int mic_send_sync(scif_epd_t epd, void *msg, int len) {
@@ -82,6 +91,27 @@ static inline int mic_recv_sync(scif_epd_t epd, void *msg, int len) {
 		fflush(stdout);
 		return MIC_ERROR;
 	}
+	return MIC_SUCCESS;
+}
+
+static inline int micMalloc(mic_mem_t *mic_mem_dev, size_t size)
+{
+	int command = MALLOC_MEM; 
+	if (mic_send_sync(epd, &command, sizeof(command)) == MIC_ERROR) { 
+		return MIC_ERROR;
+	}
+	//make size multiple of PAGE_SIZE                                                                             
+  /*	if (size % PAGE_SIZE != 0) {
+    	size = ((size / PAGE_SIZE) + 1) * PAGE_SIZE;
+  	}*/
+	if (mic_send_sync(epd, &size, sizeof(size)) == MIC_ERROR) { 
+		return MIC_ERROR;
+	}
+	printf("%lu\n", size);
+	if (mic_recv_sync(epd, mic_mem_dev, sizeof(mic_mem_t)) == MIC_ERROR) { 
+		return MIC_ERROR;
+	}
+	printf("malloc addr after recv:%p offset 0x%lx nbyte %lu\n", mic_mem_dev->addr, mic_mem_dev->offset, mic_mem_dev->actual_nbyte);
 	return MIC_SUCCESS;
 }
 
@@ -118,9 +148,9 @@ static inline int micInit()
 	int conn_port, req_port, conn, tries;
 	struct scif_portID portID;
     
-	req_port = 2049;
+	req_port = 2048;
 	portID.node = 1;
-    portID.port = 2050;
+    portID.port = 2055;
     
 	printf("Client is trying to connect MIC server ...\n");
     
@@ -136,12 +166,13 @@ static inline int micInit()
 		return MIC_ERROR;
 	}
 	printf("Bind to port %d success\n", conn_port);
-    
+
 	tries = 5;
 	conn = scif_connect(epd, &portID);
 	while (conn < 0) {
 		if ((errno == ECONNREFUSED) && (tries > 0)) {
 			printf("Connection to node %d failed : trial %d\n", portID.node, tries);
+
 			tries--;
 			sleep(1);
 		}
@@ -152,6 +183,8 @@ static inline int micInit()
 		conn = scif_connect(epd, &portID);
 	}
 	printf("Conection established, connect to node %d success\n", portID.node);
+	
+//	epd2 = epd;
     
 	return MIC_SUCCESS;
 }
@@ -163,27 +196,29 @@ static inline int micMemcpyAsync(void* host_addr, off_t roffset, size_t length, 
 	//printf("src size %lu, dst size %lu\n", src->actual_nbyte, dst->actual_nbyte);
 
 	if (kind == micMemcpyHostToDevice) {
-//		printf("set value %f, diff %lu\n", value[512], diff);
+		printf("host_addr %p, epd %d\n", host_addr, epd);
 		if ((err = scif_vwriteto(epd,
 					host_addr, /* local RAS offset */
 					length,
 					roffset, /* remote RAS offset */
 					0))) {
 
-			printf("scif_writeto failed with err %d\n", errno);
+			printf("scif_vwriteto failed with err %d\n", errno);
 			return MIC_ERROR;
 		
 		}
+	//	printf("after epd %d\n", epd2);
 		
 	} else if (kind == micMemcpyDeviceToHost) {
-	//	printf("before get value %f\n", value[4000000]);
+		printf("host_addr %p, epd %d\n", host_addr, epd);
 		if ((err = scif_vreadfrom(epd,
 					host_addr, /* local RAS offset */
 					length,
 					roffset, /* remote RAS offset */
 					0))) {
 
-			printf("scif_writeto failed with err %d\n", errno);
+			printf("scif_vreadfrom failed with err %d\n", errno);
+			check_error_code(errno);
 			return MIC_ERROR;
 		}
 	//	sleep(5);
@@ -195,8 +230,8 @@ static inline int micMemcpyAsync(void* host_addr, off_t roffset, size_t length, 
 
 static inline int micMemGetInfo(size_t *free_mem, size_t *total_mem )
 {
-	*free_mem = sizeof(double)*4096*1024*64;
-	*total_mem = sizeof(double)*4096*1024*64;
+	*free_mem = sizeof(double)*4096*1024*100;
+	*total_mem = sizeof(double)*4096*1024*100;
 	return MIC_SUCCESS;
 }
 
@@ -235,6 +270,7 @@ static inline int micEventRecord(mic_mem_t *event_queue, int event_no, int strea
 		now_offset = base_offset + diff;
 		v = 1;
 		rc = scif_fence_signal (epd, now_offset, v, 0, 0, SCIF_FENCE_INIT_SELF | SCIF_SIGNAL_LOCAL);
+		printf("I record a event %d at queue: %p\n", event_no, event_queue);
 		 
 	} else {    // for compute
 	}
@@ -246,6 +282,7 @@ static inline int micEventQuery(mic_mem_t *event_queue, int event_no)
 	uint64_t *queue_value = (uint64_t *)event_queue->addr;
 	if (queue_value[event_no] == 1) {
 		queue_value[event_no] = 0;
+		printf("event no %d in queue %p is released\n", event_no, event_queue);
 		return MIC_SUCCESS;
 	} else {
 		return MIC_ERROR;

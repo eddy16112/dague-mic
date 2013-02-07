@@ -187,6 +187,7 @@ mic_kernel_push_bandwidth( mic_device_t            *mic_device,
     dague_data_t              *original;
     dague_data_copy_t         *data, *local;
 
+
     for( i = 0; i < this_task->function->nb_parameters; i++ ) {
         if(NULL == this_task->function->in[i]) continue;
 
@@ -235,6 +236,7 @@ mic_kernel_push_bandwidth( mic_device_t            *mic_device,
         DEBUG3(("GPU[%1d]:\tIN  Data of %s(%d) on GPU\n",
                 gpu_device->cuda_index, this_task->function->in[i]->name,
                 (int)this_task->data[i].data->original.key));
+		printf("PUSH MIC\n");
         ret = dague_mic_data_stage_in( mic_device, this_task->function->in[i]->access_type,
                                        &(this_task->data[i]), mic_stream->mic_stream );
         if( ret < 0 ) {
@@ -306,8 +308,9 @@ mic_kernel_pop_bandwidth( mic_device_t        *mic_device,
 			size_t diff;
 			int rc;
 			mic_base = mic_device->memory->base;
-			mic_now = gpu_copy->device_private;
+			mic_now = (char *)gpu_copy->device_private;
 			diff = mic_now - mic_base;
+			printf("POP MIC\n");
 			rc = micMemcpyAsync(original->device_copies[0]->device_private, mic_device->memory->offset+diff, original->nb_elts, micMemcpyDeviceToHost);
 			if (rc != MIC_SUCCESS) {
 				return_code = -2;
@@ -372,7 +375,9 @@ int bandwidth_cuda(dague_execution_unit_t* eu_context,
     OBJ_CONSTRUCT(gpu_task, dague_list_item_t);
     gpu_task->ec = this_task;
 
-    return gpu_kernel_scheduler_bandwidth( eu_context, gpu_task, 1 );
+	printf("before enter scheduler\n");
+    //return gpu_kernel_scheduler_bandwidth( eu_context, gpu_task, 1 );
+	return mic_kernel_scheduler_bandwidth( eu_context, gpu_task, 1 );
 
 }
 

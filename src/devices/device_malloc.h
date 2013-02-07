@@ -177,7 +177,7 @@ static inline gpu_malloc_t *mic_malloc_init(int _max_segment, size_t _unit_size)
     gdata->max_segment        = _max_segment+2;
 
 	rc = micMalloc(mic_mem_dev, (_max_segment * gdata->unit_size));
-    if( (cudaSuccess != rc) || (NULL == mic_mem_dev->addr) ) {
+    if( (MIC_SUCCESS != rc) || (NULL == mic_mem_dev->addr) ) {
         gpu_malloc_error("unable to allocate backend memory\n");
         free(gdata);
         return NULL;
