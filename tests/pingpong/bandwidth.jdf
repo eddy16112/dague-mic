@@ -1,6 +1,4 @@
 extern "C" %{
-#define HAVE_MIC
-
 #include <dague.h>
 #include <data_distribution.h>
 #include <data.h>
@@ -13,7 +11,9 @@ extern "C" %{
 
 #include "bandwidth.h"
 
+#if defined(HAVE_CUDA)
 #include "tests/pingpong/pingpong_gpu.h"
+#endif  /* defined(HAVE_CUDA) */
 
 typedef struct {
     dague_ddesc_t  super;
@@ -138,7 +138,7 @@ memory_unregister(dague_ddesc_t* desc, struct dague_device_s* device)
     return device->device_memory_unregister(device, m->ptr);
 }
 
-dague_ddesc_t*
+static dague_ddesc_t*
 create_and_distribute_data(int rank, int world, int frags, int size)
 {
     my_datatype_t *m = (my_datatype_t*)calloc(1, sizeof(my_datatype_t));
@@ -170,7 +170,8 @@ create_and_distribute_data(int rank, int world, int frags, int size)
     return d;
 }
 
-void free_data(dague_ddesc_t *d)
+static void
+free_data(dague_ddesc_t *d)
 {
     my_datatype_t *array = (my_datatype_t*)d;
     if(NULL != array->data) {
@@ -191,10 +192,11 @@ void free_data(dague_ddesc_t *d)
  *
  * @return the dague object to schedule.
  */
-dague_handle_t *bandwidth_new(dague_ddesc_t *A, int loops, int frags, int size, int ws)
+static dague_handle_t*
+bandwidth_new(dague_ddesc_t *A, int loops, int frags, int size, int ws)
 {
     dague_bandwidth_handle_t *o = NULL;
-    
+
     if( (loops < 1) || (frags < 1) ) {
         fprintf(stderr, "To work, this test needs at lest 1 loop \n"
                         "  (instead of %d) and 1 frag (instead of %d)\n", loops, frags);
@@ -214,7 +216,8 @@ dague_handle_t *bandwidth_new(dague_ddesc_t *A, int loops, int frags, int size, 
     return (dague_handle_t*)o;
 }
 
-void bandwidth_destroy(dague_handle_t* handle)
+static void
+bandwidth_destroy(dague_handle_t* handle)
 {
     dague_bandwidth_handle_t * bw_handle = (dague_bandwidth_handle_t*)handle;
     bw_handle->arenas[DAGUE_bandwidth_DEFAULT_ARENA] = NULL;
@@ -224,7 +227,8 @@ void bandwidth_destroy(dague_handle_t* handle)
 /**
  * @param [INOUT] o the dague object to destroy
  */
-void bw_destroy(dague_handle_t *o)
+static void
+bw_destroy(dague_handle_t *o)
 {
     DAGUE_INTERNAL_HANDLE_DESTRUCT(o);
 }
@@ -239,7 +243,7 @@ SYNC(t)
 
 t = 0 .. NT-1
 
-: A(t % WS, 0)
+: A(0)
 
 CTL C -> C PING(t, 0 .. NF-1)
       <- (t > 0) ? C PONG(t-1, 0 .. NF-1)
@@ -252,13 +256,11 @@ PING(t, f)
 t = 0 .. NT-1
 f = 0 .. NF-1
 
-: A(t % WS, f)
+: A(f)
 
-RW   T <- (t == 0) ? A(t % WS, f) : T PONG(t-1, f)
+RW   T <- (t == 0) ? A(f) : T PONG(t-1, f)
        -> T PONG(t, f)
 CTL  C <- C SYNC(t)
-
-; (t * (NT-1)) + f
 
 BODY
 //    printf("PING(%d, %d)\n", t, f);
@@ -269,17 +271,14 @@ PONG(t, f)
 t = 0 .. NT-1
 f = 0 .. NF-1
 
-: A(t % WS, f)
+: A(f)
 
 RW   T <- T PING(t, f)
-       -> (t < NT) ? T PING(t+1, f) : A(t % WS, f)
+       -> (t < NT-1) ? T PING(t+1, f) : A(f)
 CTL  C -> C SYNC(t+1)
 
-; (t * (NT-1)) + f
-
 BODY [type = CUDA]
-  //  printf("PONG CUDA(%d, %d)\n", t, f);
-    return bandwidth_cuda(context, this_task, gT);
+    return bandwidth_cuda(context, this_task);
 END
 
 BODY
@@ -307,6 +306,9 @@ int main(int argc, char *argv[])
     size = 40960;
 
     for( i = 1; i < argc; i++ ) {
+        if(0 == strcmp(argv[i], "-c")) {
+            cores = atoi(argv[i+1]); i++;
+        }
         if(0 == strcmp(argv[i], "-n")) {
             loops = atoi(argv[i+1]); i++;
         }
@@ -341,12 +343,12 @@ int main(int argc, char *argv[])
 	printf("dague init finish\n");
 
 #if defined(HAVE_CUDA)
-    //dague_gpu_data_register(dague, ddescA, frags, size*sizeof(uint8_t));
-	dague_mic_data_register(dague, ddescA, frags, size*sizeof(uint8_t));
+    dague_gpu_data_register(dague, ddescA, frags, size*sizeof(uint8_t));
+	//dague_mic_data_register(dague, ddescA, frags, size*sizeof(uint8_t));
 	printf("I finish MIC DATA REGISTER\n");
 #endif
 
-    for(i = 0; i < loops; i++) {
+    for(i = 0; i < 2; i++) {
         bw_test = bandwidth_new(ddescA, loops, frags, size, world);
 
         gettimeofday(&tstart, NULL);
@@ -355,11 +357,12 @@ int main(int argc, char *argv[])
 		dague_progress(dague);
         gettimeofday(&tend, NULL);
 
-        t = (tend.tv_sec - tstart.tv_sec) * 1000000.0 + (tend.tv_usec - tstart.tv_usec);
-        assert(t > 0.0);
-        bw = 2*((double)loops * (double)frags * (double)size) / t * ((1000.0 * 1000.0) / (1024.0 * 1024.0));
-        printf("[%d, %d, %d, %08.4g] %4.8g MB/s\n", loops, frags, size, t / 1000000.0, bw);
-
+        if( 0 != i ) {
+            t = (tend.tv_sec - tstart.tv_sec) * 1000000.0 + (tend.tv_usec - tstart.tv_usec);
+            assert(t > 0.0);
+            bw = ((double)loops * (double)frags * (double)size) / t * ((1000.0 * 1000.0) / (1024.0 * 1024.0)) * 2.0;
+            printf("[%d, %d, %d, %08.4g] %4.8g MB/s\n", loops, frags, size, t / 1000000.0, bw);
+        }
         bandwidth_destroy(bw_test);
     }
 

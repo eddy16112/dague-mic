@@ -58,7 +58,7 @@ gpu_kernel_scheduler( dague_execution_unit_t *eu_context,
     CUcontext saved_ctx;
     cudaError_t status;
     int rc, exec_stream = 0;
-    dague_gpu_context_t *next_task;
+    dague_gpu_context_t *progress_task;
 #if defined(DAGUE_DEBUG_VERBOSE2)
     char tmp[MAX_TASK_STRLEN];
 #endif
@@ -94,16 +94,16 @@ check_in_deps:
                 this_task->ec->priority ));
     }
     rc = progress_stream( gpu_device,
-                         &(gpu_device->exec_stream[0]),
-                         gpu_kernel_push,
-                         this_task, &next_task );
+                          &(gpu_device->exec_stream[0]),
+                          gpu_kernel_push,
+                          this_task, &progress_task );
     if( rc < 0 ) {
         if( -1 == rc )
             goto disable_gpu;
     }
-    this_task = next_task;
-    
-    /* Stage-in completed for this Task: it is ready to be executed */
+    this_task = progress_task;
+
+    /* Stage-in completed for this task: it is ready to be executed */
     exec_stream = (exec_stream + 1) % (gpu_device->max_exec_streams - 2);  /* Choose an exec_stream */
     if( NULL != this_task ) {
         DEBUG2(( "GPU[%1d]:\tExecute %s priority %d\n", gpu_device->cuda_index,
@@ -111,15 +111,15 @@ check_in_deps:
                 this_task->ec->priority ));
     }
     rc = progress_stream( gpu_device,
-                         &(gpu_device->exec_stream[2+exec_stream]),
-                         gpu_kernel_submit,
-                         this_task, &next_task );
+                          &(gpu_device->exec_stream[2+exec_stream]),
+                          gpu_kernel_submit,
+                          this_task, &progress_task );
     if( rc < 0 ) {
         if( -1 == rc )
             goto disable_gpu;
     }
-    this_task = next_task;
-    
+    this_task = progress_task;
+
     /* This task has completed its execution: we have to check if we schedule DtoN */
     if( NULL != this_task ) {
         DEBUG2(( "GPU[%1d]:\tPop data for %s priority %d\n", gpu_device->cuda_index,
@@ -128,26 +128,26 @@ check_in_deps:
     }
     /* Task is ready to move the data back to main memory */
     rc = progress_stream( gpu_device,
-                         &(gpu_device->exec_stream[1]),
-                         gpu_kernel_pop,
-                         this_task,
-                         &next_task );
+                          &(gpu_device->exec_stream[1]),
+                          gpu_kernel_pop,
+                          this_task,
+                          &progress_task );
     if( rc < 0 ) {
         if( -1 == rc )
             goto disable_gpu;
     }
-    if( NULL != next_task ) {
+    if( NULL != progress_task ) {
         /* We have a succesfully completed task. However, it is not this_task, as
          * it was just submitted into the data retrieval system. Instead, the task
-         * ready to move into the next level is the next_task.
+         * ready to move into the next level is the progress_task.
          */
-        this_task = next_task;
-        next_task = NULL;
+        this_task = progress_task;
+        progress_task = NULL;
         goto complete_task;
     }
-    this_task = next_task;
-    
-fetch_task_from_shared_queue:
+    this_task = progress_task;
+
+ fetch_task_from_shared_queue:
     assert( NULL == this_task );
     this_task = (dague_gpu_context_t*)dague_fifo_try_pop( &(gpu_device->pending) );
     if( NULL != this_task ) {
@@ -184,7 +184,7 @@ complete_task:
                                {return DAGUE_HOOK_RETURN_ASYNC;} );
         return DAGUE_HOOK_RETURN_ASYNC;
     }
-    this_task = next_task;
+    this_task = progress_task;
     goto fetch_task_from_shared_queue;
     
 disable_gpu:
