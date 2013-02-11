@@ -54,7 +54,7 @@ endif( HWLOC_FOUND )
 
 if (CUDA_FOUND)
   list(APPEND SOURCES devices/cuda/dev_cuda.c)
- # list(APPEND SOURCES devices/mic/dev_mic.c)
+  list(APPEND SOURCES devices/mic/dev_mic.c)
 endif (CUDA_FOUND)
 if (PAPI_FOUND)
   list(APPEND SOURCES papime.c)

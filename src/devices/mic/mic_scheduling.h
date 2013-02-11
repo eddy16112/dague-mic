@@ -58,7 +58,7 @@ mic_kernel_scheduler( dague_execution_unit_t *eu_context,
     CUcontext saved_ctx;
     cudaError_t status;
     int rc, exec_stream = 0;
-    dague_mic_context_t *next_task;
+    dague_mic_context_t *progress_task;
 #if defined(DAGUE_DEBUG_VERBOSE2)
     char tmp[MAX_TASK_STRLEN];
 #endif
@@ -96,12 +96,12 @@ check_in_deps:
     rc = progress_stream_mic( mic_device,
                          &(mic_device->exec_stream[0]),
                          mic_kernel_push,
-                         this_task, &next_task );
+                         this_task, &progress_task );
     if( rc < 0 ) {
         if( -1 == rc )
             goto disable_mic;
     }
-    this_task = next_task;
+    this_task = progress_task;
     
     /* Stage-in completed for this Task: it is ready to be executed */
  //   exec_stream = (exec_stream + 1) % (gpu_device->max_exec_streams - 2);  /* Choose an exec_stream */
@@ -114,12 +114,12 @@ check_in_deps:
     rc = progress_stream_mic( mic_device,
                          &(mic_device->exec_stream[exec_stream]),
                          mic_kernel_submit,
-                         this_task, &next_task );
+                         this_task, &progress_task );
     if( rc < 0 ) {
         if( -1 == rc )
             goto disable_mic;
     }
-    this_task = next_task;
+    this_task = progress_task;
     
     /* This task has completed its execution: we have to check if we schedule DtoN */
     if( NULL != this_task ) {
@@ -132,21 +132,21 @@ check_in_deps:
                          &(mic_device->exec_stream[1]),
                          mic_kernel_pop,
                          this_task,
-                         &next_task );
+                         &progress_task );
     if( rc < 0 ) {
         if( -1 == rc )
             goto disable_mic;
     }
-    if( NULL != next_task ) {
+    if( NULL != progress_task ) {
         /* We have a succesfully completed task. However, it is not this_task, as
          * it was just submitted into the data retrieval system. Instead, the task
-         * ready to move into the next level is the next_task.
+         * ready to move into the next level is the progress_task.
          */
-        this_task = next_task;
-        next_task = NULL;
+        this_task = progress_task;
+        progress_task = NULL;
         goto complete_task;
     }
-    this_task = next_task;
+    this_task = progress_task;
     
 fetch_task_from_shared_queue:
     assert( NULL == this_task );
@@ -185,7 +185,7 @@ complete_task:
   //                             {return DAGUE_HOOK_RETURN_ASYNC;} );
         return DAGUE_HOOK_RETURN_ASYNC;
     }
-    this_task = next_task;
+    this_task = progress_task;
     goto fetch_task_from_shared_queue;
     
 disable_mic:

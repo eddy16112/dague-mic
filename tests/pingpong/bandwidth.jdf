@@ -303,7 +303,7 @@ int main(int argc, char *argv[])
 
     loops = 10;
     frags = 1;
-    size = 40960;
+    size = 4096;
 
     for( i = 1; i < argc; i++ ) {
         if(0 == strcmp(argv[i], "-c")) {
@@ -343,8 +343,8 @@ int main(int argc, char *argv[])
 	printf("dague init finish\n");
 
 #if defined(HAVE_CUDA)
-    dague_gpu_data_register(dague, ddescA, frags, size*sizeof(uint8_t));
-	//dague_mic_data_register(dague, ddescA, frags, size*sizeof(uint8_t));
+    //dague_gpu_data_register(dague, ddescA, frags, size*sizeof(uint8_t));
+	dague_mic_data_register(dague, ddescA, frags, size*sizeof(uint8_t));
 	printf("I finish MIC DATA REGISTER\n");
 #endif
 

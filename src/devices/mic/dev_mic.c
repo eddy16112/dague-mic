@@ -29,7 +29,7 @@
 /* Accepted values are: DAGUE_PROFILE_CUDA_TRACK_DATA_IN | DAGUE_PROFILE_CUDA_TRACK_DATA_OUT |
  *                      DAGUE_PROFILE_CUDA_TRACK_OWN | DAGUE_PROFILE_CUDA_TRACK_EXEC
  */
-int dague_cuda_trackable_events = DAGUE_PROFILE_CUDA_TRACK_EXEC | DAGUE_PROFILE_CUDA_TRACK_DATA_OUT | DAGUE_PROFILE_CUDA_TRACK_DATA_IN;
+int dague_cuda_trackable_events = DAGUE_PROFILE_CUDA_TRACK_EXEC | DAGUE_PROFILE_CUDA_TRACK_DATA_OUT | DAGUE_PROFILE_CUDA_TRACK_DATA_IN | DAGUE_PROFILE_CUDA_TRACK_OWN;
 int dague_cuda_movein_key_start;
 int dague_cuda_movein_key_end;
 int dague_cuda_moveout_key_start;
@@ -128,6 +128,7 @@ dague_mic_handle_register(dague_device_t* device, dague_handle_t* handle)
 static int
 dague_mic_handle_unregister(dague_device_t* device, dague_handle_t* handle)
 {
+	(void)device; (void)handle;
     return DAGUE_SUCCESS;
 }
 
@@ -135,8 +136,7 @@ int dague_mic_init(dague_context_t *dague_context)
 {
     int show_caps_index, show_caps = 0;
     int use_cuda_index, use_cuda;
-    int cuda_mask_index, cuda_mask;
-    int cuda_output_index, cuda_verbosity;
+    int cuda_mask, cuda_verbosity;
     int ndevices, i, j, k;
     CUresult status;
     int isdouble = 0;
@@ -145,12 +145,12 @@ int dague_mic_init(dague_context_t *dague_context)
     use_cuda_index = dague_mca_param_reg_int_name("device_cuda", "enabled",
                                                   "The number of CUDA device to enable for the next PaRSEC context",
                                                   false, false, 0, &use_cuda);
-    cuda_mask_index = dague_mca_param_reg_int_name("device_cuda", "mask",
-                                                   "The bitwise mask of CUDA devices to be enabled (default all)",
-                                                   false, false, 0xffffffff, &cuda_mask);
-    cuda_output_index = dague_mca_param_reg_int_name("device_cuda", "verbose",
-                                                     "Set the verbosity level of the CUDA device (negative value turns all output off, higher is less verbose)\n",
-                                                     false, false, -1, &cuda_verbosity);
+    (void)dague_mca_param_reg_int_name("device_cuda", "mask",
+                                       "The bitwise mask of CUDA devices to be enabled (default all)",
+                                       false, false, 0xffffffff, &cuda_mask);
+    (void)dague_mca_param_reg_int_name("device_cuda", "verbose",
+                                       "Set the verbosity level of the CUDA device (negative value turns all output off, higher is less verbose)\n",
+                                       false, false, -1, &cuda_verbosity);
     if( 0 == use_cuda ) {
         return -1;  /* Nothing to do around here */
     }
@@ -315,8 +315,8 @@ int dague_mic_data_register( dague_context_t *dague_context,
 {
     mic_device_t* mic_device;
     CUresult status;
-    int i;
-    (void)eltsize;
+    uint32_t i;
+    (void)eltsize; (void)data;
 	printf("I am in mic_data_register\n");
 
     for(i = 0; i < dague_nb_devices; i++) {
@@ -388,7 +388,7 @@ int dague_mic_data_register( dague_context_t *dague_context,
                      dague_context->my_rank, i));
             continue;
         }
-        DAGUE_OUTPUT_VERBOSE((3, dague_mic_output_stream,
+        DAGUE_OUTPUT_VERBOSE((5, dague_mic_output_stream,
                               "GPU:\tAllocate %u tiles on the GPU memory\n", mem_elem_per_gpu ));
 #else
         if( NULL == mic_device->memory ) {
@@ -403,7 +403,7 @@ int dague_mic_data_register( dague_context_t *dague_context,
                          dague_context->my_rank, i));
                 continue;
             }
-            DAGUE_OUTPUT_VERBOSE((3, dague_mic_output_stream,
+            DAGUE_OUTPUT_VERBOSE((5, dague_mic_output_stream,
                                   "GPU:\tAllocate %u segment of size %d on the GPU memory\n",
                                   mem_elem_per_gpu, GPU_MALLOC_UNIT_SIZE ));
         }
@@ -445,10 +445,12 @@ int dague_mic_data_reserve_device_space( mic_device_t* mic_device,
      * Parse all the input and output flows of data and ensure all have
      * corresponding data on the GPU available.
      */
-    for( i = 0;  NULL != this_task->data[i].data; i++ ) {
-        temp_loc[i] = NULL;
+    for( i = 0; i < this_task->function->nb_parameters; i++ ) {
+        if(NULL == this_task->function->in[i]) continue;
 
-        master = this_task->data[i].data->original;
+		temp_loc[i] = NULL;
+
+        master = this_task->data[i].data_in->original;
         gpu_elem = dague_data_get_copy(master, mic_device->super.device_index);
         /* There is already a copy on the device */
         if( NULL != gpu_elem ) continue;
@@ -468,7 +470,7 @@ int dague_mic_data_reserve_device_space( mic_device_t* mic_device,
             lru_gpu_elem = (dague_gpu_data_copy_t*)dague_ulist_fifo_pop(&mic_device->gpu_mem_lru);
             if( NULL == lru_gpu_elem ) {
                 /* Make sure all remaining temporary locations are set to NULL */
-                for( ;  NULL != this_task->data[i].data; temp_loc[i++] = NULL );
+                for( ;  i < this_task->function->nb_parameters; temp_loc[i++] = NULL );
                 break;  /* Go and cleanup */
             }
             DAGUE_LIST_ITEM_SINGLETON(lru_gpu_elem);
@@ -489,8 +491,9 @@ int dague_mic_data_reserve_device_space( mic_device_t* mic_device,
                 if( NULL != lru_gpu_elem->original ) {
                     dague_data_t* oldmaster = lru_gpu_elem->original;
                     /* Let's check we're not trying to steal one of our own data */
-                    for( j = 0; NULL != this_task->data[j].data; j++ ) {
-                        if( this_task->data[j].data->original == oldmaster ) {
+                    for( j = 0; j < this_task->function->nb_parameters; j++ ) {
+                        if( NULL == this_task->data[j].data_in ) continue;
+                        if( this_task->data[j].data_in->original == oldmaster ) {
                             temp_loc[j] = lru_gpu_elem;
                             goto find_another_data;
                         }
@@ -517,6 +520,7 @@ int dague_mic_data_reserve_device_space( mic_device_t* mic_device,
         gpu_elem->coherency_state = DATA_COHERENCY_INVALID;
         gpu_elem->version = 0;
         dague_data_copy_attach(master, gpu_elem, mic_device->super.device_index);
+		this_task->data[i].data_out = gpu_elem;
         move_data_count--;
         temp_loc[i] = gpu_elem;
         dague_ulist_fifo_push(&mic_device->gpu_mem_lru, (dague_list_item_t*)gpu_elem);
@@ -527,7 +531,7 @@ int dague_mic_data_reserve_device_space( mic_device_t* mic_device,
         /* We can't find enough room on the GPU. Insert the tiles in the begining of
          * the LRU (in order to be reused asap) and return without scheduling the task.
          */
-        for( i = 0; NULL != this_task->data[i].data; i++ ) {
+        for( i = 0; NULL != this_task->data[i].data_in; i++ ) {
             if( NULL == temp_loc[i] ) continue;
             dague_ulist_lifo_push(&mic_device->gpu_mem_lru, (dague_list_item_t*)temp_loc[i]);
         }
@@ -550,9 +554,9 @@ int dague_mic_data_stage_in( mic_device_t* mic_device,
                              dague_data_pair_t* task_data,
                              int stream )
 {
-    dague_data_copy_t* in_elem = task_data->data;
+    dague_data_copy_t* in_elem = task_data->data_in;
     dague_data_t* original = in_elem->original;
-    dague_gpu_data_copy_t* gpu_elem = original->device_copies[mic_device->super.device_index];
+    dague_gpu_data_copy_t* gpu_elem = task_data->data_out;
     int transfer_required = 0;
 
     /* If the data will be accessed in write mode, remove it from any lists
@@ -563,12 +567,12 @@ int dague_mic_data_stage_in( mic_device_t* mic_device,
         DAGUE_LIST_ITEM_SINGLETON(gpu_elem);
     }
 
-    transfer_required = dague_data_copy_ownership_to_device(original, mic_device->super.device_index, (uint8_t)type);
+    transfer_required = dague_data_transfer_ownership_to_copy(original, mic_device->super.device_index, (uint8_t)type);
     mic_device->super.required_data_in += original->nb_elts;
     if( transfer_required ) {
         int status;
 
-        DAGUE_OUTPUT_VERBOSE((5, dague_mic_output_stream,
+        DAGUE_OUTPUT_VERBOSE((2, dague_mic_output_stream,
                               "GPU:\tMove data %x (%p:%p) to GPU\n",
                               original->key, in_elem->device_private, (void*)gpu_elem->device_private));
         /* Push data into the GPU */
@@ -637,7 +641,7 @@ int progress_stream_mic( mic_device_t* mic_device,
         assert(0); // want to debug this. It happens too often
         /* No more room on the GPU. Push the task back on the queue and check the completion queue. */
         DAGUE_FIFO_PUSH(exec_stream->fifo_pending, (dague_list_item_t*)task);
-        DAGUE_OUTPUT_VERBOSE((2, dague_mic_output_stream,
+        DAGUE_OUTPUT_VERBOSE((3, dague_mic_output_stream,
                               "GPU: Reschedule %s(task %p) priority %d: no room available on the GPU for data\n",
                               task->ec->function->name, (void*)task->ec, task->ec->priority ));
         saved_rc = rc;  /* keep the info for the upper layer */
@@ -667,7 +671,8 @@ int progress_stream_mic( mic_device_t* mic_device,
             /* Save the task for the next step */
             task = *out_task = exec_stream->tasks[exec_stream->end];
             DAGUE_OUTPUT_VERBOSE((3, dague_mic_output_stream,
-                                  "GPU: Complete %s(task %p)\n", task->ec->function->name, (void*)task ));
+                                  "GPU: Event for task %s(task %p) encountered\n",
+                                  task->ec->function->name, (void*)task->ec ));
             exec_stream->tasks[exec_stream->end] = NULL;
             exec_stream->end = (exec_stream->end + 1) % exec_stream->max_events;
             DAGUE_TASK_PROF_TRACE_IF(exec_stream->prof_event_track_enable,
@@ -684,22 +689,6 @@ int progress_stream_mic( mic_device_t* mic_device,
             DAGUE_CUDA_CHECK_ERROR( "cuEventQuery ", rc,
                                     {return -1;} );
         }
-#if 0
-        else {
-            static cudaEvent_t ev = NULL;
-            static double first = 0.0;
-            static double last = 0.0;
-            double new = MPI_Wtime();
-            if(exec_stream->events[exec_stream->end] != ev) {
-                first = new;
-                ev = exec_stream->events[exec_stream->end];
-                printf("%p : %f\tNEW\tsince last poll (on the prev. event)\n", ev, first - last);
-            } else {
-                printf("%p : %f\tsame\tsince last poll (on the same event)\tTOTAL: %f\n", ev, new - last, new - first);
-            }
-            last = new;
-        }
-#endif
     }
     return saved_rc;
 }
