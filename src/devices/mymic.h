@@ -196,7 +196,7 @@ static inline int micMemcpyAsync(void* host_addr, off_t roffset, size_t length, 
 	//printf("src size %lu, dst size %lu\n", src->actual_nbyte, dst->actual_nbyte);
 
 	if (kind == micMemcpyHostToDevice) {
-		printf("host_addr %p, epd %d\n", host_addr, epd);
+		printf("IN host_addr %p, epd %d\n", host_addr, epd);
 		if ((err = scif_vwriteto(epd,
 					host_addr, /* local RAS offset */
 					length,
@@ -210,7 +210,7 @@ static inline int micMemcpyAsync(void* host_addr, off_t roffset, size_t length, 
 	//	printf("after epd %d\n", epd2);
 		
 	} else if (kind == micMemcpyDeviceToHost) {
-		printf("host_addr %p, epd %d\n", host_addr, epd);
+		printf("OUT host_addr %p, epd %d\n", host_addr, epd);
 		if ((err = scif_vreadfrom(epd,
 					host_addr, /* local RAS offset */
 					length,
@@ -230,8 +230,8 @@ static inline int micMemcpyAsync(void* host_addr, off_t roffset, size_t length, 
 
 static inline int micMemGetInfo(size_t *free_mem, size_t *total_mem )
 {
-	*free_mem = sizeof(double)*4096*1024*100;
-	*total_mem = sizeof(double)*4096*1024*100;
+	*free_mem = sizeof(double)*4096*1024*16;
+	*total_mem = sizeof(double)*4096*1024*16;
 	return MIC_SUCCESS;
 }
 
@@ -263,16 +263,22 @@ static inline int micEventRecord(mic_mem_t *event_queue, int event_no, int strea
 {
 	int i = 1, rc;
 	uint64_t v;
-	if (i) {    // for memcpy only, but I dont know how to check the task type now.
+	uint64_t *queue_value = (uint64_t *)event_queue->addr;
+	if (stream != 2) {    // TODO: I dont know how to check the task name now.
 		off_t base_offset, now_offset;
 		base_offset = event_queue->offset;
 		size_t diff = sizeof(uint64_t)*event_no;
 		now_offset = base_offset + diff;
 		v = 1;
 		rc = scif_fence_signal (epd, now_offset, v, 0, 0, SCIF_FENCE_INIT_SELF | SCIF_SIGNAL_LOCAL);
-		printf("I record a event %d at queue: %p\n", event_no, event_queue);
+		if (rc != 0) {
+			printf("scif_fence_signal error\n");
+			return MIC_ERROR;
+		}
+	//	printf("I record a event %d at queue: %p, stream %d\n", event_no, event_queue, stream);
 		 
 	} else {    // for compute
+		queue_value[event_no] = 1;	
 	}
 	return MIC_SUCCESS;
 }
@@ -282,7 +288,7 @@ static inline int micEventQuery(mic_mem_t *event_queue, int event_no)
 	uint64_t *queue_value = (uint64_t *)event_queue->addr;
 	if (queue_value[event_no] == 1) {
 		queue_value[event_no] = 0;
-		printf("event no %d in queue %p is released\n", event_no, event_queue);
+//		printf("event no %d in queue %p is released\n", event_no, event_queue);
 		return MIC_SUCCESS;
 	} else {
 		return MIC_ERROR;

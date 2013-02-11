@@ -15,6 +15,7 @@
 #include <stdlib.h>
 
 #include <dague/devices/cuda/dev_cuda.h>
+#include <dague/devices/mic/dev_mic.h>
 
 uint32_t dague_nb_devices = 0;
 static uint32_t dague_nb_max_devices = 0;

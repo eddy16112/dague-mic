@@ -4,13 +4,14 @@
  *                         reserved.
  */
 
-#ifndef DAGUE_GPU_DATA_H_HAS_BEEN_INCLUDED
-#define DAGUE_GPU_DATA_H_HAS_BEEN_INCLUDED
+#ifndef DEV_MIC_H_HAS_BEEN_INCLUDED
+#define DEV_MIC_H_HAS_BEEN_INCLUDED
 
 #include <dague_config.h>
 #include "dague_internal.h"
 #include <dague/class/dague_object.h>
 #include <dague/devices/device.h>
+#include <dague/devices/mymic.h>
 
 #if defined(HAVE_CUDA)
 #include "list_item.h"
@@ -43,15 +44,15 @@ extern int dague_cuda_own_GPU_key_end;
 
 extern float *device_load, *device_weight;
 
-typedef struct __dague_gpu_context {
+typedef struct __dague_mic_context {
     dague_list_item_t          list_item;
     dague_execution_context_t *ec;
-} dague_gpu_context_t;
+} dague_mic_context_t;
 
-typedef struct __dague_gpu_exec_stream {
-    struct __dague_gpu_context **tasks;
-    CUevent *events;
-    CUstream cuda_stream;
+typedef struct __dague_mic_exec_stream {
+    struct __dague_mic_context **tasks;
+    mic_mem_t *events;
+    int mic_stream;
     int32_t max_events;  /* number of potential events, and tasks */
     int32_t executed;    /* number of executed tasks */
     int32_t start, end;  /* circular buffer management start and end positions */
@@ -60,28 +61,27 @@ typedef struct __dague_gpu_exec_stream {
     int prof_event_track_enable;
     int prof_event_key_start, prof_event_key_end;
 #endif  /* defined(PROFILING) */
-} dague_gpu_exec_stream_t;
+} dague_mic_exec_stream_t;
 
-typedef struct _gpu_device {
-    dague_device_t super;
-    uint8_t major;
-    uint8_t minor;
-    uint8_t cuda_index;
+typedef struct _mic_device {
+	dague_device_t super;
+    uint8_t mic_index;
     uint8_t max_exec_streams;
     int16_t peer_access_mask;  /**< A bit set to 1 represent the capability of
                                 *   the device to access directly the memory of
                                 *   the index of the set bit device.
                                 */
-    CUcontext  ctx;
-    CUmodule   hcuModule;
-    CUfunction hcuFunction;
-    dague_gpu_exec_stream_t* exec_stream;
-    volatile uint32_t mutex;
+//    CUcontext  ctx;
+//    CUmodule   hcuModule;
+//    CUfunction hcuFunction;
+    dague_mic_exec_stream_t* exec_stream;
     dague_list_t gpu_mem_lru;
     dague_list_t gpu_mem_owned_lru;
+    volatile uint32_t mutex;
     dague_list_t pending;
     gpu_malloc_t *memory;
-} gpu_device_t;
+    scif_epd_t epd;
+} mic_device_t;
 
 #define DAGUE_CUDA_CHECK_ERROR( STR, ERROR, CODE )                      \
     do {                                                                \
@@ -93,14 +93,14 @@ typedef struct _gpu_device {
         }                                                               \
     } while(0)
 
-int dague_gpu_init(dague_context_t *dague_context);
-int dague_gpu_fini(void);
+int dague_mic_init(dague_context_t *dague_context);
+int dague_mic_fini(void);
 
 /**
  * Debugging functions.
  */
-void dump_exec_stream(dague_gpu_exec_stream_t* exec_stream);
-void dump_GPU_state(gpu_device_t* gpu_device);
+//void dump_exec_stream(dague_gpu_exec_stream_t* exec_stream);
+//void dump_GPU_state(gpu_device_t* gpu_device);
 
 /****************************************************
  ** GPU-DATA Specific Starts Here **
@@ -116,36 +116,41 @@ typedef dague_data_copy_t dague_gpu_data_copy_t;
 /*
  * Data [un]registering
  */
-int dague_gpu_data_register( dague_context_t *dague_context,
+int dague_mic_data_register( dague_context_t *dague_context,
                              dague_ddesc_t   *data,
                              int              nbelem,
                              size_t           eltsize );
-int dague_gpu_data_unregister( dague_ddesc_t* data );
+int dague_mic_data_unregister( dague_ddesc_t* data );
 
 /*
  * Data movement
  */
-int dague_gpu_data_reserve_device_space( gpu_device_t* gpu_device,
+int dague_mic_data_reserve_device_space( mic_device_t* mic_device,
                                          dague_execution_context_t *this_task,
                                          int  move_data_count );
 
-int dague_gpu_data_stage_in( gpu_device_t* gpu_device,
+int dague_mic_data_stage_in( mic_device_t* mic_device,
                              int32_t type,
                              dague_data_pair_t* task_data,
-                             CUstream stream );
+                             int stream );
 
 /**
  * Progress
  */
-typedef int (*advance_task_function_t)(gpu_device_t* gpu_device,
-                                       dague_gpu_context_t* task,
-                                       dague_gpu_exec_stream_t* gpu_stream);
+typedef int (*mic_advance_task_function_t)(mic_device_t* mic_device,
+                                       dague_mic_context_t* task,
+                                       dague_mic_exec_stream_t* mic_stream);
 
-int progress_stream( gpu_device_t* gpu_device,
-                     dague_gpu_exec_stream_t* gpu_stream,
-                     advance_task_function_t progress_fct,
-                     dague_gpu_context_t* task,
-                     dague_gpu_context_t** out_task );
+int progress_stream_mic( mic_device_t* mic_device,
+                     	 dague_mic_exec_stream_t* mic_stream,
+                     	 mic_advance_task_function_t progress_fct,
+                     	 dague_mic_context_t* task,
+                     	 dague_mic_context_t** out_task );
+
+void* mic_solve_handle_dependencies(mic_device_t* mic_device,
+                                     const char* fname);
+
+
 
 #endif /* defined(HAVE_CUDA) */
 

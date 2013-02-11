@@ -6,7 +6,7 @@ macro(dague_addtest lang target input)
       set(${target}_LDFLAGS "${MPI_LINK_FLAGS} ${${target}_LDFLAGS}")
       set(${target}_LIBS    dague-mpi dague_distribution_matrix-mpi dague-base ${EXTRA_LIBS} ${${target}_LIBS} ${MPI_LIBRARIES})
     else ( MPI_FOUND )
-      set(${target}_LIBS    scif dague dague_distribution_matrix dague-base ${EXTRA_LIBS} ${${target}_LIBS})
+      set(${target}_LIBS    dague dague_distribution_matrix dague-base ${EXTRA_LIBS} ${${target}_LIBS})
     endif()
 
     add_executable(${target} ${input})

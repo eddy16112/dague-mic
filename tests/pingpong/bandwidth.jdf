@@ -244,7 +244,7 @@ t = 0 .. NT-1
 CTL C -> C PING(t, 0 .. NF-1)
       <- (t > 0) ? C PONG(t-1, 0 .. NF-1)
 BODY
-    printf("SYNC(%d)\n", t);
+  //  printf("SYNC(%d)\n", t);
 END
 
 PING(t, f)
@@ -261,7 +261,7 @@ CTL  C <- C SYNC(t)
 ; (t * (NT-1)) + f
 
 BODY
-    printf("PING(%d, %d)\n", t, f);
+//    printf("PING(%d, %d)\n", t, f);
 END
 
 PONG(t, f)
@@ -278,7 +278,7 @@ CTL  C -> C SYNC(t+1)
 ; (t * (NT-1)) + f
 
 BODY [type = CUDA]
-    printf("PONG CUDA(%d, %d)\n", t, f);
+  //  printf("PONG CUDA(%d, %d)\n", t, f);
     return bandwidth_cuda(context, this_task, gT);
 END
 
@@ -357,7 +357,7 @@ int main(int argc, char *argv[])
 
         t = (tend.tv_sec - tstart.tv_sec) * 1000000.0 + (tend.tv_usec - tstart.tv_usec);
         assert(t > 0.0);
-        bw = ((double)loops * (double)frags * (double)size) / t * ((1000.0 * 1000.0) / (1024.0 * 1024.0));
+        bw = 2*((double)loops * (double)frags * (double)size) / t * ((1000.0 * 1000.0) / (1024.0 * 1024.0));
         printf("[%d, %d, %d, %08.4g] %4.8g MB/s\n", loops, frags, size, t / 1000000.0, bw);
 
         bandwidth_destroy(bw_test);

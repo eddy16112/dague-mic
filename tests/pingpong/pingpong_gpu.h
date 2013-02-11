@@ -5,6 +5,7 @@
 #include <data_distribution.h>
 #include <data.h>
 #include <dague/devices/cuda/dev_cuda.h>
+#include <dague/devices/mic/dev_mic.h>
 #include <dague/devices/device_malloc.h>
 #include <fifo.h>
 #include "scheduling.h"
@@ -179,7 +180,7 @@ gpu_kernel_submit_bandwidth( gpu_device_t        *gpu_device,
 
 static int
 mic_kernel_push_bandwidth( mic_device_t            *mic_device,
-                           dague_gpu_context_t     *gpu_task,
+                           dague_mic_context_t     *gpu_task,
                            dague_mic_exec_stream_t *mic_stream)
 {
     int i, ret, move_data_count = 0;
@@ -236,7 +237,7 @@ mic_kernel_push_bandwidth( mic_device_t            *mic_device,
         DEBUG3(("GPU[%1d]:\tIN  Data of %s(%d) on GPU\n",
                 gpu_device->cuda_index, this_task->function->in[i]->name,
                 (int)this_task->data[i].data->original.key));
-		printf("PUSH MIC\n");
+		//printf("PUSH MIC\n");
         ret = dague_mic_data_stage_in( mic_device, this_task->function->in[i]->access_type,
                                        &(this_task->data[i]), mic_stream->mic_stream );
         if( ret < 0 ) {
@@ -250,7 +251,7 @@ mic_kernel_push_bandwidth( mic_device_t            *mic_device,
 
 static int
 mic_kernel_pop_bandwidth( mic_device_t        *mic_device,
-                          dague_gpu_context_t *gpu_task,
+                          dague_mic_context_t *gpu_task,
                           dague_mic_exec_stream_t* mic_stream)
 {
     dague_execution_context_t *this_task = gpu_task->ec;
@@ -310,7 +311,7 @@ mic_kernel_pop_bandwidth( mic_device_t        *mic_device,
 			mic_base = mic_device->memory->base;
 			mic_now = (char *)gpu_copy->device_private;
 			diff = mic_now - mic_base;
-			printf("POP MIC\n");
+			//printf("POP MIC\n");
 			rc = micMemcpyAsync(original->device_copies[0]->device_private, mic_device->memory->offset+diff, original->nb_elts, micMemcpyDeviceToHost);
 			if (rc != MIC_SUCCESS) {
 				return_code = -2;
@@ -327,7 +328,7 @@ mic_kernel_pop_bandwidth( mic_device_t        *mic_device,
 
 static int
 mic_kernel_epilog_bandwidth( mic_device_t        *mic_device,
-                             dague_gpu_context_t *gpu_task )
+                             dague_mic_context_t *gpu_task )
 {
     dague_execution_context_t *this_task = gpu_task->ec;
     dague_gpu_data_copy_t     *gpu_copy;
@@ -353,7 +354,7 @@ mic_kernel_epilog_bandwidth( mic_device_t        *mic_device,
 
 static int
 mic_kernel_submit_bandwidth( mic_device_t        *gpu_device,
-                             dague_gpu_context_t *gpu_task,
+                             dague_mic_context_t *gpu_task,
                              dague_mic_exec_stream_t* mic_stream )
 {
     return 0;
@@ -362,6 +363,7 @@ mic_kernel_submit_bandwidth( mic_device_t        *gpu_device,
 
 #define KERNEL_NAME bandwidth
 #include <dague/devices/cuda/cuda_scheduling.h>
+#include <dague/devices/mic/mic_scheduling.h>
 
 int bandwidth_cuda(dague_execution_unit_t* eu_context,
                    dague_execution_context_t* this_task,
@@ -377,7 +379,7 @@ int bandwidth_cuda(dague_execution_unit_t* eu_context,
 
 	printf("before enter scheduler\n");
     //return gpu_kernel_scheduler_bandwidth( eu_context, gpu_task, 1 );
-	return mic_kernel_scheduler_bandwidth( eu_context, gpu_task, 1 );
+	return mic_kernel_scheduler_bandwidth( eu_context, (dague_mic_context_t*)gpu_task, 1 );
 
 }
 
