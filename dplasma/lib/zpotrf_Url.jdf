@@ -36,6 +36,7 @@ uplo       [type = PLASMA_enum]
 descA      [type = "tiled_matrix_desc_t"]
 A          [type = "dague_ddesc_t *"]
 INFO       [type = "int*"]
+smallnb    [type = "int" hidden=on default="(192)" ]
 
 /**************************************************
  *                      POTRF                     *

@@ -65,8 +65,10 @@ void tiled_matrix_desc_init( tiled_matrix_desc_t *tdesc,
     tdesc->lnt = (ln%nb==0) ? (ln/nb) : (ln/nb+1);
 
     /* Update lm and ln to include the padding */
-    tdesc->lm = tdesc->lmt * tdesc->mb;
-    tdesc->ln = tdesc->lnt * tdesc->nb;
+    if ( storage != matrix_Lapack ) {
+        tdesc->lm = tdesc->lmt * tdesc->mb;
+        tdesc->ln = tdesc->lnt * tdesc->nb;
+    }
 
     /* WARNING: This has to be removed when padding will be removed */
 #if defined(HAVE_MPI)
