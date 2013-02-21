@@ -72,7 +72,7 @@ void tiled_matrix_desc_init( tiled_matrix_desc_t *tdesc,
 
     /* WARNING: This has to be removed when padding will be removed */
 #if defined(HAVE_MPI)
-    if ( storage == matrix_Lapack ) {
+    if ( storage == matrix_Lapack && nodes > 1) {
         if ( tdesc->lm %mb != 0 ) {
             fprintf(stderr, "In distributed with Lapack storage, lm has to be a multiple of mb\n");
             MPI_Abort(MPI_COMM_WORLD, 2);
