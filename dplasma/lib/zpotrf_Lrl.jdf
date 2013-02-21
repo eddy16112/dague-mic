@@ -118,7 +118,6 @@ BODY
         dague_object_t *dague_zpotrf;
         cb_data_t      *cbdata_zpotrf;
 
-        fprintf(stderr, "Split POTRF on tile (%d, %d)\n", k, k);
         small_descT = (two_dim_block_cyclic_t *) malloc(sizeof(two_dim_block_cyclic_t));
         two_dim_block_cyclic_init(small_descT,
                                   matrix_ComplexDouble, matrix_Lapack,
@@ -215,7 +214,6 @@ BODY
         dague_object_t* dague_ztrsm;
         cb_data_t  *cbdata_ztrsm;
 
-        fprintf(stderr, "Split TRSM(%d, %d)\n", m, k);
         small_descT = (two_dim_block_cyclic_t *) malloc(sizeof(two_dim_block_cyclic_t));
         small_descC = (two_dim_block_cyclic_t *) malloc(sizeof(two_dim_block_cyclic_t));
 
@@ -320,7 +318,6 @@ BODY
         dague_object_t* dague_zherk;
         cb_data_t  *cbdata_zherk;
 
-        fprintf(stderr, "Split HERK(%d, %d)\n", k, m);
         small_descT = (two_dim_block_cyclic_t *) malloc(sizeof(two_dim_block_cyclic_t));
         small_descA = (two_dim_block_cyclic_t *) malloc(sizeof(two_dim_block_cyclic_t));
 
