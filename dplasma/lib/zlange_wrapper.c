@@ -166,3 +166,4 @@ double dplasma_zlange( dague_context_t *dague,
 
     return result;
 }
+
