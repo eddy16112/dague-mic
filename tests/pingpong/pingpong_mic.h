@@ -28,11 +28,11 @@ mic_kernel_push_bandwidth( mic_device_t            *mic_device,
     for( i = 0; i < this_task->function->nb_parameters; i++ ) {
         if(NULL == this_task->function->in[i]) continue;
 
-		this_task->data[i].data_out = NULL;  /* TODO: clean this up to segfault */
+        this_task->data[i].data_out = NULL;  /* TODO: clean this up to segfault */
         data = this_task->data[i].data_in;
         original = data->original;
         if( NULL != (local = dague_data_get_copy(original, mic_device->super.device_index)) ) {
-			this_task->data[i].data_out = local;
+            this_task->data[i].data_out = local;
             /* Check the most up2date version of the data */
             if( data->device_index != mic_device->super.device_index ) {
                 if(data->version <= local->version) {
