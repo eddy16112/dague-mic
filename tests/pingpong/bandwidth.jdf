@@ -234,6 +234,7 @@ bw_destroy(dague_handle_t *o)
     DAGUE_INTERNAL_HANDLE_DESTRUCT(o);
 }
 
+static struct timeval tlast;
 %}
 
 NT  /* number of turns */
@@ -249,7 +250,16 @@ t = 0 .. NT-1
 CTL C -> C PING(t, 0 .. NF-1)
       <- (t > 0) ? C PONG(t-1, 0 .. NF-1)
 BODY
-  //  printf("SYNC(%d)\n", t);
+ /*   struct timeval tnow;
+    gettimeofday(&tnow, NULL);  //  printf("SYNC(%d)\n", t);
+    if( 0 != t ) {
+         int size = ((my_datatype_t*)__dague_handle->super.A)->size;
+         long tdiffusec = (tnow.tv_sec - tlast.tv_sec) * 1000000.0 + (tnow.tv_usec - tlast.tv_usec);
+
+         double bw = ((double)NF * (double)size) / tdiffusec * ((1000.0 * 1000.0) / (1024.0 * 1024.0)) * 2.0;
+         printf("[%d, %d, %08.4g] %4.8g MB/s\n", NF, size, tdiffusec / 1000000.0, bw);
+    }
+    tlast = tnow;*/
 END
 
 PING(t, f)

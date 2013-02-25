@@ -71,10 +71,10 @@ mic_kernel_scheduler( dague_execution_unit_t *eu_context,
         dague_fifo_push( &(mic_device->pending), (dague_list_item_t*)this_task );
         return DAGUE_HOOK_RETURN_ASYNC;
     }
-    
-/*    do {
-        saved_ctx = gpu_device->ctx;
-        dague_atomic_cas( &(gpu_device->ctx), saved_ctx, NULL );
+   /* 
+    do {
+        saved_ctx = mic_device->ctx;
+        dague_atomic_cas( &(mic_device->ctx), saved_ctx, NULL );
     } while( NULL == saved_ctx );*/
     
 #if defined(DAGUE_PROF_TRACE)
@@ -179,7 +179,7 @@ complete_task:
 #endif  /* defined(DAGUE_PROF_TRACE) */
  //       status = (cudaError_t)cuCtxPopCurrent(NULL);
         /* Restore the context so the others can steal it */
- //       dague_atomic_cas( &(gpu_device->ctx), NULL, saved_ctx );
+   //     dague_atomic_cas( &(mic_device->ctx), NULL, saved_ctx );
         
   //      DAGUE_CUDA_CHECK_ERROR( "cuCtxPushCurrent ", status,
   //                             {return DAGUE_HOOK_RETURN_ASYNC;} );

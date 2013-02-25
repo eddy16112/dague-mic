@@ -10,6 +10,7 @@
 #include <fifo.h>
 #include "scheduling.h"
 
+#define HAVE_MIC
 extern int dague_cuda_output_stream;
 
 static int
@@ -17,6 +18,7 @@ mic_kernel_push_bandwidth( mic_device_t            *mic_device,
                            dague_mic_context_t     *gpu_task,
                            dague_mic_exec_stream_t *mic_stream)
 {
+#if defined(HAVE_MIC)
     int i, ret, space_needed = 0;
     dague_execution_context_t *this_task = gpu_task->ec;
     dague_data_t              *original;
@@ -58,12 +60,12 @@ mic_kernel_push_bandwidth( mic_device_t            *mic_device,
         }
     }
 
-    DAGUE_TASK_PROF_TRACE_IF(gpu_stream->prof_event_track_enable,
-                             gpu_device->super.profiling,
-                             (-1 == gpu_stream->prof_event_key_start ?
+    DAGUE_TASK_PROF_TRACE_IF(mic_stream->prof_event_track_enable,
+                             mic_device->super.profiling,
+                             (-1 == mic_stream->prof_event_key_start ?
                               DAGUE_PROF_FUNC_KEY_START(this_task->dague_handle,
                                                         this_task->function->function_id) :
-                              gpu_stream->prof_event_key_start),
+                              mic_stream->prof_event_key_start),
                              this_task);
 
     for( i = 0; i < this_task->function->nb_parameters; i++ ) {
@@ -84,6 +86,9 @@ mic_kernel_push_bandwidth( mic_device_t            *mic_device,
 
   release_and_return_error:
     return ret;
+#else 
+	return 0;
+#endif
 }
 
 static int
@@ -91,6 +96,7 @@ mic_kernel_pop_bandwidth( mic_device_t        *mic_device,
                           dague_mic_context_t *gpu_task,
                           dague_mic_exec_stream_t* mic_stream)
 {
+#if defined(HAVE_MIC)
     dague_execution_context_t *this_task = gpu_task->ec;
     dague_gpu_data_copy_t     *gpu_copy;
     dague_data_t              *original;
@@ -128,12 +134,12 @@ mic_kernel_pop_bandwidth( mic_device_t        *mic_device,
                                   "GPU[%1d]:\tOUT Data of %s key %d\n", mic_device->mic_index,
                                   this_task->function->out[i]->name, this_task->data[i].data_out->original->key));
             if(first) {
-                DAGUE_TASK_PROF_TRACE_IF(gpu_stream->prof_event_track_enable,
-                                         gpu_device->super.profiling,
-                                         (-1 == gpu_stream->prof_event_key_start ?
+                DAGUE_TASK_PROF_TRACE_IF(mic_stream->prof_event_track_enable,
+                                         mic_device->super.profiling,
+                                         (-1 == mic_stream->prof_event_key_start ?
                                           DAGUE_PROF_FUNC_KEY_START(this_task->dague_handle,
                                                                     this_task->function->function_id) :
-                                          gpu_stream->prof_event_key_start),
+                                          mic_stream->prof_event_key_start),
                                          this_task);
                 first = 0;
             }
@@ -165,12 +171,17 @@ mic_kernel_pop_bandwidth( mic_device_t        *mic_device,
 
   release_and_return_error:
     return (return_code < 0 ? return_code : how_many);
+
+#else 
+	return 0;
+#endif
 }
 
 static int
 mic_kernel_epilog_bandwidth( mic_device_t        *mic_device,
                              dague_mic_context_t *gpu_task )
 {
+#if defined(HAVE_MIC)
     dague_execution_context_t *this_task = gpu_task->ec;
     dague_gpu_data_copy_t     *gpu_copy;
     dague_data_t              *original;
@@ -193,6 +204,9 @@ mic_kernel_epilog_bandwidth( mic_device_t        *mic_device,
         dague_ulist_fifo_push(&mic_device->gpu_mem_lru, (dague_list_item_t*)gpu_copy);
     }
     return 0;
+#else 
+	return 0;
+#endif
 }
 
 static int

@@ -205,9 +205,9 @@ int dague_mic_init(dague_context_t *dague_context)
 
         mic_device = (mic_device_t*)calloc(1, sizeof(mic_device_t));
         OBJ_CONSTRUCT(mic_device, dague_list_item_t);
-        mic_device->super.name = strdup(szName);
+        mic_device->super.name = strdup(szName);	
 
-        mic_device->max_exec_streams = 3;
+        mic_device->max_exec_streams = DAGUE_MAX_STREAMS;
         mic_device->exec_stream =
             (dague_mic_exec_stream_t*)malloc(mic_device->max_exec_streams
                                              * sizeof(dague_mic_exec_stream_t));
@@ -653,6 +653,7 @@ int progress_stream_mic( mic_device_t* mic_device,
          * Obviously, this lead to incorrect results.
          */
     //    rc = cuEventRecord( exec_stream->events[exec_stream->start], exec_stream->cuda_stream );
+	//	printf("record event %d on stream %d\n", exec_stream->start, exec_stream->mic_stream);
 		rc = micEventRecord(exec_stream->events, exec_stream->start, exec_stream->mic_stream);
         exec_stream->tasks[exec_stream->start] = task;
         exec_stream->start = (exec_stream->start + 1) % exec_stream->max_events;
@@ -667,8 +668,10 @@ int progress_stream_mic( mic_device_t* mic_device,
   //      rc = cuEventQuery(exec_stream->events[exec_stream->end]);
 		rc = micEventQuery(exec_stream->events, exec_stream->end);
      //   if( CUDA_SUCCESS == rc ) {
+		//rc = MIC_SUCCESS;
 		if( MIC_SUCCESS == rc ) {
             /* Save the task for the next step */
+	//		printf("release event %d on stream %d\n", exec_stream->end, exec_stream->mic_stream);
             task = *out_task = exec_stream->tasks[exec_stream->end];
             DAGUE_OUTPUT_VERBOSE((3, dague_mic_output_stream,
                                   "GPU: Event for task %s(task %p) encountered\n",
