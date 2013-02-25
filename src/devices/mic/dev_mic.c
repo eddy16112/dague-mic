@@ -573,7 +573,7 @@ int dague_mic_data_stage_in( mic_device_t* mic_device,
         int status;
 
         DAGUE_OUTPUT_VERBOSE((2, dague_mic_output_stream,
-                              "GPU:\tMove data %x (%p:%p) to GPU\n",
+                              "GPU:\tMove data <%x> (%p:%p) to GPU requested\n",
                               original->key, in_elem->device_private, (void*)gpu_elem->device_private));
         /* Push data into the GPU */
 		char *mic_base, *mic_now;
