@@ -169,7 +169,11 @@ create_and_distribute_data(int rank, int world, int frags, int size)
     m->size  = size;
     m->data  = (dague_data_t**)calloc(frags, sizeof(dague_data_t*));
 #if defined(HAVE_MIC)
-	posix_memalign(&((void*)m->ptr), PAGE_SIZE, frags * size * sizeof(uint8_t));
+	size_t t_size = frags * size * sizeof(uint8_t);
+	if (t_size % PAGE_SIZE != 0) {
+    	t_size = ((t_size / PAGE_SIZE) + 1) * PAGE_SIZE;
+  	}
+	posix_memalign(&((void*)m->ptr), PAGE_SIZE, t_size);
 #else
     m->ptr   = (uint8_t*)calloc(frags * size, sizeof(uint8_t));
 #endif

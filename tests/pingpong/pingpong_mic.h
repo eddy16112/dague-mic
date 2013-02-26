@@ -159,8 +159,18 @@ mic_kernel_pop_bandwidth( mic_device_t        *mic_device,
             mic_base = mic_device->memory->base;
             mic_now = (char *)gpu_copy->device_private;
             diff = mic_now - mic_base;
+	
+			mic_mem_t *cpu_base = dague_mic_get_cpu_base(original->device_copies[0]->device_private, mic_device);
+			if (cpu_base == NULL) {
+				printf("cpu ptr can not be found\n");
+				return -1;
+			}
+			size_t diff_cpu = (char*)original->device_copies[0]->device_private - (char*)cpu_base->addr;
+
+		//	printf("out cpu mem:%p, key%x\n", original->device_copies[0]->device_private, original->key);
+			rc = micMemcpyAsync(cpu_base->offset+diff_cpu, mic_device->memory->offset+diff, original->nb_elts, micMemcpyDeviceToHost);
             //printf("POP MIC\n");
-            rc = micMemcpyAsync(original->device_copies[0]->device_private, mic_device->memory->offset+diff, original->nb_elts, micMemcpyDeviceToHost);
+            //rc = micVMemcpyAsync(original->device_copies[0]->device_private, mic_device->memory->offset+diff, original->nb_elts, micMemcpyDeviceToHost);
             if (rc != MIC_SUCCESS) {
                 return_code = -2;
                 goto release_and_return_error;

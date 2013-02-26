@@ -144,6 +144,19 @@ static inline int micHostAlloc(mic_mem_t *mic_mem_host, size_t size)
 	
 }
 
+static inline off_t micHostRegister(void *pHost, size_t size)
+{
+	off_t offset, suggested_offset;
+	suggested_offset = 0x0;
+	if((offset = scif_register(epd, pHost, size, suggested_offset,
+                               SCIF_PROT_READ | SCIF_PROT_WRITE, 0)) < 0) {
+    	printf("scif_register failed with err %d\n", errno);
+    	fflush(stdout);
+    	return 0x0;
+  	}
+	return offset;
+}
+
 static inline int micInit()
 {
 	int conn_port, req_port, conn, tries;
@@ -190,7 +203,7 @@ static inline int micInit()
 	return MIC_SUCCESS;
 }
 
-static inline int micMemcpyAsync(void* host_addr, off_t roffset, size_t length, enum micMemcpyKind kind)
+static inline int micVMemcpyAsync(void* host_addr, off_t roffset, size_t length, enum micMemcpyKind kind)
 {
 	int err = 0;
 	double *value;
@@ -214,6 +227,45 @@ static inline int micMemcpyAsync(void* host_addr, off_t roffset, size_t length, 
 		//printf("OUT host_addr %p, epd %d\n", host_addr, epd);
 		if ((err = scif_vreadfrom(epd,
 					host_addr, /* local RAS offset */
+					length,
+					roffset, /* remote RAS offset */
+					0))) {
+
+			printf("scif_vreadfrom failed with err %d\n", errno);
+			check_error_code(errno);
+			return MIC_ERROR;
+		}
+	//	sleep(5);
+	//	printf("get value %f\n", value[79]);
+	}
+
+	return MIC_SUCCESS;
+}
+
+static inline int micMemcpyAsync(off_t host_offset, off_t roffset, size_t length, enum micMemcpyKind kind)
+{
+	int err = 0;
+	double *value;
+	//printf("src size %lu, dst size %lu\n", src->actual_nbyte, dst->actual_nbyte);
+
+	if (kind == micMemcpyHostToDevice) {
+		//printf("IN host_addr %p, epd %d\n", host_addr, epd);
+		if ((err = scif_writeto(epd,
+					host_offset, /* local RAS offset */
+					length,
+					roffset, /* remote RAS offset */
+					0))) {
+
+			printf("scif_vwriteto failed with err %d\n", errno);
+			return MIC_ERROR;
+		
+		}
+	//	printf("after epd %d\n", epd2);
+		
+	} else if (kind == micMemcpyDeviceToHost) {
+		//printf("OUT host_addr %p, epd %d\n", host_addr, epd);
+		if ((err = scif_readfrom(epd,
+					host_offset, /* local RAS offset */
 					length,
 					roffset, /* remote RAS offset */
 					0))) {

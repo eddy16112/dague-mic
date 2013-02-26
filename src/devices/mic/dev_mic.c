@@ -53,25 +53,36 @@ static int dague_mic_device_fini(dague_device_t* device)
 	return DAGUE_SUCCESS;
 }
 
+mic_mem_t* dague_mic_get_cpu_base(void* ptr, mic_device_t* mic_device)
+{
+	int i;
+	for (i = 0; i < mic_device->num_of_cpu_ptr; i++) {
+		if (ptr >= mic_device->cpu_ptr[i].addr && ptr < mic_device->cpu_ptr[i].addr+mic_device->cpu_ptr[i].actual_nbyte) {
+			return &mic_device->cpu_ptr[i];
+		}
+	}
+	return NULL;
+}
+
 static int dague_mic_host_memory_register(dague_device_t* device, void* ptr, size_t length)
 {
- /*   mic_device_t* mic_device = (mic_device_t*)device;
-    mic_mem_t *mem_host = (mic_mem_t *)malloc(sizeof(mic_mem_t));
+    mic_device_t* mic_device = (mic_device_t*)device;
+/*    mic_mem_t *mem_host = (mic_mem_t *)malloc(sizeof(mic_mem_t));
 	mem_host->addr = ptr;
     if (micHostAlloc(mem_host, length) == MIC_ERROR) {
         return DAGUE_ERROR;
     }
     ptr = mem_host->addr;*/
+	mic_device->cpu_ptr[mic_device->num_of_cpu_ptr].addr = ptr;
+	off_t offset = micHostRegister(ptr, length);
+	if (offset == 0x0) {
+		return DAGUE_ERROR;
+	}
+	mic_device->cpu_ptr[mic_device->num_of_cpu_ptr].offset = offset;
+	mic_device->cpu_ptr[mic_device->num_of_cpu_ptr].actual_nbyte = length;
+	mic_device->num_of_cpu_ptr ++;
 	printf("base %p\n", ptr);
-//    CUresult status;
-//    CUcontext ctx;
     
-    /* Atomically get the GPU context */
-/*    do {
-        ctx = gpu_device->ctx;
-        dague_atomic_cas( &(gpu_device->ctx), ctx, NULL );
-    } while( NULL == ctx );
-*/    
     return DAGUE_SUCCESS;
 }
 
@@ -249,6 +260,9 @@ int dague_mic_init(dague_context_t *dague_context)
             exec_stream->prof_event_key_end      = -1;
 #endif  /* defined(DAGUE_PROF_TRACE) */
         }
+
+		mic_device->cpu_ptr = (mic_mem_t *)malloc(sizeof(mic_mem_t) * MIC_MAX_PTR);
+		mic_device->num_of_cpu_ptr = 0;
 
         mic_device->mic_index                 = (uint8_t)i;
         mic_device->super.type                 = DAGUE_DEV_CUDA;  // TODO: this one should be replaced later. 
@@ -584,11 +598,19 @@ int dague_mic_data_stage_in( mic_device_t* mic_device,
 		mic_now = (char *)gpu_elem->device_private;
 		diff = mic_now - mic_base;
 
-		printf("cpu mem:%p, key%x\n", in_elem->device_private, original->key);
+		mic_mem_t *cpu_base = dague_mic_get_cpu_base(in_elem->device_private, mic_device);	
+		if (cpu_base == NULL) {
+			printf("cpu ptr can not be found\n");
+			return -1;
+		}
+		size_t diff_cpu = (char*)in_elem->device_private - (char*)cpu_base->addr;
+
+	//	printf("base: %p, cpu_diff: %lu, cpu mem:%p, mic base: %p, mic diff %lu, key%x\n", cpu_base->addr, (unsigned long)diff_cpu, in_elem->device_private, mic_base, diff, original->key);
 		
   //      status = (cudaError_t)cuMemcpyHtoDAsync( (CUdeviceptr)gpu_elem->device_private,
     //                                             in_elem->device_private, length, stream );
-		micMemcpyAsync((void *)in_elem->device_private, mic_device->memory->offset+diff, original->nb_elts, micMemcpyHostToDevice);
+	//	micVMemcpyAsync((void *)in_elem->device_private, mic_device->memory->offset+diff, original->nb_elts, micMemcpyHostToDevice);
+		micMemcpyAsync(cpu_base->offset+diff_cpu, mic_device->memory->offset+diff, original->nb_elts, micMemcpyHostToDevice);
    
         mic_device->super.transferred_data_in += original->nb_elts;
         /* TODO: take ownership of the data */

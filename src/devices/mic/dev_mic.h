@@ -26,6 +26,7 @@
 
 #define DAGUE_MAX_STREAMS            4
 #define DAGUE_MAX_EVENTS_PER_STREAM  4
+#define MIC_MAX_PTR					 10
 
 #if defined(DAGUE_PROF_TRACE)
 #define DAGUE_PROFILE_CUDA_TRACK_DATA_IN  0x0001
@@ -81,6 +82,8 @@ typedef struct _mic_device {
     dague_list_t pending;
     gpu_malloc_t *memory;
     scif_epd_t epd;
+	mic_mem_t *cpu_ptr;
+	int num_of_cpu_ptr;
 } mic_device_t;
 
 #define DAGUE_CUDA_CHECK_ERROR( STR, ERROR, CODE )                      \
@@ -151,6 +154,7 @@ void* mic_solve_handle_dependencies(mic_device_t* mic_device,
                                      const char* fname);
 
 
+mic_mem_t* dague_mic_get_cpu_base(void* ptr, mic_device_t* mic_device);
 
 #endif /* defined(HAVE_CUDA) */
 
