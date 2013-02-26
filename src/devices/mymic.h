@@ -120,6 +120,7 @@ static inline int micHostAlloc(mic_mem_t *mic_mem_host, size_t size)
 	void *pHost;
 	off_t offset, suggested_offset;
     
+	pHost = mic_mem_host->addr;
 	//make size multiple of PAGE_SIZE
   	if (size % PAGE_SIZE != 0) {
     	size = ((size / PAGE_SIZE) + 1) * PAGE_SIZE;

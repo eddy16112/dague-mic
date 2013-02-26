@@ -10,7 +10,7 @@
 #include <fifo.h>
 #include "scheduling.h"
 
-#define HAVE_MIC
+#define TEST_ALL
 extern int dague_cuda_output_stream;
 
 static int
@@ -18,7 +18,7 @@ mic_kernel_push_bandwidth( mic_device_t            *mic_device,
                            dague_mic_context_t     *gpu_task,
                            dague_mic_exec_stream_t *mic_stream)
 {
-#if defined(HAVE_MIC)
+#if defined(TEST_ALL)
     int i, ret, space_needed = 0;
     dague_execution_context_t *this_task = gpu_task->ec;
     dague_data_t              *original;
@@ -97,7 +97,7 @@ mic_kernel_pop_bandwidth( mic_device_t        *mic_device,
                           dague_mic_context_t *gpu_task,
                           dague_mic_exec_stream_t* mic_stream)
 {
-#if defined(HAVE_MIC)
+#if defined(TEST_ALL)
     dague_execution_context_t *this_task = gpu_task->ec;
     dague_gpu_data_copy_t     *gpu_copy;
     dague_data_t              *original;
@@ -182,7 +182,7 @@ static int
 mic_kernel_epilog_bandwidth( mic_device_t        *mic_device,
                              dague_mic_context_t *gpu_task )
 {
-#if defined(HAVE_MIC)
+#if defined(TEST_ALL)
     dague_execution_context_t *this_task = gpu_task->ec;
     dague_gpu_data_copy_t     *gpu_copy;
     dague_data_t              *original;

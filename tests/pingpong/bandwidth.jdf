@@ -16,6 +16,8 @@ extern "C" %{
 #include "tests/pingpong/pingpong_mic.h"
 #endif  /* defined(HAVE_CUDA) */
 
+#define HAVE_MIC
+
 typedef struct {
     dague_ddesc_t  super;
     int            frags;
@@ -166,7 +168,12 @@ create_and_distribute_data(int rank, int world, int frags, int size)
     m->frags = frags;
     m->size  = size;
     m->data  = (dague_data_t**)calloc(frags, sizeof(dague_data_t*));
+#if defined(HAVE_MIC)
+	posix_memalign(&((void*)m->ptr), PAGE_SIZE, frags * size * sizeof(uint8_t));
+#else
     m->ptr   = (uint8_t*)calloc(frags * size, sizeof(uint8_t));
+#endif
+	printf("ptr in jdf: %p\n", m->ptr);
 
     return d;
 }

@@ -55,12 +55,14 @@ static int dague_mic_device_fini(dague_device_t* device)
 
 static int dague_mic_host_memory_register(dague_device_t* device, void* ptr, size_t length)
 {
-    mic_device_t* gpu_device = (mic_device_t*)device;
+ /*   mic_device_t* mic_device = (mic_device_t*)device;
     mic_mem_t *mem_host = (mic_mem_t *)malloc(sizeof(mic_mem_t));
+	mem_host->addr = ptr;
     if (micHostAlloc(mem_host, length) == MIC_ERROR) {
         return DAGUE_ERROR;
     }
-    ptr = mem_host->addr;
+    ptr = mem_host->addr;*/
+	printf("base %p\n", ptr);
 //    CUresult status;
 //    CUcontext ctx;
     
@@ -581,6 +583,8 @@ int dague_mic_data_stage_in( mic_device_t* mic_device,
 		mic_base = mic_device->memory->base;
 		mic_now = (char *)gpu_elem->device_private;
 		diff = mic_now - mic_base;
+
+		printf("cpu mem:%p, key%x\n", in_elem->device_private, original->key);
 		
   //      status = (cudaError_t)cuMemcpyHtoDAsync( (CUdeviceptr)gpu_elem->device_private,
     //                                             in_elem->device_private, length, stream );
