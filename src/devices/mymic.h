@@ -9,7 +9,7 @@
 
 #include "scif.h"
 
-#define MALLOC_MEM			100
+#define MALLOC_MEM			10
 #define MIC_SUCCESS			1
 #define MIC_ERROR			0
 
