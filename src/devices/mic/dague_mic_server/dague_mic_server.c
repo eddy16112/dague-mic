@@ -2,9 +2,10 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <mkl.h>
+#include <time.h>
 #include "dague_mic_server.h"
 
-#define MIC_TASK_NUM_OF_THREADS    4
+#define MIC_TASK_NUM_OF_THREADS    2
 
 scif_epd_t epd;
 scif_epd_t mic_epd;
@@ -229,10 +230,10 @@ int mic_command_check_completion()
     mic_task_context_t *this_task;
     int ack = -1;
     
-  //  printf("[Log] check completion accepted\n");
+    //printf("[Log] check completion accepted\n");
     this_task = mic_server_task_queue->head;
     if (this_task != NULL) {
-    //    printf("i am herer\n");
+      //  printf("i am herer\n");
         if (this_task->task_status == TASK_FINISH) {
             pthread_mutex_lock(&(mic_server_task_queue->task_queue_lock));
             mic_server_task_queue->head = this_task->next_task;
@@ -254,6 +255,7 @@ int mic_command_check_completion()
             if (mic_send_sync(mic_epd, &ack, sizeof(ack)) == ERROR) {
                 return ERROR;
             }
+            return SUCCESS;
         }
     }
     ack = 2;     // task queue is empty
@@ -266,8 +268,13 @@ int mic_command_check_completion()
 
 int mic_task_dgemm(mic_task_context_t *this_task)
 {
- //   sleep(1);
-	return SUCCESS;
+    struct timespec tim, tim2;
+    tim.tv_sec = 0;
+    tim.tv_nsec = 50000000L;
+    nanosleep(&tim, &tim2);
+	
+   // sleep(1);
+    return SUCCESS;
 }
 
 int mic_task_sgemm(mic_task_context_t *this_task)
