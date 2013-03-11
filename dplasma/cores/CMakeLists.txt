@@ -56,10 +56,12 @@ if(CUDA_FOUND)
     set(GPU_KERNEL_SOURCES
         cuda_zgemm.c
 #        cuda_stsmqr.c
+        mic_zgemm.c
     )
     set(GPU_KERNEL_HEADERS
         cuda_zgemm.h
 #        cuda_stsmqr.h
+        mic_zgemm.h
     )
 
 else()

@@ -152,13 +152,25 @@ void cleanup_dague(dague_context_t* dague, int *iparam);
 static inline int max(int a, int b) { return a > b ? a : b; }
 static inline int min(int a, int b) { return a < b ? a : b; }
 
+static inline void* mic_data_allocate(size_t size)
+{
+    void *ptr;
+    size_t PAGESIZE= 0x1000;
+    if (size % PAGESIZE != 0) {
+    	size = ((size / PAGESIZE) + 1) * PAGESIZE;
+  	}
+    posix_memalign(&ptr, PAGESIZE, size);
+    printf("host ptr addr: %p\n", ptr);
+    return ptr;
+}
+
 
 /* Paste code to allocate a matrix in desc if cond_init is true */
 #define PASTE_CODE_ALLOCATE_MATRIX(DDESC, COND, TYPE, INIT_PARAMS)      \
     TYPE##_t DDESC;                                                     \
     if(COND) {                                                          \
         TYPE##_init INIT_PARAMS;                                        \
-        DDESC.mat = dague_data_allocate((size_t)DDESC.super.nb_local_tiles * \
+        DDESC.mat = mic_data_allocate((size_t)DDESC.super.nb_local_tiles * \
                                         (size_t)DDESC.super.bsiz *      \
                                         (size_t)dague_datadist_getsizeoftype(DDESC.super.mtype)); \
         dague_ddesc_set_key((dague_ddesc_t*)&DDESC, #DDESC);            \

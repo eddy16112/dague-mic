@@ -11,6 +11,7 @@
 #include "data_dist/matrix/two_dim_rectangle_cyclic.h"
 #if defined(HAVE_CUDA)
 #include "dplasma/cores/cuda_zgemm.h"
+#include "dplasma/cores/mic_zgemm.h"
 #endif
 
 static int check_solution( dague_context_t *dague, int loud,
@@ -82,7 +83,7 @@ int main(int argc, char ** argv)
 #if defined(HAVE_CUDA)
         if(iparam[IPARAM_NGPUS] > 0) {
             if(loud > 3) printf("+++ Load GPU kernel ... ");
-            dague_gpu_data_register(dague,
+ /*           dague_gpu_data_register(dague,
                                     (dague_ddesc_t*)&ddescC,
                                     MT*NT, MB*NB*sizeof(dague_complex64_t));
             dague_gpu_data_register(dague,
@@ -91,6 +92,10 @@ int main(int argc, char ** argv)
             dague_gpu_data_register(dague,
                                     (dague_ddesc_t*)&ddescB,
                                     KT*NT, MB*NB*sizeof(dague_complex64_t));
+*/
+            dague_mic_data_register(dague,
+                                    (dague_ddesc_t*)&ddescC,
+                                    MT*NT, MB*NB*sizeof(dague_complex64_t));
             if(loud > 3) printf("Done\n");
         }
 #endif
@@ -110,9 +115,9 @@ int main(int argc, char ** argv)
 
 #if defined(HAVE_CUDA)
         if(iparam[IPARAM_NGPUS] > 0) {
-            dague_gpu_data_unregister((dague_ddesc_t*)&ddescA);
+ /*           dague_gpu_data_unregister((dague_ddesc_t*)&ddescA);
             dague_gpu_data_unregister((dague_ddesc_t*)&ddescB);
-            dague_gpu_data_unregister((dague_ddesc_t*)&ddescC);
+            dague_gpu_data_unregister((dague_ddesc_t*)&ddescC);*/
         }
 #endif
 

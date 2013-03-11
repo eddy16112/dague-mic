@@ -98,10 +98,10 @@ mic_kernel_push_zgemm( mic_device_t            *mic_device,
         this_task->data[i].data_out = NULL;  /* TODO: clean this up to segfault */
         data = this_task->data[i].data_in;
         original = data->original;
-        if( NULL != (local = dague_data_get_copy(original, gpu_device->super.device_index)) ) {
+        if( NULL != (local = dague_data_get_copy(original, mic_device->super.device_index)) ) {
             this_task->data[i].data_out = local;
             /* Check the most up2date version of the data */
-            if( data->device_index != gpu_device->super.device_index ) {
+            if( data->device_index != mic_device->super.device_index ) {
                 if(data->version <= local->version) {
                     if(data->version == local->version) continue;
                     /* Trouble: there are two versions of this data coexisting in same
@@ -163,36 +163,36 @@ mic_kernel_submit_zgemm( mic_device_t        *mic_device,
 {
     dague_execution_context_t *this_task = mic_task->ec;
     dague_mic_zgemm_args_t    *args = (dague_mic_zgemm_args_t*)mic_task;
-    CUdeviceptr d_A, d_B, d_C;
+    void *d_A, *d_B, *d_C;
     cudaError_t status;
 #if defined(DAGUE_DEBUG_VERBOSE2)
     char tmp[MAX_TASK_STRLEN];
 #endif
 
-    cuda_zgemm_t cuda_zgemm = (cuda_zgemm_t)cuda_gemm_functions[gpu_device->cuda_index];
+ //   cuda_zgemm_t cuda_zgemm = (cuda_zgemm_t)cuda_gemm_functions[gpu_device->cuda_index];
 
     assert( DATA_COHERENCY_OWNED == this_task->data[2].data_out->coherency_state );
 
-    assert(this_task->data[0].data_out->device_index == gpu_device->super.device_index);
-    d_A = (CUdeviceptr)this_task->data[0].data_out->device_private;
-    assert(this_task->data[1].data_out->device_index == gpu_device->super.device_index);
-    d_B = (CUdeviceptr)this_task->data[1].data_out->device_private;
-    assert(this_task->data[2].data_out->device_index == gpu_device->super.device_index);
-    d_C = (CUdeviceptr)this_task->data[2].data_out->device_private;
+    assert(this_task->data[0].data_out->device_index == mic_device->super.device_index);
+    d_A = this_task->data[0].data_out->device_private;
+    assert(this_task->data[1].data_out->device_index == mic_device->super.device_index);
+    d_B = this_task->data[1].data_out->device_private;
+    assert(this_task->data[2].data_out->device_index == mic_device->super.device_index);
+    d_C = this_task->data[2].data_out->device_private;
 
-    DEBUG2(( "GPU[%1d]:\tEnqueue on device %s priority %d\n", gpu_device->cuda_index,
+    DEBUG2(( "GPU[%1d]:\tEnqueue on device %s priority %d\n", mic_device->mic_index,
              dague_snprintf_execution_context(tmp, MAX_TASK_STRLEN, this_task),
              this_task->priority ));
 
-    DAGUE_TASK_PROF_TRACE_IF(gpu_stream->prof_event_track_enable,
-                             gpu_device->super.profiling,
-                             (-1 == gpu_stream->prof_event_key_start ?
+    DAGUE_TASK_PROF_TRACE_IF(mic_stream->prof_event_track_enable,
+                             mic_device->super.profiling,
+                             (-1 == mic_stream->prof_event_key_start ?
                               DAGUE_PROF_FUNC_KEY_START(this_task->dague_handle,
                                                         this_task->function->function_id) :
-                              gpu_stream->prof_event_key_start),
+                              mic_stream->prof_event_key_start),
                              this_task);
 
-    status = cudaSuccess;
+ /*   status = cudaSuccess;
     cuda_zgemm( lapack_const(args->transA), lapack_const(args->transB), args->M, args->N, args->K,
                 args->alpha, (dague_complex64_t*)d_A, args->lda,
                              (dague_complex64_t*)d_B, args->ldb,
@@ -200,7 +200,7 @@ mic_kernel_submit_zgemm( mic_device_t        *mic_device,
                 mic_stream->mic_stream );
 
     DAGUE_CUDA_CHECK_ERROR( "cuda_zgemm ", status,
-                              {return -1;} );
+                              {return -1;} );*/
 
 /*     fprintf(stderr, "cuda_zgemm( %d, %d, %d )\n\t( %c, %c, %d, %d, %d, %e, A(%d,%d)[%p], %d, A(%d,%d)[%p], %d, %e, A(%d,%d)[%p], %d)\n", */
 /*             this_task->locals[0].value, this_task->locals[1].value, this_task->locals[2].value, */
@@ -224,7 +224,7 @@ mic_kernel_pop_zgemm( mic_device_t        *mic_device,
                       dague_mic_context_t *mic_task,
                       dague_mic_exec_stream_t* mic_stream)
 {
-    dague_execution_context_t *this_task = gpu_task->ec;
+    dague_execution_context_t *this_task = mic_task->ec;
     dague_mic_zgemm_args_t    *args = (dague_mic_zgemm_args_t*)mic_task;
     dague_gpu_data_copy_t     *gpu_copy;
     dague_data_t              *original;
@@ -365,7 +365,7 @@ mic_kernel_epilog_zgemm( mic_device_t        *mic_device,
  * been completed. Each type of stream (in, exec and out) has a pending FIFO,
  * where tasks ready to jump to the respective step are waiting.
  */
-int gpu_zgemm( dague_execution_unit_t* eu_context,
+int mic_zgemm( dague_execution_unit_t* eu_context,
                dague_execution_context_t* this_task,
                int pushout,
                PLASMA_enum transA, PLASMA_enum transB,
@@ -409,7 +409,7 @@ int gpu_zgemm( dague_execution_unit_t* eu_context,
     }
 
     mic_task = (dague_mic_zgemm_args_t*)malloc(sizeof(dague_mic_zgemm_args_t));
-    OBJ_CONSTRUCT(gpu_task, dague_list_item_t);
+    OBJ_CONSTRUCT(mic_task, dague_list_item_t);
     mic_task->super.ec = this_task;
     mic_task->pushout  = pushout;
     mic_task->alpha    = alpha;

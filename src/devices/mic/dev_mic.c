@@ -56,6 +56,7 @@ static int dague_mic_device_fini(dague_device_t* device)
 mic_mem_t* dague_mic_get_cpu_base(void* ptr, mic_device_t* mic_device)
 {
 	int i;
+    printf("ptr addr: %p\n", ptr);
 	for (i = 0; i < mic_device->num_of_cpu_ptr; i++) {
 		if (ptr >= mic_device->cpu_ptr[i].addr && ptr < mic_device->cpu_ptr[i].addr+mic_device->cpu_ptr[i].actual_nbyte) {
 			return &mic_device->cpu_ptr[i];
@@ -73,6 +74,12 @@ static int dague_mic_host_memory_register(dague_device_t* device, void* ptr, siz
         return DAGUE_ERROR;
     }
     ptr = mem_host->addr;*/
+    int i;
+    for (i = 0; i < mic_device->num_of_cpu_ptr; i++) {
+        if (mic_device->cpu_ptr[i].addr == ptr) {
+            return DAGUE_SUCCESS;
+        }
+    }
 	mic_device->cpu_ptr[mic_device->num_of_cpu_ptr].addr = ptr;
 	off_t offset = micHostRegister(ptr, length);
 	if (offset == 0x0) {
@@ -81,7 +88,7 @@ static int dague_mic_host_memory_register(dague_device_t* device, void* ptr, siz
 	mic_device->cpu_ptr[mic_device->num_of_cpu_ptr].offset = offset;
 	mic_device->cpu_ptr[mic_device->num_of_cpu_ptr].actual_nbyte = length;
 	mic_device->num_of_cpu_ptr ++;
-	printf("base %p\n", ptr);
+	printf("base %p, length %lu\n", ptr, length);
     
     return DAGUE_SUCCESS;
 }
