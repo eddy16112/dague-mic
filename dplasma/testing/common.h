@@ -170,7 +170,7 @@ static inline void* mic_data_allocate(size_t size)
     TYPE##_t DDESC;                                                     \
     if(COND) {                                                          \
         TYPE##_init INIT_PARAMS;                                        \
-        DDESC.mat = mic_data_allocate((size_t)DDESC.super.nb_local_tiles * \
+        DDESC.mat = dague_data_allocate((size_t)DDESC.super.nb_local_tiles * \
                                         (size_t)DDESC.super.bsiz *      \
                                         (size_t)dague_datadist_getsizeoftype(DDESC.super.mtype)); \
         dague_ddesc_set_key((dague_ddesc_t*)&DDESC, #DDESC);            \

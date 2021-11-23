@@ -168,7 +168,7 @@ gpu_kernel_submit_zgemm( gpu_device_t        *gpu_device,
 #if defined(DAGUE_DEBUG_VERBOSE2)
     char tmp[MAX_TASK_STRLEN];
 #endif
-
+/*
     cuda_zgemm_t cuda_zgemm = (cuda_zgemm_t)cuda_gemm_functions[gpu_device->cuda_index];
 
     assert( DATA_COHERENCY_OWNED == this_task->data[2].data_out->coherency_state );
@@ -200,7 +200,7 @@ gpu_kernel_submit_zgemm( gpu_device_t        *gpu_device,
                 gpu_stream->cuda_stream );
 
     DAGUE_CUDA_CHECK_ERROR( "cuda_zgemm ", status,
-                              {return -1;} );
+                              {return -1;} );*/
 
 /*     fprintf(stderr, "cuda_zgemm( %d, %d, %d )\n\t( %c, %c, %d, %d, %d, %e, A(%d,%d)[%p], %d, A(%d,%d)[%p], %d, %e, A(%d,%d)[%p], %d)\n", */
 /*             this_task->locals[0].value, this_task->locals[1].value, this_task->locals[2].value, */

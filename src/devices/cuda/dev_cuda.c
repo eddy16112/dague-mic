@@ -889,6 +889,7 @@ int dague_gpu_data_stage_in( gpu_device_t* gpu_device,
                               "GPU:\tMove data <%x> (%p:%p) to GPU %d requested\n",
                               original->key, in_elem->device_private, (void*)gpu_elem->device_private, gpu_device->cuda_index));
         /* Push data into the GPU */
+        printf("PUSH ptr addr: %p\n", in_elem->device_private);
         status = (cudaError_t)cuMemcpyHtoDAsync( (CUdeviceptr)gpu_elem->device_private,
                                                  in_elem->device_private, original->nb_elts, stream );
         DAGUE_CUDA_CHECK_ERROR( "cuMemcpyHtoDAsync to device ", status,

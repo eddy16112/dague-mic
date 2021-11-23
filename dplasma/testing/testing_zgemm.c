@@ -93,7 +93,7 @@ int main(int argc, char ** argv)
                                     (dague_ddesc_t*)&ddescB,
                                     KT*NT, MB*NB*sizeof(dague_complex64_t));
 */
-            dague_mic_data_register(dague,
+            dague_gpu_data_register(dague,
                                     (dague_ddesc_t*)&ddescC,
                                     MT*NT, MB*NB*sizeof(dague_complex64_t));
             if(loud > 3) printf("Done\n");

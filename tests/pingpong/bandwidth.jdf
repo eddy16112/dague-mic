@@ -13,10 +13,10 @@ extern "C" %{
 
 #if defined(HAVE_CUDA)
 #include "tests/pingpong/pingpong_gpu.h"
-#include "tests/pingpong/pingpong_mic.h"
+//#include "tests/pingpong/pingpong_mic.h"
 #endif  /* defined(HAVE_CUDA) */
 
-#define HAVE_MIC
+//#define HAVE_MIC
 
 typedef struct {
     dague_ddesc_t  super;
@@ -300,8 +300,8 @@ RW   T <- T PING(t, f)
 CTL  C -> C SYNC(t+1)
 
 BODY [type = CUDA]
-    //return bandwidth_cuda(context, this_task);
-	return bandwidth_mic(context, this_task);
+    return bandwidth_cuda(context, this_task);
+	//return bandwidth_mic(context, this_task);
 END
 
 BODY
@@ -366,8 +366,8 @@ int main(int argc, char *argv[])
 	printf("dague init finish\n");
 
 #if defined(HAVE_CUDA)
-    //dague_gpu_data_register(dague, ddescA, frags, size*sizeof(uint8_t));
-	dague_mic_data_register(dague, ddescA, frags, size*sizeof(uint8_t));
+    dague_gpu_data_register(dague, ddescA, frags, size*sizeof(uint8_t));
+	//dague_mic_data_register(dague, ddescA, frags, size*sizeof(uint8_t));
 	printf("I finish MIC DATA REGISTER\n");
 #endif
 

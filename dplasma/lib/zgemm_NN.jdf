@@ -21,10 +21,10 @@ extern "C" %{
 #include "dplasma/lib/dplasmajdf.h"
 
 #if defined(HAVE_CUDA)
-//#include <dague/devices/cuda/dev_cuda.h>
-//#include "dplasma/cores/cuda_zgemm.h"
-#include <dague/devices/mic/dev_mic.h>
-#include "dplasma/cores/mic_zgemm.h"
+#include <dague/devices/cuda/dev_cuda.h>
+#include "dplasma/cores/cuda_zgemm.h"
+//#include <dague/devices/mic/dev_mic.h>
+//#include "dplasma/cores/mic_zgemm.h"
 extern int *gpu_counter;
 #endif  /* defined(HAVE_CUDA) */
 %}
@@ -110,7 +110,7 @@ BODY
     {  /* TODO: This should move in a CUDA BODY */
         int rc;
 
-        if( 0 == (rc = mic_zgemm( context, this_task,
+        if( 0 == (rc = gpu_zgemm( context, this_task,
                                   ( k == descA.nt-1 ),
                                   transA, transB,
                                   tempmm, tempnn, tempkk,
